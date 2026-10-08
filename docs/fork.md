@@ -87,6 +87,23 @@ lifecycle and geometry calls; the presenter owns observation, child-panel manage
 Feature-only dimensions live in `AgentRunsMetrics`, leaving Theme and InterfaceMetrics unchanged.
 Polling runs only while the palette is visible and retains the last snapshot when hidden.
 
+## Search
+
+Every list input matches with one fzf v2 scorer, fork-owned in `Tinycast/Fork/Search/`
+(`ForkFzf` scores, `ForkSearch` parses syntax and adapts it to upstream callers). `ForkSearch.setEnabled`
+is the switch, turned on in `ForkAppearance.start()`; off, every hook falls through to upstream behaviour.
+Settled in the prototype on branch `prototype/fuzzy-search`:
+
+- Words are ANDed in any order; fzf extended syntax: `'exact`, `^prefix`, `suffix$`, `!exclude`. No typo tolerance.
+- Two profiles: **fuzzy** (letters may be skipped inside a word) everywhere except the clipboard, which uses
+  **accurate** (every word must appear exactly, any order).
+- Clipboard retrieval turns words of 3+ letters into ANDed FTS5 phrases, then ranks by fzf score with
+  newest-first as the tie-break. Queries of 1–2 letters keep recency or use order.
+- File search keeps upstream Spotlight retrieval with the fzf rerank: a subsequence glob was too slow and too
+  broad (`docs/fork-search-spike.md`). Fuzzy file retrieval would need a path index of its own.
+- Plain substring filters in Uninstall, calculator history, AI chat lists, window layouts and settings
+  lists are unchanged.
+
 ## Merge playbook
 
 1. Work from `main` and run `git merge upstream/main`. Never rebase.
@@ -123,6 +140,12 @@ unless they have an explicit symbol-only allowance. The audit is a static guard,
 | `Tinycast/Features/CustomCommands/Service/ShellCommandRunner.swift` | `// FORK: agent-runs` | Allow a per-call stdout limit for complete status JSON, preserving the default. |
 | `Tinycast/Palette/PaletteEnvironment.swift` | `// FORK: agent-runs` | Inject the AgentRuns coordinator into the hosted stack. |
 | `Tinycast/Palette/PaletteWindowController.swift` | `// FORK: agent-runs` | Forward palette visibility and geometry events to the feature. |
+| `Scripts/run-tests.sh` | `// FORK: fork-search` | Register the fork search harness. |
+| `Tinycast/Features/Launcher/Model/SearchRelevance.swift` | `// FORK: search` | `FuzzyMatch.match` answers via fzf, tiers kept. |
+| `Tinycast/Features/Launcher/Model/LauncherMatch.swift` | `// FORK: search` | Launcher alignment and sensitivity via fzf. |
+| `Tinycast/Features/Snippets/UI/SnippetsScreen.swift` | `// FORK: search` | Snippet filter via fzf. |
+| `Tinycast/Features/Quicklinks/UI/QuicklinkListScreen.swift` | `// FORK: search` | Quicklink filter via fzf. |
+| `Tinycast/Features/Clipboard/Model/ClipboardStore.swift` | `// FORK: search` | Words ANDed in FTS, exact-words filter, fzf rank. |
 | `AGENTS.md` | `// FORK: documentation` | Link the fork maintenance guide. |
 | `Tinycast/DesignSystem/Scrolling/OverflowFade.swift` | `// FORK: overflow-double` | Compile fix: explicit `Double` for the fade strengths. |
 | `Scripts/run-tests.sh` | `// FORK: fork-harness` | Register the fork-layer harness. |
