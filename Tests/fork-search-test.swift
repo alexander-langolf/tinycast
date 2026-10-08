@@ -223,15 +223,15 @@ struct ForkSearchTest {
         ForkSearch.setEnabled(true)
         defer { ForkSearch.setEnabled(false) }
         check("words ANDed", ForkSearch.clipboardFTS("march invoice") == "\"march\" AND \"invoice\"")
-        check(
-            "short words keep upstream phrase",
-            ForkSearch.clipboardFTS("gh pr create") == "\"gh pr create\"")
-        check(
-            "all short words keep upstream phrase", ForkSearch.clipboardFTS("gh pr") == "\"gh pr\"")
+        // Short words can't use the trigram index, so the in-memory accurate filter checks them.
+        check("short words left to the filter", ForkSearch.clipboardFTS("gh pr create") == "\"create\"")
+        check("all short words fall back", ForkSearch.clipboardFTS("gh pr") == nil)
         check("raw short query falls back", ForkSearch.clipboardFTS("gh") == nil)
+        check("syntax stripped from long words", ForkSearch.clipboardFTS("^gh create") == "\"create\"")
+        check("short word with exclusion", ForkSearch.clipboardFTS("ab !cd efg") == "\"efg\"")
         check(
-            "syntax-stripped short word keeps phrase",
-            ForkSearch.clipboardFTS("^gh create") == "\"^gh create\"")
+            "any order with short words",
+            ForkSearch.contains("create pr gh", in: "gh pr create", profile: .accurate))
         check("!word becomes NOT", ForkSearch.clipboardFTS("stardust !bump") == "\"stardust\" NOT \"bump\"")
         check("plain exclusion becomes NOT", ForkSearch.clipboardFTS("foo !bar") == "\"foo\" NOT \"bar\"")
         for excluded in ["!bar$", "!^bar", "!!foo", "!'bar", "!gh"] {
@@ -240,10 +240,13 @@ struct ForkSearchTest {
                 ForkSearch.clipboardFTS("foo " + excluded) == "\"foo\"")
         }
         check("only exclusions have no FTS positives", ForkSearch.clipboardFTS("!foo !bar") == nil)
-        check(
-            "old command keeps upstream retrieval phrase and matches the accurate filter",
-            ForkSearch.clipboardFTS("gh pr create --fill") == "\"gh pr create --fill\""
-                && ForkSearch.contains("gh pr create --fill", in: "gh pr create --fill", profile: .accurate))
+        check("exclusion keeps subsequence tier", ForkSearch.tiered("gb !x", "github") != nil)
+        check("suffix keeps subsequence tier", ForkSearch.tiered("g b$", "gxb") != nil)
+        check("contiguous run wins the tier", ForkSearch.tiered("ar", "a bar")?.tier == .substring)
+        check("contiguous run wins the tier (2)", ForkSearch.tiered("sa", "ssa")?.tier == .substring)
+        check("suffix after expansion", !ForkSearch.contains("ss$", in: "ßa"))
+        check("prefix after expansion", !ForkSearch.contains("^ss", in: "xß"))
+        check("prefix through expansion", ForkSearch.contains("^ss", in: "ßa"))
         check("quotes escaped", ForkSearch.clipboardFTS("say\"hi") == "\"say\"\"hi\"")
         check(
             "accurate item filter",

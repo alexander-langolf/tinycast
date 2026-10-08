@@ -43,6 +43,12 @@ enum ForkSearch {
     }
 
     static func hit(_ term: Term, in field: String, humps: [Int] = []) -> ForkFzf.Hit? {
+        // Anchors are judged on the folded text: a fold can expand (ß → ss), so source windows alone misfire.
+        if term.prefix || term.suffix {
+            let folded = FuzzyMatch.normalized(field)
+            let word = String(term.text)
+            guard term.prefix ? folded.hasPrefix(word) : folded.hasSuffix(word) else { return nil }
+        }
         if term.prefix {
             guard let h = ForkFzf.match(term.text, in: String(field.prefix(term.text.count)), exact: true)
             else { return nil }
@@ -108,7 +114,7 @@ enum ForkSearch {
             }
             var t = token.drop { "!'^".contains($0) }
             if t.count > 1, t.hasSuffix("$") { t = t.dropLast() }
-            guard t.count >= 3 else { return query.count >= 3 ? quote(Substring(query)) : nil }
+            guard t.count >= 3 else { continue }
             positive.append(quote(t))
         }
         guard !positive.isEmpty else { return nil }
@@ -137,7 +143,12 @@ enum ForkSearch {
                 tier: .exact, offset: 0, queryLength: 0, candidateLength: length, spread: 0)
         }
         guard let r = match(q, fields: [c], profile: .fuzzy) else { return nil }
-        let p = r.positions[0].sorted()
+        // fzf's best alignment can skip a contiguous run that exists; tiers rank contiguous runs higher.
+        let positive = terms(q, profile: .fuzzy).filter { !$0.negated }
+        let run =
+            positive.count == 1 && !positive[0].prefix && !positive[0].suffix
+            ? ForkFzf.match(positive[0].text, in: c, exact: true) : nil
+        let p = (run?.positions ?? r.positions[0]).sorted()
         let contiguous = !p.isEmpty && p.last! - p.first! + 1 == p.count
         let tier: FuzzyMatch.Tier =
             c == q
@@ -152,9 +163,11 @@ enum ForkSearch {
                     : contiguous ? .substring : .subsequence
         var spread = 0
         if tier == .subsequence {
-            guard let reference = match(q, fields: [q], profile: .fuzzy)?.score, reference > 0 else {
-                return nil
+            // What the positive words would score as contiguous runs: `!words` and anchors never self-match.
+            let reference = positive.reduce(0) {
+                $0 + (ForkFzf.match($1.text, in: String($1.text), exact: true)?.score ?? 0)
             }
+            guard reference > 0 else { return nil }
             spread = r.score * FuzzyMatch.referenceSpread(q.count) / reference
         }
         return FuzzyMatch.Match(
