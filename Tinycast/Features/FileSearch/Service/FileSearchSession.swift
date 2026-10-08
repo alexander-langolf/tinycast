@@ -23,6 +23,7 @@ final class FileSearchSession {
     @ObservationIgnored private let homeDirectory: URL
     @ObservationIgnored private var policy: FileSearchPolicy
     @ObservationIgnored private let debounce: Duration
+    @ObservationIgnored private let forkSearch = ForkFileSearchService()  // FORK: search
     @ObservationIgnored private var forkDefaultOperation = false  // FORK: search
     @ObservationIgnored private let searchOperation: SearchOperation
 
@@ -77,6 +78,7 @@ final class FileSearchSession {
         let query = rawQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         let request = Request(query: query, filter: filter)
         guard request != self.request || state == .failed else { return }
+        forkSearch.cancel()  // FORK: search
         revision &+= 1
         self.request = request
         state = .searching
@@ -92,6 +94,7 @@ final class FileSearchSession {
     }
 
     func cancel() {
+        forkSearch.cancel()  // FORK: search
         revision &+= 1
         pendingSearch = nil
         request = nil
@@ -112,16 +115,18 @@ final class FileSearchSession {
             pendingSearch = nil
             let request = pending.request
             do {
-                if forkDefaultOperation && ForkSearch.isEnabled && ForkSearch.fileNeedsGlob(request.query) {
-                    let candidates = try await ForkFileSearchService.search(
+                if forkDefaultOperation && ForkSearch.isEnabled && ForkSearch.fileNeedsGlob(request.query) {  // FORK: search
+                    try await forkSearch.search(
                         query: request.query, policy: policy, filter: request.filter
                     ) { [weak self] candidates in
                         guard let self, self.revision == pending.revision, self.request == request else {
                             return
-                        }; self.results = candidates; self.state = .ready
-                    }; guard revision == pending.revision, self.request == request else { continue };
-                    results = candidates; state = .ready; continue
-                }  // FORK: search
+                        }
+                        self.results = candidates
+                        self.state = .ready
+                    }
+                    continue
+                }
                 let candidates = try await searchOperation(request.query, request.filter, policy)
                 guard revision == pending.revision, self.request == request else { continue }
                 results = candidates

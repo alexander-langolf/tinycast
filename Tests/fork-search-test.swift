@@ -22,7 +22,9 @@ struct ForkSearchTest {
         clipboardFTS()
         clipboardRank()
         clipboardFuzzy()
+        clipboardScan()
         files()
+        fileRegressions()
         print(failures == 0 ? "\nALL PASSED" : "\n\(failures) FAILED")
         exit(failures == 0 ? 0 : 1)
     }
@@ -324,6 +326,90 @@ struct ForkSearchTest {
                 \.id) == [1, 2])
     }
 
+    static func clipboardScan() {
+        ForkSearch.setEnabled(true)
+        defer { ForkSearch.setEnabled(false) }
+        let boundary = String(repeating: "x", count: 4092) + " abc"
+        let beyond = String(repeating: "x", count: 4096) + " abc"
+        let beyondFuzzy = String(repeating: "x", count: 4096) + " alpha beta charlie"
+        check("clipboard includes the 4096th character", ForkSearch.clipboardScore("abc", boundary) != nil)
+        check("clipboard ignores fuzzy text beyond cap", ForkSearch.clipboardScore("abc", beyondFuzzy) == nil)
+        check(
+            "clipboard ignores literal text beyond cap in memory",
+            ForkSearch.clipboardScore("abc", beyond) == nil)
+        let graphemes = String(repeating: "👩‍💻", count: 4092) + " abc"
+        check("clipboard cap counts characters", ForkSearch.clipboardScore("abc", graphemes) != nil)
+        let rows = [(id: 1, text: beyond), (id: 2, text: boundary), (id: 3, text: beyondFuzzy)]
+        var scored = [Int: Int]()
+        let result = ForkSearch.clipboardResults(
+            [rows[0]], resident: rows, query: "abc", id: { $0.id },
+            text: {
+                scored[$0.id, default: 0] += 1
+                return $0.text
+            }, createdAt: { Date(timeIntervalSince1970: Double($0.id)) },
+            pinnedAt: { $0.id == 2 ? Date(timeIntervalSince1970: 1) : nil })
+        check("union scores each item once including pins and duplicates", scored == [1: 1, 2: 1, 3: 1])
+        check("full-text FTS survives cap and pins stay first", result.map(\.id) == [2, 1])
+        check("long literal word still uses full-text FTS", ForkSearch.clipboardFTS("abc") == "\"abc\"")
+        ForkSearch.setEnabled(false)
+        check("off clipboard has no scan cap", ForkSearch.clipboardScore("abc", beyond) != nil)
+    }
+
+    static func fileRegressions() {
+        let home = URL(fileURLWithPath: "/Users/test")
+        let ignore = FileSearchIgnoreList(patterns: [])
+        func result(_ path: String) -> FileSearchResult {
+            FileSearchResult(url: URL(fileURLWithPath: path), isDirectory: false, homeDirectory: home)
+        }
+        var candidates = (0..<999).map { result("/Users/test/Docs/zz_\($0)_go_long_name.txt") }
+        candidates.insert(result("/Users/test/go"), at: 800)
+        ForkSearch.setEnabled(false)
+        let upstream = FileSearchQuery.rank(candidates, for: "go", ignoring: ignore)
+        ForkSearch.setEnabled(true)
+        defer { ForkSearch.setEnabled(false) }
+        let ranked = FileSearchQuery.rank(candidates, for: "go", ignoring: ignore)
+        check("short file query keeps exact hit beyond display cap", ranked.first?.name == "go")
+        check("short file query uses upstream rank", ranked.map(\.id) == upstream.map(\.id))
+        check("short file query retains display cap", ranked.count == FileSearchQuery.resultLimit)
+        let single = candidates.map { result($0.id.replacingOccurrences(of: "go", with: "g")) }
+        check(
+            "single-character file query keeps exact hit beyond display cap",
+            FileSearchQuery.rank(single, for: "g", ignoring: ignore).first?.name == "g")
+        let junk = "m" + String(repeating: "x", count: 80) + "d"
+        check(
+            "file root filter rejects below-medium alignment",
+            !FileSearchQuery.matches(filename: junk, query: "md"))
+        check(
+            "file root filter applies threshold per word",
+            !FileSearchQuery.matches(filename: "report " + junk, query: "report md"))
+        check(
+            "file root filter accepts literal short word",
+            FileSearchQuery.matches(filename: "readme.md", query: "md"))
+        check(
+            "file root filter shares clipboard medium bar",
+            FileSearchQuery.matches(filename: "ChroMe-Debug", query: "md")
+                == (ForkSearch.clipboardScore("md", "ChroMe-Debug") != nil))
+        let paths = [result("/Users/test/work/report.txt"), result("/Users/test/Docs/report-work.txt")]
+        check(
+            "file exclusions ignore folder names",
+            FileSearchQuery.rank(paths, for: "report !work", ignoring: ignore).map(\.id) == [paths[0].id])
+        check(
+            "file root exclusion uses filename",
+            FileSearchQuery.matches(filename: "report.txt", query: "report !work"))
+        check(
+            "fast batch excludes filename without searching negated literal",
+            FileSearchQuery.expression(for: "report !work")
+                == #"kMDItemFSName == "*report*"cd && kMDItemFSName != "*work*"cd"#)
+        ForkSearch.setEnabled(false)
+        check(
+            "off fast batch keeps literal upstream terms",
+            FileSearchQuery.expression(for: "report !work")
+                == #"kMDItemFSName == "*report*"cd && kMDItemFSName == "*!work*"cd"#)
+        check(
+            "off file root filter has no fuzzy matching",
+            !FileSearchQuery.matches(filename: "ChroMe-Debug", query: "md"))
+    }
+
     static func files() {
         ForkSearch.setEnabled(true)
         defer { ForkSearch.setEnabled(false) }
@@ -397,8 +483,8 @@ struct ForkSearchTest {
             "index breaks remaining ties",
             ForkSearch.rankPaths([("fork.txt", "~/a"), ("fork.txt", "~/b")], query: "fork") == [0, 1])
         check(
-            "short paths keep order",
-            ForkSearch.rankPaths([("prefork.txt", "~"), ("fork.txt", "~")], query: "fo") == [0, 1])
+            "path scorer ranks short names when called directly",
+            ForkSearch.rankPaths([("prefork.txt", "~"), ("fork.txt", "~")], query: "fo") == [1, 0])
         check(
             "path nonmatches dropped", ForkSearch.rankPaths([("other.txt", "~/else/")], query: "fork").isEmpty
         )

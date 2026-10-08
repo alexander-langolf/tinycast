@@ -23,7 +23,7 @@ enum ForkSearch {
     static var isEnabled: Bool { enabled.withLock { $0 } }
     static func setEnabled(_ value: Bool) { enabled.withLock { $0 = value } }
 
-    /// 1–2 typed letters match nearly everything, so callers keep recency or use order.
+    /// Short clipboard queries keep recency; file queries use upstream ranking.
     static func isShort(_ query: String) -> Bool { query.filter { !$0.isWhitespace }.count <= 2 }
 
     static func terms(_ query: String, profile: Profile) -> [Term] {
@@ -67,7 +67,8 @@ enum ForkSearch {
 
     /// Every positive word must hit some field (the best one wins); any negated word that hits rejects the item.
     static func match(
-        _ query: String, fields: [String], weights: [Double]? = nil, profile: Profile, humps: [Int] = []
+        _ query: String, fields: [String], weights: [Double]? = nil, profile: Profile, humps: [Int] = [],
+        negatedFields: [String]? = nil
     ) -> Result? {
         let terms = terms(query, profile: profile)
         guard terms.contains(where: { !$0.negated }) else { return nil }
@@ -75,7 +76,8 @@ enum ForkSearch {
         var positions = Array(repeating: [Int](), count: fields.count)
         for term in terms {
             var best: (score: Int, field: Int, hit: ForkFzf.Hit)?
-            for (index, field) in fields.enumerated() {
+            let candidates = term.negated ? (negatedFields ?? fields) : fields
+            for (index, field) in candidates.enumerated() {
                 guard let h = hit(term, in: field, humps: index == 0 ? humps : []) else { continue }
                 let weighted = Int(Double(h.score) * (weights?[index] ?? 1))
                 if weighted > (best?.score ?? Int.min) { best = (weighted, index, h) }
@@ -123,23 +125,65 @@ enum ForkSearch {
         return positive.joined(separator: " AND ") + negative.map { " NOT " + $0 }.joined()
     }
 
-    static func clipboardScore(_ query: String, _ text: String?) -> Int? {
-        guard let text else { return nil }
-        guard isEnabled else { return text.localizedCaseInsensitiveContains(query) ? 0 : nil }
-        let words = terms(query, profile: .fuzzy)
+    static let clipboardScanLimit = 4096
+
+    static func score(_ query: String, _ text: String, profile: Profile) -> Int? {
+        score(terms(query, profile: profile), in: text)
+    }
+
+    private static func score(_ words: [Term], in text: String, literalText: String? = nil) -> Int? {
         guard words.contains(where: { !$0.negated }) else { return nil }
-        var score = 0
+        var total = 0
         for word in words {
             let result = hit(word, in: text)
             if word.negated {
                 if result != nil { return nil }
                 continue
             }
-            guard let result, accepts(score: result.score, letters: word.text.count, level: "medium")
-            else { return nil }
-            score += result.score
+            if let result, accepts(score: result.score, letters: word.text.count, level: "medium") {
+                total += result.score
+            } else if let literalText, word.text.count >= 3, !word.prefix, !word.suffix,
+                literalText.range(of: String(word.text), options: [.caseInsensitive, .diacriticInsensitive])
+                    != nil,
+                let literal = hit(word, in: String(word.text))
+            {
+                total += literal.score
+            } else {
+                return nil
+            }
         }
-        return score
+        return total
+    }
+
+    static func clipboardScore(_ query: String, _ text: String?) -> Int? {
+        guard let text else { return nil }
+        guard isEnabled else { return text.localizedCaseInsensitiveContains(query) ? 0 : nil }
+        return score(query, String(text.prefix(clipboardScanLimit)), profile: .fuzzy)
+    }
+
+    static func clipboardResults<T, ID: Hashable>(
+        _ hits: [T], resident: [T], query: String, id: (T) -> ID, text: (T) -> String?,
+        createdAt: (T) -> Date, pinnedAt: (T) -> Date?
+    ) -> [T] {
+        let words = terms(query, profile: .fuzzy)
+        let literalIDs = Set(hits.map(id))
+        let union = clipboardUnion(hits, resident: resident, id: id, createdAt: createdAt)
+        let scored = union.enumerated().compactMap { offset, item -> (T, Int, Int)? in
+            guard let raw = text(item),
+                let value = score(
+                    words, in: String(raw.prefix(clipboardScanLimit)),
+                    literalText: literalIDs.contains(id(item)) ? raw : nil)
+            else { return nil }
+            return (item, value, offset)
+        }
+        let pins = scored.filter { pinnedAt($0.0) != nil }.sorted {
+            pinnedAt($0.0)! < pinnedAt($1.0)!
+        }
+        let short = isShort(query)
+        let ordinary = scored.filter { pinnedAt($0.0) == nil }.sorted {
+            !short && $0.1 != $1.1 ? $0.1 > $1.1 : $0.2 < $1.2
+        }
+        return (pins + ordinary).map(\.0)
     }
 
     static func clipboardUnion<T, ID: Hashable>(
@@ -163,23 +207,32 @@ enum ForkSearch {
         terms(query, profile: .fuzzy).filter { !$0.negated }.reduce(0) { $0 + $1.text.count } >= 3
     }
 
-    static func spotlightNameClause(_ token: String) -> String {
+    static func spotlightNameClause(_ token: String, fuzzy: Bool = true) -> String {
         let term = terms(token, profile: .fuzzy)[0]
         let escaped = term.text.map { "*?\\\"".contains($0) ? "\\" + String($0) : String($0) }
-        let body = escaped.joined(separator: term.exact ? "" : "*")
+        let body = escaped.joined(separator: term.exact || !fuzzy ? "" : "*")
         let pattern = (term.prefix ? "" : "*") + body + (term.suffix ? "" : "*")
         return "kMDItemFSName \(term.negated ? "!=" : "==") \"\(pattern)\"cd"
+    }
+
+    static func rankFiles<T>(
+        _ results: [T], query: String, limit: Int, name: (T) -> String, folder: (T) -> String,
+        excluded: (T) -> Bool
+    ) -> [T] {
+        let kept = results.filter { !excluded($0) }
+        return rankPaths(kept.map { (name($0), folder($0)) }, query: query)
+            .prefix(limit).map { kept[$0] }
     }
 
     static func rankPaths(_ items: [(name: String, folder: String)], query: String) -> [Int] {
         let scored = items.enumerated().compactMap { index, item -> (score: Int, length: Int, index: Int)? in
             guard
                 let result = match(
-                    query, fields: [item.name, item.folder], weights: [1, 0.6], profile: .fuzzy)
+                    query, fields: [item.name, item.folder], weights: [1, 0.6], profile: .fuzzy,
+                    negatedFields: [item.name])
             else { return nil }
             return (result.score, item.name.count, index)
         }
-        guard !isShort(query) else { return scored.map(\.index) }
         return scored.sorted {
             if $0.score != $1.score { return $0.score > $1.score }
             if $0.length != $1.length { return $0.length < $1.length }

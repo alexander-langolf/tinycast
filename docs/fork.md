@@ -98,29 +98,42 @@ follow the owner's revised fuzzy-search decision:
 - Words are ANDed in any order; fzf extended syntax: `'exact`, `^prefix`, `suffix$`, `!exclude`. No typo tolerance.
 - Every search surface uses the **fuzzy** profile (letters may be skipped); `'word` keeps an exact
   contiguous word. Clipboard positives must each clear the launcher's medium score bar, based on
-  that word's folded length. The item filter, OCR in-loop filter and rank share `clipboardScore`.
+  that word's folded length. File root matching uses the same per-word `ForkSearch.score` bar.
+  The item filter and OCR in-loop filter use `clipboardScore`; the clipboard union carries each
+  item's score through pin handling and ranking, without scoring duplicates again.
 - Clipboard retrieval unions the full-history trigram FTS hits for positive words of 3+ letters
   with fuzzy-filtered resident items (the newest ~1,000, plus resident pins), deduplicating by item ID.
   FTS retains its 200-newest-hit cap and only retrieves literal long words: older skipped-letter
   matches outside the resident window remain unavailable. Plain long `!words` become FTS exclusions;
   anchored or short exclusions stay in the memory filter. Ordinary text matches rank by fzf score,
   ties newest-first; 1–2 non-space characters keep newest-first. Pins retain upstream's first-place
-  handling. OCR-only matches retain upstream's retrieval and insertion order.
+  handling. Fuzzy clipboard scoring scans only the first 4,096 characters of each item, including
+  OCR text; skipped-letter matches beyond that prefix are unavailable. Trigram FTS still indexes
+  full text: retrieved literal positive words of 3+ letters can match beyond the prefix, while
+  short words and anchored words must pass the prefix filter. Full-text literal matches use the
+  word's self-match score when no accepted prefix alignment exists. OCR-only matches retain
+  upstream's retrieval and insertion order. The scorer lowercases ASCII bytes directly and rejects
+  absent subsequences before computing bonuses or alignment; non-ASCII characters keep the shared fold.
 - A query of only `!words` matches nothing. Lone syntax tokens (`!`, `'`, `^`, `$`) match literally.
-- File search keeps upstream's substring Spotlight query as the fast batch. Queries with 3+ positive
-  letters also run a subsequence-glob query concurrently; the session publishes the fast batch first,
-  then merges the supplemental results by path and reranks the full union. Each query retains the
+- File search keeps upstream's substring Spotlight query as the fast batch. Both batches apply
+  negated words to filenames only, through `!=` clauses; folder names never exclude a result.
+  Queries with 3+ positive letters start a separate subsequence-glob task after publishing the fast
+  batch, then merge the supplemental results by path and rerank the full union. Each query retains the
   1,000-candidate cap; the final list retains the 200-row cap. fzf scores filename and folder separately
-  (folder weight 0.6), then breaks ties by shorter filename and incoming index. Short queries keep
-  incoming order. `'`, `^`, `$` and `!` produce exact, anchored or negated glob clauses.
+  (folder weight 0.6), then breaks ties by shorter filename and incoming index. Short queries use
+  upstream ranking before the display cap, so an exact short filename survives unsorted candidates.
+  `'`, `^`, `$` and `!` produce exact, anchored or negated glob clauses.
   Retrieval still queries filenames, so folder-only terms cannot discover extra paths on their own.
-- `ForkFileSearchService` owns the concurrent detached IO and merge. Three one-line session hooks
-  select it only for the production operation and guard both publications with the existing request
-  revision; injected harness operations, blank-screen recents and switch-off behaviour stay upstream.
-  A supplemental query failure retains the fast results. Synchronous Spotlight calls cannot be
-  interrupted mid-execution; superseded results are discarded before publication, as upstream.
-  The spike in `docs/fork-search-spike.md` remains historical evidence that glob retrieval is slower;
-  the owner's decision now uses it as a supplement rather than replacing the fast query.
+- Each file session owns a `ForkFileSearchService`, which awaits only the substring batch and owns
+  a separate task for the supplemental glob and merge. New requests and session cancellation cancel
+  that task immediately; the session worker can then process the next request without waiting for
+  the old glob. A fork revision also prevents a superseded substring batch from starting a glob.
+  Both publications stay behind the session's existing revision/request guards. Injected harness
+  operations, blank-screen recents and switch-off behaviour stay upstream. A supplemental failure
+  retains the fast results. Synchronous Spotlight calls cannot be interrupted mid-execution; their
+  detached work may finish after cancellation, but the obsolete merge never publishes or blocks the
+  next request. The spike in `docs/fork-search-spike.md` remains historical evidence that glob
+  retrieval is slower; it is a supplement to the fast query.
 - Plain substring filters in Uninstall, calculator history, AI chat lists, window layouts and settings
   lists are unchanged.
 
