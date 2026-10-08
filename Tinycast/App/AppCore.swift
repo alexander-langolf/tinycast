@@ -129,6 +129,9 @@ final class AppCore {
     @ObservationIgnored private(set) lazy var terminalInstances = TerminalInstancesCoordinator(core: self)
     @ObservationIgnored private(set) lazy var terminalInstancesPresenter =
         TerminalInstancesPresenter(core: self)
+    // FORK: palette-chips
+    @ObservationIgnored private(set) lazy var paletteChips = PaletteChipsCoordinator(core: self)
+    @ObservationIgnored private(set) lazy var paletteChipsPresenter = PaletteChipsPresenter(core: self)
     /// Its own window and lifecycle: neither coordinator shows or closes the other's surface.
     @ObservationIgnored private(set) lazy var settingsCoordinator = SettingsCoordinator(core: self)
     @ObservationIgnored private(set) lazy var onboardingCoordinator = OnboardingCoordinator(

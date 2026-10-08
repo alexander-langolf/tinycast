@@ -424,6 +424,12 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
                 return true
             }
             guard Self.commandCharacter(from: event) != nil else { return false }
+            // FORK: palette-chips
+            if let index = FavoriteSlots.index(forKeyCode: event.keyCode),
+                self.core.paletteChips.handleSlot(index)
+            {
+                return true
+            }
             if self.core.palette.mode == .launcher || self.core.palette.mode == .clipboard,
                 let index = FavoriteSlots.index(forKeyCode: event.keyCode)
             {
@@ -469,8 +475,11 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
         guard let anchor = resolveAnchor() else { return }
         let size = metrics.size
         let height = collapsed ? size.compactHeight : size.panelHeight
+        // FORK: palette-chips
         let frame = NSRect(
-            x: anchor.x, y: anchor.y - height, width: size.panelWidth, height: height)
+            x: anchor.x, y: anchor.y - height,
+            width: core.paletteChips.paletteWidth(collapsed: collapsed, metrics: metrics),
+            height: height)
         panel.setFrame(frame, display: true)
         core.agentRunsPresenter.update(panel, metrics: metrics)  // FORK: agent-runs
     }

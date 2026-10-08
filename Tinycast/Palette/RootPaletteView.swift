@@ -334,7 +334,12 @@ struct RootPaletteView: View {
                             ? Theme.Duration.dialogEnter : Theme.Duration.dialogExit),
                     value: core.isDimmingPaletteForDialog
                 )
-                .clipShape(RoundedRectangle(cornerRadius: metrics.radius.panel, style: .continuous))),
+                // FORK: palette-chips
+                .clipShape(
+                    RoundedRectangle(
+                        cornerRadius: core.paletteChips.paletteRadius(
+                            collapsed: isCollapsed, metrics: metrics),
+                        style: .continuous))),
             selection: sel)
     }
 
@@ -548,6 +553,12 @@ struct RootPaletteView: View {
                 if menuPanel.isClosing { return .handled }
                 // An open control list owns Escape before the palette beneath it.
                 if vm.isControlListOpen { return .ignored }
+                // FORK: palette-chips
+                if !menuOpen, argumentFocused == nil,
+                    core.paletteChips.handleEscape(queryEmpty: vm.query.isEmpty, mode: vm.mode)
+                {
+                    return .handled
+                }
                 switch PaletteEscapeAction.resolve(
                     menuOpen: menuOpen, menuQuery: vm.menuQuery,
                     argumentFocused: argumentFocused != nil, query: vm.query, mode: vm.mode,
@@ -576,6 +587,8 @@ struct RootPaletteView: View {
             .onKeyPress(keys: [.tab], phases: .down) { press in
                 // ⇥ inside an open list belongs to the list, not to the form's field order.
                 if vm.isControlListOpen { return .handled }
+                // FORK: palette-chips
+                if !menuOpen, core.paletteChips.handleTab(collapsed: isCollapsed) { return .handled }
                 if !menuOpen { advanceTabFocus(backwards: press.modifiers.contains(.shift)) }
                 return .handled
             }
@@ -718,8 +731,15 @@ struct RootPaletteView: View {
                         action: toggleAIReasoning)
                 }
             }
+            // FORK: palette-chips
+            if isCollapsed, core.paletteChips.isActive {
+                headerGutter(width: metrics.spacing.md)
+                KeyCapChip(text: PaletteChipsCoordinator.slotHint, style: .outline, prefix: "⌘")
+            }
             // Compact pins favorites beside the field; expanded shows them as rows.
-            if isCollapsed, settings.showFavoritesInCompactMode,
+
+            // FORK: palette-chips
+            if isCollapsed, settings.showFavoritesInCompactMode, !core.paletteChips.isActive,
                 let launcher = screen as? LauncherScreen
             {
                 let favorites = launcher.compactFavorites

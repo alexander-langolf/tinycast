@@ -61,8 +61,11 @@ struct LauncherScreen: PaletteScreen {
             .map(AppEntry.init).flatMap { $0.name == vm.query ? $0 : nil }
         let ordered =
             pinned.map { AppIndex.Results(entries: [$0]) }
-            ?? appIndex.orderedResults(
-                query: vm.query, visibility: visibility, favorites: favorites, hotKeys: core.hotKeys)
+            // FORK: palette-chips
+            ?? core.paletteChips.scopedResults(query: vm.query) {
+                appIndex.orderedResults(
+                    query: $0, visibility: visibility, favorites: favorites, hotKeys: core.hotKeys)
+            }
         var results = ordered.entries
         // A typed web address leads: nothing the index holds answers it better.
         if pinned == nil, let browser = CommandCatalog.openInBrowser(for: vm.query),
