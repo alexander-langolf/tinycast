@@ -23,7 +23,7 @@ enum ForkSearch {
     static var isEnabled: Bool { enabled.withLock { $0 } }
     static func setEnabled(_ value: Bool) { enabled.withLock { $0 = value } }
 
-    /// 1–2 typed letters match nearly everything, so callers keep recency or use order.
+    /// Short clipboard queries keep recency; file queries use upstream ranking.
     static func isShort(_ query: String) -> Bool { query.filter { !$0.isWhitespace }.count <= 2 }
 
     static func terms(_ query: String, profile: Profile) -> [Term] {
@@ -47,7 +47,9 @@ enum ForkSearch {
         if term.prefix || term.suffix {
             let folded = FuzzyMatch.normalized(field)
             let word = String(term.text)
-            guard term.prefix ? folded.hasPrefix(word) : folded.hasSuffix(word) else { return nil }
+            if term.prefix && term.suffix, folded != word { return nil }
+            guard (!term.prefix || folded.hasPrefix(word)) && (!term.suffix || folded.hasSuffix(word))
+            else { return nil }
         }
         if term.prefix {
             guard let h = ForkFzf.match(term.text, in: String(field.prefix(term.text.count)), exact: true)
@@ -65,7 +67,8 @@ enum ForkSearch {
 
     /// Every positive word must hit some field (the best one wins); any negated word that hits rejects the item.
     static func match(
-        _ query: String, fields: [String], weights: [Double]? = nil, profile: Profile, humps: [Int] = []
+        _ query: String, fields: [String], weights: [Double]? = nil, profile: Profile, humps: [Int] = [],
+        negatedFields: [String]? = nil
     ) -> Result? {
         let terms = terms(query, profile: profile)
         guard terms.contains(where: { !$0.negated }) else { return nil }
@@ -73,7 +76,8 @@ enum ForkSearch {
         var positions = Array(repeating: [Int](), count: fields.count)
         for term in terms {
             var best: (score: Int, field: Int, hit: ForkFzf.Hit)?
-            for (index, field) in fields.enumerated() {
+            let candidates = term.negated ? (negatedFields ?? fields) : fields
+            for (index, field) in candidates.enumerated() {
                 guard let h = hit(term, in: field, humps: index == 0 ? humps : []) else { continue }
                 let weighted = Int(Double(h.score) * (weights?[index] ?? 1))
                 if weighted > (best?.score ?? Int.min) { best = (weighted, index, h) }
@@ -96,7 +100,7 @@ enum ForkSearch {
         return match(query, fields: [text], profile: profile) != nil
     }
 
-    /// Short positive words keep upstream's phrase so the FTS limit cannot discard real matches.
+    /// FTS retrieves literal long words; the resident window supplies skipped-letter matches.
     static func clipboardFTS(_ query: String) -> String? {
         let quote = { (s: Substring) in "\"" + s.replacingOccurrences(of: "\"", with: "\"\"") + "\"" }
         guard isEnabled else { return query.count >= 3 ? quote(Substring(query)) : nil }
@@ -121,14 +125,155 @@ enum ForkSearch {
         return positive.joined(separator: " AND ") + negative.map { " NOT " + $0 }.joined()
     }
 
-    /// Clipboard order: input arrives newest first; ties keep it. Off: unchanged.
-    static func rankAccurate<T>(_ items: [T], query: String, text: (T) -> String?) -> [T] {
-        guard isEnabled else { return items }
-        let scored = items.enumerated().compactMap { offset, item -> (score: Int, offset: Int, item: T)? in
-            guard let s = text(item), let r = match(query, fields: [s], profile: .accurate) else {
+    static let clipboardScanLimit = 4096
+
+    static func score(_ query: String, _ text: String, profile: Profile) -> Int? {
+        score(terms(query, profile: profile), in: text)
+    }
+
+    /// `literalText` is the whole text when `text` is a capped head: a word the head misses still counts if it
+    /// appears literally in the whole text, and an excluded word anywhere in it rejects the item.
+    private static func score(_ words: [Term], in text: String, literalText: String? = nil) -> Int? {
+        guard words.contains(where: { !$0.negated }) else { return nil }
+        func literal(_ word: Term) -> ForkFzf.Hit? {
+            guard let literalText, !word.prefix else { return nil }
+            if word.suffix { return hit(word, in: literalText) }
+            guard containsLiteral(word.text, in: literalText) else { return nil }
+            return hit(word, in: String(word.text))
+        }
+        var total = 0
+        for word in words {
+            let result = hit(word, in: text)
+            if word.negated {
+                if result != nil || literal(word) != nil { return nil }
+                continue
+            }
+            if let result, accepts(score: result.score, letters: word.text.count, level: "medium") {
+                total += result.score
+            } else if let found = literal(word) {
+                total += found.score
+            } else {
                 return nil
             }
-            return (r.score, offset, item)
+        }
+        return total
+    }
+
+    /// Containment for text past the scan cap. ASCII words scan bytes case-insensitively (texts can be 100 KB+),
+    /// so they skip accent folding there (`cafe` misses "café"); other words fold case and diacritics.
+    static func containsLiteral(_ word: [Character], in text: String) -> Bool {
+        guard word.allSatisfy({ $0.asciiValue != nil }) else {
+            return text.range(of: String(word), options: [.caseInsensitive, .diacriticInsensitive]) != nil
+        }
+        let needle = word.map { $0.asciiValue! }
+        let lower = { (b: UInt8) in (65...90).contains(b) ? b + 32 : b }
+        return text.utf8.withContiguousStorageIfAvailable { bytes -> Bool in
+            guard bytes.count >= needle.count else { return false }
+            outer: for start in 0...(bytes.count - needle.count) where lower(bytes[start]) == needle[0] {
+                for k in 1..<needle.count where lower(bytes[start + k]) != needle[k] { continue outer }
+                return true
+            }
+            return false
+        } ?? (text.range(of: String(word), options: [.caseInsensitive, .diacriticInsensitive]) != nil)
+    }
+
+    static func clipboardScore(_ query: String, _ text: String?) -> Int? {
+        guard let text else { return nil }
+        guard isEnabled else { return text.localizedCaseInsensitiveContains(query) ? 0 : nil }
+        let capped = text.utf8.count > clipboardScanLimit
+        return score(
+            terms(query, profile: .fuzzy), in: capped ? String(text.prefix(clipboardScanLimit)) : text,
+            literalText: capped ? text : nil)
+    }
+
+    static func clipboardResults<T, ID: Hashable>(
+        _ hits: [T], resident: [T], query: String, id: (T) -> ID, text: (T) -> String?,
+        createdAt: (T) -> Date, pinnedAt: (T) -> Date?
+    ) -> [T] {
+        let words = terms(query, profile: .fuzzy)
+        let literalIDs = Set(hits.map(id))
+        let union = clipboardUnion(hits, resident: resident, id: id, createdAt: createdAt)
+        let scored = union.enumerated().compactMap { offset, item -> (T, Int, Int)? in
+            guard let raw = text(item),
+                let value = score(
+                    words, in: String(raw.prefix(clipboardScanLimit)),
+                    literalText: literalIDs.contains(id(item)) || raw.utf8.count > clipboardScanLimit
+                        ? raw : nil)
+            else { return nil }
+            return (item, value, offset)
+        }
+        let pins = scored.filter { pinnedAt($0.0) != nil }.sorted {
+            pinnedAt($0.0)! < pinnedAt($1.0)!
+        }
+        let short = isShort(query)
+        let ordinary = scored.filter { pinnedAt($0.0) == nil }.sorted {
+            !short && $0.1 != $1.1 ? $0.1 > $1.1 : $0.2 < $1.2
+        }
+        return (pins + ordinary).map(\.0)
+    }
+
+    static func clipboardUnion<T, ID: Hashable>(
+        _ hits: [T], resident: [T], id: (T) -> ID, createdAt: (T) -> Date
+    ) -> [T] {
+        guard isEnabled else { return hits }
+        var seen = Set<ID>()
+        return (hits + resident).enumerated().filter { seen.insert(id($0.element)).inserted }
+            .sorted {
+                let left = createdAt($0.element), right = createdAt($1.element)
+                return left != right ? left > right : $0.offset < $1.offset
+            }.map(\.element)
+    }
+
+    static func mergePaths<T, ID: Hashable>(_ first: [T], _ additional: [T], id: (T) -> ID) -> [T] {
+        var seen = Set<ID>()
+        return (first + additional).filter { seen.insert(id($0)).inserted }
+    }
+
+    static func fileNeedsGlob(_ query: String) -> Bool {
+        terms(query, profile: .fuzzy).filter { !$0.negated }.reduce(0) { $0 + $1.text.count } >= 3
+    }
+
+    static func spotlightNameClause(_ token: String, fuzzy: Bool = true) -> String {
+        let term = terms(token, profile: .fuzzy)[0]
+        let escaped = term.text.map { "*?\\\"".contains($0) ? "\\" + String($0) : String($0) }
+        let body = escaped.joined(separator: term.exact || !fuzzy ? "" : "*")
+        let pattern = (term.prefix ? "" : "*") + body + (term.suffix ? "" : "*")
+        return "kMDItemFSName \(term.negated ? "!=" : "==") \"\(pattern)\"cd"
+    }
+
+    static func rankFiles<T>(
+        _ results: [T], query: String, limit: Int, name: (T) -> String, folder: (T) -> String,
+        excluded: (T) -> Bool
+    ) -> [T] {
+        let kept = results.filter { !excluded($0) }
+        return rankPaths(kept.map { (name($0), folder($0)) }, query: query)
+            .prefix(limit).map { kept[$0] }
+    }
+
+    static func rankPaths(_ items: [(name: String, folder: String)], query: String) -> [Int] {
+        let scored = items.enumerated().compactMap { index, item -> (score: Int, length: Int, index: Int)? in
+            guard
+                let result = match(
+                    query, fields: [item.name, item.folder], weights: [1, 0.6], profile: .fuzzy,
+                    negatedFields: [item.name])
+            else { return nil }
+            return (result.score, item.name.count, index)
+        }
+        return scored.sorted {
+            if $0.score != $1.score { return $0.score > $1.score }
+            if $0.length != $1.length { return $0.length < $1.length }
+            return $0.index < $1.index
+        }.map(\.index)
+    }
+
+    /// Clipboard order: input arrives newest first; ties keep it. Off: unchanged.
+    static func rankClipboard<T>(_ items: [T], query: String, text: (T) -> String?) -> [T] {
+        guard isEnabled else { return items }
+        let scored = items.enumerated().compactMap { offset, item -> (score: Int, offset: Int, item: T)? in
+            guard let s = text(item), let score = clipboardScore(query, s) else {
+                return nil
+            }
+            return (score, offset, item)
         }
         guard !isShort(query) else { return scored.map(\.item) }
         return scored.sorted { $0.score != $1.score ? $0.score > $1.score : $0.offset < $1.offset }.map(

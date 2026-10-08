@@ -10,7 +10,8 @@ enum FileSearchService {
 
     /// An empty query is the blank screen: what was used or changed lately, newest first.
     nonisolated static func search(
-        query rawQuery: String, policy: FileSearchPolicy, filter: FileSearchFilter = .all
+        query rawQuery: String, policy: FileSearchPolicy, filter: FileSearchFilter = .all,
+        forkFuzzy: Bool = false, forkCandidates: Bool = false  // FORK: search
     ) throws -> [FileSearchResult] {
         try Signposts.interval("FileSearchService.search") {
             let selection = resolveScopes(policy)
@@ -21,7 +22,8 @@ enum FileSearchService {
             guard
                 !selection.directories.isEmpty,
                 let expression = FileSearchQuery.expression(
-                    for: rawQuery, excluding: policy.ignore.spotlightNameExclusions, filter: filter)
+                    for: rawQuery, excluding: policy.ignore.spotlightNameExclusions, filter: filter,
+                    forkFuzzy: forkFuzzy)  // FORK: search
             else { return FileSearchQuery.rank(results, for: rawQuery, ignoring: policy.ignore) }
 
             var seen = Set(results.map(\.id))
@@ -35,6 +37,7 @@ enum FileSearchService {
                 }
                 results.append(result)
             }
+            if ForkSearch.isEnabled && forkCandidates { return results }  // FORK: search
             return FileSearchQuery.rank(results, for: rawQuery, ignoring: policy.ignore)
         }
     }

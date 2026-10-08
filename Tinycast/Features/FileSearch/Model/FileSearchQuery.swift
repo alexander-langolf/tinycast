@@ -11,11 +11,16 @@ enum FileSearchQuery {
     }
 
     static func expression(
-        for query: String, excluding exclusions: [String] = [], filter: FileSearchFilter = .all
+        for query: String, excluding exclusions: [String] = [], filter: FileSearchFilter = .all,
+        forkFuzzy: Bool = false  // FORK: search
     ) -> String? {
         let terms = terms(in: query)
         guard !terms.isEmpty else { return nil }
-        let matches = terms.map { "kMDItemFSName == \"*\(escape($0))*\"cd" }
+        let matches = terms.map {  // FORK: search
+            ForkSearch.isEnabled
+                ? ForkSearch.spotlightNameClause($0, fuzzy: forkFuzzy)
+                : "kMDItemFSName == \"*\(escape($0))*\"cd"
+        }
         // Excluding in the predicate keeps ignored files from consuming the candidate cap.
         let excludes = exclusions.map { "kMDItemFSName != \"\(escapeGlob($0))\"cd" }
         let types = filter.spotlightClause.map { [$0] } ?? []
@@ -50,6 +55,11 @@ enum FileSearchQuery {
     ) -> [FileSearchResult] {
         let terms = terms(in: query)
         guard !terms.isEmpty else { return [] }
+        if ForkSearch.isEnabled && !ForkSearch.isShort(query) {  // FORK: search
+            return ForkSearch.rankFiles(
+                results, query: query, limit: resultLimit, name: { $0.name }, folder: { $0.parentPath },
+                excluded: { isExcludedPath($0.id, ignoring: ignore) })
+        }
         // Folded once each: a thousand candidates would otherwise re-fold every term per result.
         let whole = FuzzyMatch.Query(query)
         let folded = terms.map(FuzzyMatch.Query.init)
@@ -79,7 +89,10 @@ enum FileSearchQuery {
     }
 
     static func matches(filename: String, query: String) -> Bool {
-        terms(in: query).allSatisfy { term in
+        if ForkSearch.isEnabled {  // FORK: search
+            return ForkSearch.score(query, filename, profile: .fuzzy) != nil
+        }
+        return terms(in: query).allSatisfy { term in
             filename.range(
                 of: term, options: [.caseInsensitive, .diacriticInsensitive]) != nil
         }

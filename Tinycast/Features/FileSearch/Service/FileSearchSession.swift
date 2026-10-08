@@ -23,6 +23,8 @@ final class FileSearchSession {
     @ObservationIgnored private let homeDirectory: URL
     @ObservationIgnored private var policy: FileSearchPolicy
     @ObservationIgnored private let debounce: Duration
+    @ObservationIgnored private let forkSearch = ForkFileSearchService()  // FORK: search
+    @ObservationIgnored private var forkDefaultOperation = false  // FORK: search
     @ObservationIgnored private let searchOperation: SearchOperation
 
     private struct Request: Equatable {
@@ -42,6 +44,7 @@ final class FileSearchSession {
         policy = FileSearchPolicy(
             scopes: FileSearchScope.defaultScopes, ignorePatterns: [],
             homeDirectory: homeDirectory)
+        forkDefaultOperation = true  // FORK: search
         debounce = .milliseconds(120)
         searchOperation = { query, filter, policy in
             try await Task.detached(priority: .userInitiated) {
@@ -75,6 +78,7 @@ final class FileSearchSession {
         let query = rawQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         let request = Request(query: query, filter: filter)
         guard request != self.request || state == .failed else { return }
+        forkSearch.cancel()  // FORK: search
         revision &+= 1
         self.request = request
         state = .searching
@@ -90,6 +94,7 @@ final class FileSearchSession {
     }
 
     func cancel() {
+        forkSearch.cancel()  // FORK: search
         revision &+= 1
         pendingSearch = nil
         request = nil
@@ -99,6 +104,7 @@ final class FileSearchSession {
 
     /// A trashed row names a file that is gone, so it leaves the published results with it.
     func remove(_ result: FileSearchResult) {
+        forkSearch.remove(result.id)  // FORK: search
         results.removeAll { $0.id == result.id }
     }
 
@@ -110,6 +116,18 @@ final class FileSearchSession {
             pendingSearch = nil
             let request = pending.request
             do {
+                if forkDefaultOperation && ForkSearch.isEnabled && ForkSearch.fileNeedsGlob(request.query) {  // FORK: search
+                    try await forkSearch.search(
+                        query: request.query, policy: policy, filter: request.filter
+                    ) { [weak self] candidates in
+                        guard let self, self.revision == pending.revision, self.request == request else {
+                            return
+                        }
+                        self.results = candidates
+                        self.state = .ready
+                    }
+                    continue
+                }
                 let candidates = try await searchOperation(request.query, request.filter, policy)
                 guard revision == pending.revision, self.request == request else { continue }
                 results = candidates

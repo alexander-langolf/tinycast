@@ -47,30 +47,78 @@ enum ForkFzf {
 
     /// `humps` are extra word starts a folded text no longer shows (the launcher's camel humps).
     static func match(_ term: [Character], in raw: String, exact: Bool, humps: [Int] = []) -> Hit? {
+        guard !term.isEmpty else { return nil }
+        let bytes = Array(raw.utf8)
+        // Byte offsets equal Character offsets only for ASCII without CR: Swift folds "\r\n" into one Character.
+        if bytes.allSatisfy({ $0 < 128 && $0 != 13 }), term.allSatisfy({ $0.asciiValue != nil }) {
+            let needle = term.map { $0.asciiValue! }
+            let text = bytes.map { (65...90).contains($0) ? $0 + 32 : $0 }
+            guard containsSubsequence(needle, in: text) else { return nil }
+            let humpStarts = Set(humps)
+            var previous = CharClass.white
+            let bonuses = bytes.enumerated().map { index, byte in
+                let current = asciiClass(byte)
+                var value = bonus(after: previous, at: current)
+                if humpStarts.contains(index) { value = max(value, bonusCamel) }
+                previous = current
+                return value
+            }
+            return exact ? exactMatch(needle, text, bonuses) : align(needle, text, bonuses)
+        }
         let chars = Array(raw)
         var text: [Character] = []
         var sources: [Int] = []
-        var bonuses: [Int] = []
-        let humpStarts = Set(humps)
-        var prev = CharClass.white
         for j in chars.indices {
-            let cur = charClass(chars[j])
-            let folded = Array(FuzzyMatch.normalized(String(chars[j])))
-            let expanded = folded.isEmpty ? [chars[j]] : folded
-            var firstBonus = bonus(after: prev, at: cur)
-            if humpStarts.contains(j) { firstBonus = max(firstBonus, bonusCamel) }
-            for (offset, char) in expanded.enumerated() {
-                text.append(char)
-                sources.append(j)
-                bonuses.append(offset == 0 ? firstBonus : bonusConsecutive)
+            let folded: [Character]
+            if let ascii = chars[j].asciiValue {
+                folded = [Character(UnicodeScalar((65...90).contains(ascii) ? ascii + 32 : ascii))]
+            } else {
+                folded = Array(FuzzyMatch.normalized(String(chars[j])))
             }
-            prev = cur
+            let expanded = folded.isEmpty ? [chars[j]] : folded
+            text.append(contentsOf: expanded)
+            sources.append(contentsOf: repeatElement(j, count: expanded.count))
         }
-        guard !term.isEmpty, term.count <= text.count else { return nil }
+        guard containsSubsequence(term, in: text) else { return nil }
+        let humpStarts = Set(humps)
+        var previous = CharClass.white
+        var sourceBonuses: [Int] = []
+        for j in chars.indices {
+            let current = charClass(chars[j])
+            var value = bonus(after: previous, at: current)
+            if humpStarts.contains(j) { value = max(value, bonusCamel) }
+            sourceBonuses.append(value)
+            previous = current
+        }
+        let bonuses = sources.indices.map { index in
+            index > 0 && sources[index] == sources[index - 1]
+                ? bonusConsecutive : sourceBonuses[sources[index]]
+        }
         guard let hit = exact ? exactMatch(term, text, bonuses) : align(term, text, bonuses) else {
             return nil
         }
         return Hit(score: hit.score, positions: Set(hit.positions.map { sources[$0] }).sorted())
+    }
+
+    private static func asciiClass(_ byte: UInt8) -> CharClass {
+        switch byte {
+        case 9...13, 32: return .white
+        case 47, 44, 58, 59, 124: return .delimiter
+        case 48...57: return .digit
+        case 65...90: return .upper
+        case 97...122: return .lower
+        default: return .nonWord
+        }
+    }
+
+    private static func containsSubsequence<C: Equatable>(_ term: [C], in text: [C]) -> Bool {
+        guard !term.isEmpty, term.count <= text.count else { return false }
+        var next = 0
+        for character in text where character == term[next] {
+            next += 1
+            if next == term.count { return true }
+        }
+        return false
     }
 
     /// The bonus a character earns inside a consecutive run, as fzf carries the run's first bonus.
@@ -79,7 +127,7 @@ enum ForkFzf {
         return max(bonus, carried, bonusConsecutive)
     }
 
-    private static func exactMatch(_ term: [Character], _ text: [Character], _ bonuses: [Int]) -> Hit? {
+    private static func exactMatch<C: Equatable>(_ term: [C], _ text: [C], _ bonuses: [Int]) -> Hit? {
         let m = term.count
         var best: Hit?
         for start in 0...(text.count - m)
@@ -96,7 +144,7 @@ enum ForkFzf {
         return best
     }
 
-    private static func align(_ term: [Character], _ text: [Character], _ bonuses: [Int]) -> Hit? {
+    private static func align<C: Equatable>(_ term: [C], _ text: [C], _ bonuses: [Int]) -> Hit? {
         let m = term.count, n = text.count
         let none = Int.min / 2
         var score = [Int](repeating: none, count: n)

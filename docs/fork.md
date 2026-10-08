@@ -92,21 +92,49 @@ Polling runs only while the palette is visible and retains the last snapshot whe
 Every list input matches with one fzf v2 scorer, fork-owned in `Tinycast/Fork/Search/`
 (`ForkFzf` scores, `ForkSearch` parses syntax and adapts it to upstream callers). `ForkSearch.setEnabled`
 is the switch, turned on in `ForkAppearance.start()`; off, every hook falls through to upstream behaviour.
-Settled in the prototype on branch `prototype/fuzzy-search`:
+The scorer and syntax were settled in `prototype/fuzzy-search`; clipboard and file retrieval now
+follow the owner's revised fuzzy-search decision:
 
 - Words are ANDed in any order; fzf extended syntax: `'exact`, `^prefix`, `suffix$`, `!exclude`. No typo tolerance.
-- Two profiles: **fuzzy** (letters may be skipped inside a word) everywhere except the clipboard, which uses
-  **accurate** (every word must appear exactly, any order).
-- Clipboard retrieval turns positive words of 3+ letters into ANDed FTS5 phrases; 1–2 letter words
-  can't use the trigram index, so the in-memory accurate filter checks them after retrieval (a query of
-  only short words filters the resident window). Known limit: retrieval keeps the 200 newest hits, so an
-  old clip is missed when 200+ newer clips contain all its long words but not its short ones. Only plain
-  `!words` become FTS exclusions; anchored or short exclusions stay in the in-memory filter. Text matches rank by fzf score with
-  newest-first as the tie-break; OCR matches are not re-ranked. Queries of 1–2 letters keep recency
-  or use order.
+- Every search surface uses the **fuzzy** profile (letters may be skipped); `'word` keeps an exact
+  contiguous word. Clipboard positives must each clear the launcher's medium score bar, based on
+  that word's folded length. File root matching uses the same per-word `ForkSearch.score` bar.
+  The item filter and OCR in-loop filter use `clipboardScore`; the clipboard union carries each
+  item's score through pin handling and ranking, without scoring duplicates again.
+- Clipboard retrieval unions the full-history trigram FTS hits for positive words of 3+ letters
+  with fuzzy-filtered resident items (the newest ~1,000, plus resident pins), deduplicating by item ID.
+  FTS retains its 200-newest-hit cap and only retrieves literal long words: older skipped-letter
+  matches outside the resident window remain unavailable. Plain long `!words` become FTS exclusions;
+  anchored or short exclusions stay in the memory filter. Ordinary text matches rank by fzf score,
+  ties newest-first; 1–2 non-space characters keep newest-first. Pins retain upstream's first-place
+  handling. Fuzzy clipboard scoring scans only the first 4,096 characters of each item, including
+  OCR text; skipped-letter matches beyond that prefix are unavailable. Past the prefix, words (any
+  length, and `suffix$` words) match literally against the whole text and `!words` found anywhere
+  reject the item; `^prefix` words are judged on the prefix. ASCII words do that literal check as a
+  byte scan, so past the prefix `cafe` misses "café" (non-ASCII words fold accents). Literal matches
+  use the word's self-match score when no accepted prefix alignment exists. OCR-only matches retain
+  upstream's retrieval and insertion order. The scorer lowercases ASCII bytes directly and rejects
+  absent subsequences before computing bonuses or alignment; non-ASCII characters keep the shared fold.
 - A query of only `!words` matches nothing. Lone syntax tokens (`!`, `'`, `^`, `$`) match literally.
-- File search keeps upstream Spotlight retrieval with the fzf rerank: a subsequence glob was too slow and too
-  broad (`docs/fork-search-spike.md`). Fuzzy file retrieval would need a path index of its own.
+- File search keeps upstream's substring Spotlight query as the fast batch. Both batches apply
+  negated words to filenames only, through `!=` clauses; folder names never exclude a result.
+  Queries with 3+ positive letters start a separate subsequence-glob task after publishing the fast
+  batch, then merge the supplemental results by path and rerank the full union. Each query retains the
+  1,000-candidate cap; the final list retains the 200-row cap. fzf scores filename and folder separately
+  (folder weight 0.6), then breaks ties by shorter filename and incoming index. Short queries use
+  upstream ranking before the display cap, so an exact short filename survives unsorted candidates.
+  `'`, `^`, `$` and `!` produce exact, anchored or negated glob clauses.
+  Retrieval still queries filenames, so folder-only terms cannot discover extra paths on their own.
+- Each file session owns a `ForkFileSearchService`, which awaits only the substring batch and owns
+  a separate task for the supplemental glob and merge. New requests and session cancellation cancel
+  that task immediately; the session worker can then process the next request without waiting for
+  the old glob. A fork revision also prevents a superseded substring batch from starting a glob.
+  Both publications stay behind the session's existing revision/request guards. Injected harness
+  operations, blank-screen recents and switch-off behaviour stay upstream. A supplemental failure
+  retains the fast results. Synchronous Spotlight calls cannot be interrupted mid-execution; their
+  detached work may finish after cancellation, but the obsolete merge never publishes or blocks the
+  next request. The spike in `docs/fork-search-spike.md` remains historical evidence that glob
+  retrieval is slower; it is a supplement to the fast query.
 - Plain substring filters in Uninstall, calculator history, AI chat lists, window layouts and settings
   lists are unchanged.
 
@@ -146,16 +174,19 @@ unless they have an explicit symbol-only allowance. The audit is a static guard,
 | `Tinycast/Features/CustomCommands/Service/ShellCommandRunner.swift` | `// FORK: agent-runs` | Allow a per-call stdout limit for complete status JSON, preserving the default. |
 | `Tinycast/Palette/PaletteEnvironment.swift` | `// FORK: agent-runs` | Inject the AgentRuns coordinator into the hosted stack. |
 | `Tinycast/Palette/PaletteWindowController.swift` | `// FORK: agent-runs` | Forward palette visibility and geometry events to the feature. |
-| `Scripts/run-tests.sh` | `// FORK: fork-search` | Register the fork search harness. |
+| `Scripts/run-tests.sh` | `// FORK: fork-search` | Register the fork search harness with the real file-query models. |
 | `Tinycast/Features/Launcher/Model/SearchRelevance.swift` | `// FORK: search` | `FuzzyMatch.match` answers via fzf, tiers kept. |
 | `Tinycast/Features/Launcher/Model/LauncherMatch.swift` | `// FORK: search` | Launcher alignment and sensitivity via fzf. |
 | `Tinycast/Features/Snippets/UI/SnippetsScreen.swift` | `// FORK: search` | Snippet filter via fzf. |
 | `Tinycast/Features/Quicklinks/UI/QuicklinkListScreen.swift` | `// FORK: search` | Quicklink filter via fzf. |
-| `Tinycast/Features/Clipboard/Model/ClipboardStore.swift` | `// FORK: search` | Words ANDed in FTS, exact-words filter, fzf rank. |
+| `Tinycast/Features/Clipboard/Model/ClipboardStore.swift` | `// FORK: search` | FTS/resident union, fuzzy medium-threshold filter and rank; upstream pins. |
+| `Tinycast/Features/FileSearch/Model/FileSearchQuery.swift` | `// FORK: search` | Optional supplemental glob, fuzzy root matching and filename/folder ranking. |
+| `Tinycast/Features/FileSearch/Service/FileSearchService.swift` | `// FORK: search` | Run either predicate and return batches before the display cap for the merge. |
+| `Tinycast/Features/FileSearch/Service/FileSearchSession.swift` | `// FORK: search` | Production two-query runner, fast publication and revision guards. |
 | `AGENTS.md` | `// FORK: documentation` | Link the fork maintenance guide. |
 | `Tinycast/DesignSystem/Scrolling/OverflowFade.swift` | `// FORK: overflow-double` | Compile fix: explicit `Double` for the fade strengths. |
 | `Scripts/run-tests.sh` | `// FORK: fork-harness` | Register the fork-layer harness. |
-| `Scripts/run-tests.sh` | `// FORK: harness-sources` | Compile affected harnesses with their real fork dependencies. |
+| `Scripts/run-tests.sh` | `// FORK: harness-sources` | Compile affected harnesses with real fork dependencies, including the file-session runner. |
 | `Tinycast/App/AppCore.swift` | `// FORK: appearance-observation` | Refresh AppKit palette geometry after font changes. |
 | `Tinycast/App/AppCore.swift` | `// FORK: appearance-owner` | Single AppCore owner. |
 | `Tinycast/App/AppCore.swift` | `// FORK: appearance-start` | Publish the current appearance at startup. |
