@@ -125,6 +125,10 @@ final class AppCore {
         showFailure: { [unowned self] in self.showMessage($0, tone: .danger) })
     @ObservationIgnored private(set) lazy var agentRunsPresenter =
         AgentRunsPanelPresenter(core: self)  // FORK: agent-runs
+    // FORK: terminal-instances
+    @ObservationIgnored private(set) lazy var terminalInstances = TerminalInstancesCoordinator(core: self)
+    @ObservationIgnored private(set) lazy var terminalInstancesPresenter =
+        TerminalInstancesPresenter(core: self)
     /// Its own window and lifecycle: neither coordinator shows or closes the other's surface.
     @ObservationIgnored private(set) lazy var settingsCoordinator = SettingsCoordinator(core: self)
     @ObservationIgnored private(set) lazy var onboardingCoordinator = OnboardingCoordinator(
@@ -567,6 +571,7 @@ final class AppCore {
         if settings.dictationEnabled { dictationCoordinator.prepareForTermination() }
         settingsFile?.flush()
         agentRunsCoordinator.stop()  // FORK: agent-runs
+        terminalInstances.closeAll()  // FORK: terminal-instances
         clipboardTextIndexer?.stop()
         // Caps Lock first: its remap is the one teardown that outlives the process.
         hyperKeyTap.prepareForTermination()

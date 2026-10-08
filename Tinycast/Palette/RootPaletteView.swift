@@ -50,6 +50,9 @@ struct RootPaletteView: View {
     private var screen: any PaletteScreen {
         switch vm.mode {
         case .launcher:
+            if let command = TerminalCommandQuery.command(in: vm.query) {  // FORK: terminal-instances
+                return TerminalCommandScreen(command: command, core: core)
+            }
             return LauncherScreen(
                 appIndex: appIndex, favorites: favorites, visibility: visibility,
                 currencyRates: currencyRates, core: core, vm: vm, running: selectionIsRunning,
