@@ -107,7 +107,7 @@ struct TerminalProcessTest {
 
     static func count(_ recorder: Recorder) -> Int { recorder.marks.withLock { $0.count } }
 
-    static func waitUntil(_ seconds: Double, _ condition: () -> Bool) async -> Bool {
+    static func waitUntil(_ seconds: Double, _ condition: @Sendable () -> Bool) async -> Bool {
         let deadline = Date().addingTimeInterval(seconds)
         while Date() < deadline {
             if condition() { return true }
@@ -118,7 +118,7 @@ struct TerminalProcessTest {
 
     static func waitFor(
         _ recorder: Recorder, after start: Int = 0, timeout: Double = 10,
-        _ predicate: ([TerminalMarkParser.Event]) -> Bool
+        _ predicate: @escaping @Sendable ([TerminalMarkParser.Event]) -> Bool
     ) async -> Bool {
         await waitUntil(timeout) { recorder.marks.withLock { predicate(Array($0.dropFirst(start))) } }
     }
