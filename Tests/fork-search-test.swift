@@ -242,6 +242,14 @@ struct ForkSearchTest {
         check("only exclusions have no FTS positives", ForkSearch.clipboardFTS("!foo !bar") == nil)
         check("exclusion keeps subsequence tier", ForkSearch.tiered("gb !x", "github") != nil)
         check("suffix keeps subsequence tier", ForkSearch.tiered("g b$", "gxb") != nil)
+        check("phrase run keeps word start", ForkSearch.tiered("bar baz", "foo bar baz")?.tier == .wordStart)
+        check(
+            "phrase run keeps word start (2)",
+            ForkSearch.tiered("open recent", "file open recent")?.tier == .wordStart)
+        check("phrase run keeps substring", ForkSearch.tiered("ar baz", "a bar baz")?.tier == .substring)
+        check(
+            "reversed words stay subsequence",
+            ForkSearch.tiered("baz bar", "foo bar baz")?.tier == .subsequence)
         check("contiguous run wins the tier", ForkSearch.tiered("ar", "a bar")?.tier == .substring)
         check("contiguous run wins the tier (2)", ForkSearch.tiered("sa", "ssa")?.tier == .substring)
         check("suffix after expansion", !ForkSearch.contains("ss$", in: "ßa"))

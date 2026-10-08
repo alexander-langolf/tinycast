@@ -145,9 +145,10 @@ enum ForkSearch {
         guard let r = match(q, fields: [c], profile: .fuzzy) else { return nil }
         // fzf's best alignment can skip a contiguous run that exists; tiers rank contiguous runs higher.
         let positive = terms(q, profile: .fuzzy).filter { !$0.negated }
-        let run =
-            positive.count == 1 && !positive[0].prefix && !positive[0].suffix
-            ? ForkFzf.match(positive[0].text, in: c, exact: true) : nil
+        // Plain positive words are also tried as the typed phrase (exclusions are applied by `match`), so `bar baz` in "foo bar baz" stays a run.
+        let plain = !positive.isEmpty && positive.allSatisfy { !$0.prefix && !$0.suffix && !$0.exact }
+        let phrase = Array(positive.map { String($0.text) }.joined(separator: " "))
+        let run = plain ? ForkFzf.match(phrase, in: c, exact: true) : nil
         let p = (run?.positions ?? r.positions[0]).sorted()
         let contiguous = !p.isEmpty && p.last! - p.first! + 1 == p.count
         let tier: FuzzyMatch.Tier =
