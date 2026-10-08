@@ -56,8 +56,7 @@ struct AgentRunCard: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             VStack(alignment: .trailing, spacing: 0) {
                 Text(kindLabel)
-                Text(Date(timeIntervalSince1970: Double(run.startedAt) / 1_000), style: .timer)
-                    .monospacedDigit()
+                elapsed(from: Date(timeIntervalSince1970: Double(run.startedAt) / 1_000))
             }
             .fixedSize()
         }
@@ -73,5 +72,12 @@ struct AgentRunCard: View {
         .clipShape(RoundedRectangle(cornerRadius: metrics.radius.panel, style: .continuous))
         .contentShape(RoundedRectangle(cornerRadius: metrics.radius.panel, style: .continuous))
         .accessibilityElement(children: .combine)
+    }
+
+    private func elapsed(from start: Date) -> some View {
+        TimelineView(.periodic(from: start, by: 1)) { context in
+            Text(CommandDuration.text(from: start, to: context.date))
+                .monospacedDigit()
+        }
     }
 }

@@ -5,10 +5,15 @@
 - **The status snapshot owns card lifetime.** Every returned run is eligible regardless of state;
   a run missing from the next successful snapshot disappears immediately. Nothing is persisted.
 - **Polling belongs to palette visibility.** Opening starts an immediate read, then reads every two
-  seconds without overlapping. Hiding cancels the task and its in-flight process but keeps the last snapshot, so the next summon shows cards at once while the first poll refreshes them.
-  A cancelled read cannot publish into a reopened palette.
-- **Process execution, pipe reads and JSON decoding stay off the main actor.** The monitor publishes
-  on the main actor only when the decoded array changes, like `RunningAppsMonitor`.
+  seconds without overlapping within a polling task. `PaletteWindowController` calls the coordinator's
+  `paletteDidShow()` / `paletteDidHide()` beside Calendar's lifecycle calls and `palette.noteVisible`.
+  `PaletteState.isVisible` remains the visibility flag. Hiding cancels polling but keeps the last
+  snapshot, so the next summon shows cards at once while the first poll refreshes them.
+  A cancelled read cannot publish into a reopened palette, even if its command finishes later.
+- **Process execution goes through `ShellCommandRunner.run`.** AgentRuns requests full stdout with
+  `standardOutputLimit: Int.max` so JSON larger than the default 4 KiB is not truncated. Execution,
+  output reads and JSON decoding stay off the main actor. The monitor publishes on the main actor
+  only when the decoded array changes, like `RunningAppsMonitor`.
 - **A failed read keeps the last good snapshot until the next successful read.** Failures go
   to the `AgentRuns` logger; an unavailable helper does not interrupt launcher use.
 - **Runs live in a separate, non-activating child panel.** `PaletteWindowController` owns its frame
@@ -28,8 +33,9 @@
 ## Data and lifecycle
 
 `AgentRunsMonitor.statusPath` is the single helper-path constant, resolved relative to
-`FileManager.default.homeDirectoryForCurrentUser`. The executable is invoked directly, without shell
-interpolation. Only stdout is decoded as a JSON array of `AgentRun` values:
+`FileManager.default.homeDirectoryForCurrentUser`. `ShellCommandRunner.run` invokes it with
+`exec "$1"`, passing the executable path as a positional argument rather than interpolating it into
+shell text. Only stdout is decoded as a JSON array of `AgentRun` values:
 
 | Field | Meaning |
 | --- | --- |
@@ -40,11 +46,11 @@ interpolation. Only stdout is decoded as a JSON array of `AgentRun` values:
 | `startedAt` | Integer epoch milliseconds |
 | `last`, `attach` | Optional strings; omitted and null both decode as absent |
 
-`AppCore.start()` wires `PaletteWindowController.onVisibilityChanged` to the monitor. The callback
-covers both explicit hiding and focus-loss dismissal. The child panel follows palette visibility
-in every mode. Termination stops the monitor and coordinator. The cancellation handle serializes
-process launch with cancellation so hiding cannot race a new subprocess into existence after the
-cancellation check.
+`AgentRunsCoordinator.paletteDidShow()` starts the monitor and `paletteDidHide()` stops it, following
+Calendar's lifecycle for both explicit hiding and focus-loss dismissal. The child panel follows
+palette visibility in every mode. Termination stops the coordinator and its monitor. The shared
+runner lets an in-flight command finish after cancellation; cancellation checks and the monitor's
+publish guard prevent its result from replacing the retained snapshot, including after reopening.
 
 ## Presentation and attachment
 
@@ -60,7 +66,8 @@ run cards are `rowIcon + sm * 2` (36 points at standard size), and the overflow 
 `barButtonHeight` (28 points). Working uses the accent dot, blocked uses warning orange, and other
 states use tertiary ink; accessibility also reads the state. Names and secondary activity each
 truncate to one line; a missing activity leaves that line empty. The trailing agent kind and live
-elapsed timer use secondary text. SwiftUI's timer updates independently of snapshot publication.
+elapsed duration use secondary text. A one-second `TimelineView` uses `CommandDuration.text` and
+monospaced digits, matching command output and ticking independently of snapshot publication.
 
 An attachable card calls `AgentRunsCoordinator.attach(_:)`, which checks that the card still belongs
 to the current snapshot. `AgentRunLauncher` opens `/Applications/kitty.app` through `NSWorkspace`

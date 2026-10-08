@@ -288,13 +288,6 @@ final class AppCore {
             paletteCoordinator.onLauncherShown = { [weak self] in
                 self?.appleShortcutCoordinator.refresh()
             }
-            windowController.onVisibilityChanged = { [weak self] visible in
-                if visible {
-                    self?.agentRuns.start()
-                } else {
-                    self?.agentRuns.stop()
-                }
-            }
             updateCoordinator.applyEnabled()
             calendarCoordinator.applyEnabled()
             Task { await appIndex.refresh() }

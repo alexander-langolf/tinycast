@@ -26,7 +26,7 @@ struct ShellCommandSession: Sendable {
 /// Both tails are filled only by the non-streaming path; a streamed run reports events.
 struct ShellCommandResult: Sendable, Equatable {
     let termination: ShellCommandTermination
-    /// Kept short: all it feeds is the one-line report a finished command shows.
+    /// Kept short by default: all it usually feeds is the one-line report a finished command shows.
     let standardOutput: String?
     let standardError: String?
 
@@ -53,7 +53,7 @@ struct ShellCommandResult: Sendable, Equatable {
 enum ShellCommandRunner {
     /// Only ever surfaces on failure, where the last few lines are the whole story.
     private static let standardErrorLimit = 8 * 1024
-    /// Only the last line is ever shown, so this is a generous bound on one of them.
+    /// The default bound: only the last line is usually shown, so this is generous for one of them.
     private static let standardOutputLimit = 4 * 1024
     private static let shell = "/bin/zsh"
     /// Big enough that a chatty command needs few reads, small enough to stay live.
@@ -68,10 +68,10 @@ enum ShellCommandRunner {
     private static let queue = DispatchQueue(
         label: "com.tinycast.shell-command", qos: .userInitiated, attributes: .concurrent)
 
-    /// Fire-and-forget, keeping only the error tail; shown output goes through `stream`.
+    /// Captures output after exit; live output goes through `stream`.
     nonisolated static func run(
         _ command: String, arguments: [String] = [], loadingShellEnvironment: Bool = false,
-        workingDirectory: String? = nil
+        workingDirectory: String? = nil, standardOutputLimit: Int? = nil
     ) async -> ShellCommandResult {
         await withCheckedContinuation { continuation in
             queue.async {
@@ -79,14 +79,15 @@ enum ShellCommandRunner {
                     returning: execute(
                         command, arguments: arguments,
                         loadingShellEnvironment: loadingShellEnvironment,
-                        workingDirectory: workingDirectory))
+                        workingDirectory: workingDirectory,
+                        standardOutputLimit: standardOutputLimit ?? Self.standardOutputLimit))
             }
         }
     }
 
     nonisolated private static func execute(
         _ command: String, arguments: [String], loadingShellEnvironment: Bool,
-        workingDirectory: String?
+        workingDirectory: String?, standardOutputLimit: Int
     ) -> ShellCommandResult {
         guard let directory = resolvedWorkingDirectory(workingDirectory) else {
             return ShellCommandResult(termination: .launchFailed(missingDirectory(workingDirectory)))

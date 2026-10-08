@@ -8,7 +8,6 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
     private unowned let core: AppCore
     private var panel: PalettePanel?
     private var agentRunsPanel: AgentRunsPanel?
-    var onVisibilityChanged: ((Bool) -> Void)?
     private(set) var previousApp: NSRunningApplication?
     /// Our key window at summon time, so hiding hands focus back to Settings, not a stale app.
     private weak var previousOwnWindow: NSWindow?
@@ -78,6 +77,7 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
                 preferredInputSourceID: core.settings.autoSwitchInputSourceID)
             // Events go stale while the palette is closed, and the countdown only ticks while up.
             core.calendarCoordinator.paletteDidShow()
+            core.agentRunsCoordinator.paletteDidShow()
             core.palette.noteVisible(true)
             core.clipboardStore.setTextSearchActive(true)
             // Only while we are on screen: a system-wide tap has no business outliving the window.
@@ -85,7 +85,6 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
             // Non-activating, so summoning never raises our own aux windows behind it.
             panel.makeKeyAndOrderFront(nil)
             panel.orderFrontRegardless()
-            onVisibilityChanged?(true)
             updateAgentRunsPanel()
             // A never-activated login item can drop the first key request, so re-assert.
             DispatchQueue.main.async { [weak panel] in
@@ -149,8 +148,8 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
         commandEscapeTap.disable()
         core.inputSourceSwitcher.endSession()
         core.calendarCoordinator.paletteDidHide()
+        core.agentRunsCoordinator.paletteDidHide()
         core.palette.noteVisible(false)
-        onVisibilityChanged?(false)
         core.clipboardStore.setTextSearchActive(false)
         // Drop the anchor, so the next summon re-resolves for the screen in use then.
         anchor = nil

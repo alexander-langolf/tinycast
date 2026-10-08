@@ -15,6 +15,14 @@ final class AgentRunsCoordinator {
 
     var runs: [AgentRun] { monitor.runs }
 
+    func paletteDidShow() {
+        monitor.start()
+    }
+
+    func paletteDidHide() {
+        monitor.stop()
+    }
+
     func attach(_ run: AgentRun) {
         guard attachTask == nil,
             let current = monitor.runs.first(where: { $0.id == run.id }),

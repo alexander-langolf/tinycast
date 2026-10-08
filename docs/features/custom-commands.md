@@ -61,7 +61,11 @@ The command text is deliberately not searchable. Only the user-facing name enter
 - standard input reading EOF immediately
 - `TINYCAST=1` added to the inherited environment
 - up to 8 KiB of standard error retained for a failure dialog
-- standard output discarded
+- up to 4 KiB of standard output retained by default
+
+`run` accepts an optional `standardOutputLimit` byte limit for that call. Omitted or `nil` keeps the
+4 KiB default; `Int.max` retains full stdout for structured output such as AgentRuns snapshots.
+The stderr limit and streaming path are unchanged.
 
 **Show output** takes a different route entirely — see [Show output](#show-output). Nothing else does.
 

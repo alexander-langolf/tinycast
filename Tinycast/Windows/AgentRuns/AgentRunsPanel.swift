@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 
+// MenuPanel must become key for navigation; agent cards must never take the palette's key status.
 final class AgentRunsPanel: NSPanel {
     weak var paletteState: PaletteState?
 

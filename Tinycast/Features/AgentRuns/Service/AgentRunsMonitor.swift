@@ -50,57 +50,25 @@ final class AgentRunsMonitor {
     }
 
     nonisolated private static func read(_ executable: URL) async throws -> [AgentRun] {
-        let invocation = Invocation()
-        return try await withTaskCancellationHandler {
-            try Task.checkCancellation()
-            let process = Process()
-            let pipe = Pipe()
-            process.executableURL = executable
-            process.standardInput = FileHandle.nullDevice
-            process.standardOutput = pipe
-            process.standardError = FileHandle.nullDevice
-            defer {
-                invocation.cancel()
-                try? pipe.fileHandleForReading.close()
-                try? pipe.fileHandleForWriting.close()
-            }
-            try invocation.launch(process)
-            let data = try pipe.fileHandleForReading.readToEnd() ?? Data()
-            process.waitUntilExit()
-            try Task.checkCancellation()
-            guard process.terminationStatus == 0 else {
-                throw StatusFailure(status: process.terminationStatus)
-            }
-            return try JSONDecoder().decode([AgentRun].self, from: data)
-        } onCancel: {
-            invocation.cancel()
+        try Task.checkCancellation()
+        let result = await ShellCommandRunner.run(
+            "exec \"$1\"", arguments: [executable.path], standardOutputLimit: Int.max)
+        try Task.checkCancellation()
+        guard result.succeeded else {
+            throw StatusFailure(termination: result.termination)
         }
+        return try JSONDecoder().decode([AgentRun].self, from: Data((result.standardOutput ?? "").utf8))
     }
 
     private struct StatusFailure: LocalizedError {
-        let status: Int32
-        var errorDescription: String? { "agent-status exited with status \(status)" }
-    }
+        let termination: ShellCommandTermination
 
-    // The lock serializes launch and cancellation, including cancellation before the process exists.
-    private final class Invocation: @unchecked Sendable {
-        private let lock = NSLock()
-        private var process: Process?
-        private var cancelled = false
-
-        func launch(_ process: Process) throws {
-            lock.lock()
-            defer { lock.unlock() }
-            guard !cancelled else { throw CancellationError() }
-            try process.run()
-            self.process = process
-        }
-
-        func cancel() {
-            lock.lock()
-            defer { lock.unlock() }
-            cancelled = true
-            if let process, process.isRunning { process.terminate() }
+        var errorDescription: String? {
+            switch termination {
+            case .exited(let status): "agent-status exited with status \(status)"
+            case .launchFailed(let message): message
+            case .stopped: "agent-status was stopped"
+            }
         }
     }
 }
