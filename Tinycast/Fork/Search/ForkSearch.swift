@@ -87,4 +87,51 @@ enum ForkSearch {
         guard isEnabled else { return text.localizedCaseInsensitiveContains(query) }
         return match(query, fields: [text], profile: profile) != nil
     }
+
+    /// The tiered matcher's answer computed by fzf, with tiers kept so `SearchRelevance` weights still apply.
+    static func tiered(_ q: String, _ c: String) -> FuzzyMatch.Match? {
+        let length = c.count
+        guard !q.isEmpty else {
+            return FuzzyMatch.Match(
+                tier: .exact, offset: 0, queryLength: 0, candidateLength: length, spread: 0)
+        }
+        guard let r = match(q, fields: [c], profile: .fuzzy) else { return nil }
+        let p = r.positions[0].sorted()
+        let contiguous = !p.isEmpty && p.last! - p.first! + 1 == p.count
+        let tier: FuzzyMatch.Tier =
+            c == q
+            ? .exact
+            : contiguous && p.first == 0
+                ? .prefix
+                : contiguous
+                    && ForkFzf.bonus(
+                        after: ForkFzf.charClass(p.first! > 0 ? Array(c)[p.first! - 1] : nil),
+                        at: ForkFzf.charClass(Array(c)[p.first!])) >= ForkFzf.bonusBoundary
+                    ? .wordStart
+                    : contiguous ? .substring : .subsequence
+        return FuzzyMatch.Match(
+            tier: tier, offset: p.first ?? 0, queryLength: q.count, candidateLength: length,
+            spread: tier == .subsequence ? r.score : 0)
+    }
+
+    /// The launcher's texts are folded or transliterated already; `humps` restore the camel starts folding lost.
+    /// `SearchSensitivity` judges the score against the whole typed length, syntax and `!words` included, so the
+    /// score is rescaled from the letters that can score to that length.
+    static func launcherScore(_ query: String, in target: String, humps: [Int] = []) -> Int? {
+        if FuzzyMatch.normalized(query) == FuzzyMatch.normalized(target) { return .max }
+        guard let score = match(query, fields: [target], profile: .fuzzy, humps: humps)?.score else {
+            return nil
+        }
+        let scoring = terms(query, profile: .fuzzy).filter { !$0.negated }.reduce(0) { $0 + $1.text.count }
+        return scoring > 0 ? min(score * query.utf16.count / scoring, .max - 1) : score
+    }
+
+    /// fzf scores about 16 per letter plus bonuses, so thresholds are per-letter averages (`level` = `SearchSensitivity.rawValue`).
+    static func accepts(score: Int, letters: Int, level: String) -> Bool {
+        switch level {
+        case "low": return true
+        case "high": return score >= 24 * letters
+        default: return score >= 20 * letters - 4
+        }
+    }
 }

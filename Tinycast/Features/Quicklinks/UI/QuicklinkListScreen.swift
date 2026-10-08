@@ -14,7 +14,7 @@ struct QuicklinkListScreen: PaletteScreen {
     var rows: [Quicklink] {
         let query = vm.query.trimmingCharacters(in: .whitespaces)
         guard !query.isEmpty else { return store.enabled }
-        return store.enabled.filter { $0.name.localizedCaseInsensitiveContains(query) }
+        return store.enabled.filter { ForkSearch.contains(query, in: $0.name) }  // FORK: search
     }
 
     var primaryActionTitle: String { "Open Quicklink" }

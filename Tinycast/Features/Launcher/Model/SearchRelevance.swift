@@ -58,6 +58,7 @@ enum FuzzyMatch {
     static func match(_ query: Query, candidate: Candidate) -> Match? {
         let q = query.text
         let c = candidate.text
+        if ForkSearch.isEnabled { return ForkSearch.tiered(q, c) }  // FORK: search
         let length = candidate.length
         guard !q.isEmpty else {
             return Match(

@@ -16,6 +16,9 @@ struct ForkSearchTest {
     static func main() {
         scorer()
         syntax()
+        tiered()
+        launcher()
+        contains()
         print(failures == 0 ? "\nALL PASSED" : "\n\(failures) FAILED")
         exit(failures == 0 ? 0 : 1)
     }
@@ -90,5 +93,65 @@ struct ForkSearchTest {
             "short query rule",
             ForkSearch.isShort("st") && ForkSearch.isShort(" a ") && !ForkSearch.isShort("sta"))
         check("disabled by default", !ForkSearch.isEnabled)
+    }
+
+    static func tiered() {
+        ForkSearch.setEnabled(true)
+        defer { ForkSearch.setEnabled(false) }
+        let exact = FuzzyMatch.match(query: "notes", candidate: "Notes")
+        check("exact tier kept", exact?.tier == .exact)
+        check(
+            "prefix tier kept", FuzzyMatch.match(query: "sys", candidate: "System Settings")?.tier == .prefix)
+        check(
+            "any-order words now match",
+            FuzzyMatch.match(query: "settings system", candidate: "System Settings") != nil)
+        check(
+            "initials match as subsequence",
+            FuzzyMatch.match(query: "sysset", candidate: "System Settings")?.tier == .subsequence)
+        check("no typo tolerance", FuzzyMatch.match(query: "sytsem", candidate: "System Settings") == nil)
+    }
+
+    static func launcher() {
+        func accepted(_ q: String, _ t: String, _ level: String = "medium") -> Bool {
+            guard let s = ForkSearch.launcherScore(q, in: t) else { return false }
+            // LauncherOrder passes the whole typed length, spaces and syntax included
+            return s == .max || ForkSearch.accepts(score: s, letters: q.utf16.count, level: level)
+        }
+        check("vsc → Visual Studio Code", accepted("vsc", "Visual Studio Code"))
+        check("slk → Slack", accepted("slk", "Slack"))
+        check("saf → Safari", accepted("saf", "Safari"))
+        check("negated word does not raise the bar", accepted("ariel !pkg", "ariel docs"))
+        check("negated word still rejects", !accepted("ariel !docs", "ariel docs"))
+        check("two words with a space", accepted("vs code", "Visual Studio Code"))
+        check("exact is max", ForkSearch.launcherScore("slack", in: "slack") == .max)
+        check("scattered junk rejected at medium", !accepted("lnd", "alexander-langolf"))
+        check("low accepts anything matched", accepted("lnd", "alexander-langolf", "low"))
+        check(
+            "camel hump honoured",
+            (ForkSearch.launcherScore("gh", in: "github", humps: [3]) ?? 0)
+                > (ForkSearch.launcherScore("gh", in: "github") ?? 0))
+        check("medium includes threshold", ForkSearch.accepts(score: 56, letters: 3, level: "medium"))
+        check("medium rejects below threshold", !ForkSearch.accepts(score: 55, letters: 3, level: "medium"))
+        check("high includes threshold", ForkSearch.accepts(score: 72, letters: 3, level: "high"))
+        check("high rejects below threshold", !ForkSearch.accepts(score: 71, letters: 3, level: "high"))
+    }
+
+    static func contains() {
+        ForkSearch.setEnabled(false)
+        check(
+            "disabled filter keeps case-insensitive substring",
+            ForkSearch.contains("MAIL", in: "Email signature"))
+        check("disabled filter rejects scattered letters", !ForkSearch.contains("eml", in: "Email signature"))
+        check("missing snippet keyword does not match", !ForkSearch.contains("mail", in: nil))
+        ForkSearch.setEnabled(true)
+        defer { ForkSearch.setEnabled(false) }
+        check("snippet name accepts scattered letters", ForkSearch.contains("eml", in: "Email signature"))
+        check("snippet keyword accepts scattered letters", ForkSearch.contains("sig", in: ";signature"))
+        check(
+            "quicklink name accepts any-order words",
+            ForkSearch.contains("issues github", in: "GitHub Issues"))
+        check("filter honours exclusions", !ForkSearch.contains("github !issues", in: "GitHub Issues"))
+        check("filter rejects a typo", !ForkSearch.contains("gihtub", in: "GitHub Issues"))
+        check("enabled missing keyword does not match", !ForkSearch.contains("mail", in: nil))
     }
 }
