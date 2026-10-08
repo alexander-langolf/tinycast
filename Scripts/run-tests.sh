@@ -181,6 +181,8 @@ run launcher-settings-file-test \
                            Tinycast/Features/WindowManagement/Model/WindowCommand.swift \
                            Tinycast/Features/Snippets/Model/Snippet.swift
 run apple-shortcut-test    Tinycast/Features/AppleShortcuts/Model/*.swift
+# // FORK: agent-runs
+run agent-runs-test        Tinycast/Features/AgentRuns/Model/*.swift
 run calc-test              Tinycast/Features/Calculator/Model/*.swift
 run index calc-performance Tinycast/Features/Calculator/Model/*.swift
 run calendar-test          Tinycast/Features/Calendar/Model/*.swift

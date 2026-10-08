@@ -86,6 +86,7 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
                 preferredInputSourceID: core.settings.autoSwitchInputSourceID)
             // Events go stale while the palette is closed, and the countdown only ticks while up.
             core.calendarCoordinator.paletteDidShow()
+            core.agentRunsCoordinator.paletteDidShow()  // FORK: agent-runs
             core.palette.noteVisible(true)
             core.clipboardStore.setTextSearchActive(true)
             // Only while we are on screen: a system-wide tap has no business outliving the window.
@@ -93,6 +94,7 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
             // Non-activating, so summoning never raises our own aux windows behind it.
             panel.makeKeyAndOrderFront(nil)
             panel.orderFrontRegardless()
+            core.agentRunsPresenter.update(panel, metrics: metrics)  // FORK: agent-runs
             // A never-activated login item can drop the first key request, so re-assert.
             DispatchQueue.main.async { [weak panel] in
                 guard let panel, panel.isVisible, !panel.isKeyWindow else { return }
@@ -150,11 +152,13 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
     }
 
     func hide(restoreFocus: Bool) {
+        core.agentRunsPresenter.hide()  // FORK: agent-runs
         panel?.orderOut(nil)
         commandEscapeTap.disable()
         core.inputSourceSwitcher.endSession()
         core.calendarCoordinator.paletteDidHide()
         core.roomCoordinator.paletteDidHide()
+        core.agentRunsCoordinator.paletteDidHide()  // FORK: agent-runs
         core.palette.noteVisible(false)
         core.clipboardStore.setTextSearchActive(false)
         // Drop the anchor, so the next summon re-resolves for the screen in use then.
@@ -267,12 +271,21 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
         guard let panel else { return }
         let moved = CGPoint(x: panel.frame.minX, y: panel.frame.maxY)
         guard moved != anchor else { return }
+        defer { core.agentRunsPresenter.update(panel, metrics: metrics) }  // FORK: agent-runs
         guard drag != nil else { anchor = moved; return }
         let snapped = trackDrag(to: moved)
         anchor = snapped
         if snapped != moved {
             panel.setFrameOrigin(CGPoint(x: snapped.x, y: snapped.y - panel.frame.height))
         }
+    }
+
+    func windowDidResize(_ notification: Notification) {
+        core.agentRunsPresenter.update(panel, metrics: metrics)  // FORK: agent-runs
+    }
+
+    func windowDidChangeScreen(_ notification: Notification) {
+        core.agentRunsPresenter.update(panel, metrics: metrics)  // FORK: agent-runs
     }
 
     // MARK: - Dragging
@@ -434,6 +447,7 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
             }
         }
         self.panel = panel
+        core.agentRunsPresenter.observe(panel)  // FORK: agent-runs
         return panel
     }
 
@@ -458,6 +472,7 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
         let frame = NSRect(
             x: anchor.x, y: anchor.y - height, width: size.panelWidth, height: height)
         panel.setFrame(frame, display: true)
+        core.agentRunsPresenter.update(panel, metrics: metrics)  // FORK: agent-runs
     }
 
     /// The display to anchor to; never `NSScreen.main`, which follows the focused window.

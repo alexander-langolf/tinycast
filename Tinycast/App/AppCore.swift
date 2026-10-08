@@ -57,6 +57,7 @@ final class AppCore {
     let frequentEmoji = FrequentEmojiStore()
     let pinnedEmoji = PinnedEmojiStore()
     let runningApps = RunningAppsMonitor()
+    let agentRuns = AgentRunsMonitor()  // FORK: agent-runs
     let palette = PaletteState()
     let fileSearch = FileSearchSession()
     let dictionary = DictionarySession()
@@ -118,6 +119,12 @@ final class AppCore {
         palette: palette, settings: settings, appIndex: appIndex,
         fileSearch: fileSearch, menuSearch: menuSearch, windowSwitch: windowSwitch,
         windowController: windowController)
+    // FORK: agent-runs
+    @ObservationIgnored private(set) lazy var agentRunsCoordinator = AgentRunsCoordinator(
+        monitor: agentRuns,
+        showFailure: { [unowned self] in self.showMessage($0, tone: .danger) })
+    @ObservationIgnored private(set) lazy var agentRunsPresenter =
+        AgentRunsPanelPresenter(core: self)  // FORK: agent-runs
     /// Its own window and lifecycle: neither coordinator shows or closes the other's surface.
     @ObservationIgnored private(set) lazy var settingsCoordinator = SettingsCoordinator(core: self)
     @ObservationIgnored private(set) lazy var onboardingCoordinator = OnboardingCoordinator(
@@ -559,6 +566,7 @@ final class AppCore {
     func prepareForTermination() {
         if settings.dictationEnabled { dictationCoordinator.prepareForTermination() }
         settingsFile?.flush()
+        agentRunsCoordinator.stop()  // FORK: agent-runs
         clipboardTextIndexer?.stop()
         // Caps Lock first: its remap is the one teardown that outlives the process.
         hyperKeyTap.prepareForTermination()

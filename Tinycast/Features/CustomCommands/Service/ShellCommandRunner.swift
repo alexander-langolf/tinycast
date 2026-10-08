@@ -71,7 +71,7 @@ enum ShellCommandRunner {
     /// Fire-and-forget, keeping only the error tail; shown output goes through `stream`.
     nonisolated static func run(
         _ command: String, arguments: [String] = [], loadingShellEnvironment: Bool = false,
-        workingDirectory: String? = nil
+        workingDirectory: String? = nil, standardOutputLimit: Int? = nil  // FORK: agent-runs
     ) async -> ShellCommandResult {
         await withCheckedContinuation { continuation in
             queue.async {
@@ -79,14 +79,16 @@ enum ShellCommandRunner {
                     returning: execute(
                         command, arguments: arguments,
                         loadingShellEnvironment: loadingShellEnvironment,
-                        workingDirectory: workingDirectory))
+                        workingDirectory: workingDirectory,
+                        // FORK: agent-runs
+                        standardOutputLimit: standardOutputLimit ?? Self.standardOutputLimit))
             }
         }
     }
 
     nonisolated private static func execute(
         _ command: String, arguments: [String], loadingShellEnvironment: Bool,
-        workingDirectory: String?
+        workingDirectory: String?, standardOutputLimit: Int  // FORK: agent-runs
     ) -> ShellCommandResult {
         let launch: Launch
         do {

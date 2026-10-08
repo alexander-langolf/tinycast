@@ -78,6 +78,15 @@ document. This adapts the requested catalog icon to upstream's modern layered ic
 flattening it into an `.appiconset` would change the default appearance. Fork build settings
 live in `project.fork.yml`; regenerate the Xcode project after changing them.
 
+## Background agent runs
+
+The [AgentRuns feature](features/agent-runs.md) is fork-owned under `Tinycast/Features/AgentRuns/`
+and `Tinycast/Windows/AgentRuns/`, with its own documentation and `Tests/agent-runs-test.swift`.
+`AppCore` owns its monitor, coordinator and panel presenter. Palette integration consists of tagged
+lifecycle and geometry calls; the presenter owns observation, child-panel management and placement.
+Feature-only dimensions live in `AgentRunsMetrics`, leaving Theme and InterfaceMetrics unchanged.
+Polling runs only while the palette is visible and retains the last snapshot when hidden.
+
 ## Merge playbook
 
 1. Work from `main` and run `git merge upstream/main`. Never rebase.
@@ -109,6 +118,11 @@ unless they have an explicit symbol-only allowance. The audit is a static guard,
 
 | File | Tag | Purpose |
 | --- | --- | --- |
+| `Scripts/run-tests.sh` | `// FORK: agent-runs` | Register the AgentRuns decoding harness. |
+| `Tinycast/App/AppCore.swift` | `// FORK: agent-runs` | Own the monitor, coordinator and presenter; stop work at termination. |
+| `Tinycast/Features/CustomCommands/Service/ShellCommandRunner.swift` | `// FORK: agent-runs` | Allow a per-call stdout limit for complete status JSON, preserving the default. |
+| `Tinycast/Palette/PaletteEnvironment.swift` | `// FORK: agent-runs` | Inject the AgentRuns coordinator into the hosted stack. |
+| `Tinycast/Palette/PaletteWindowController.swift` | `// FORK: agent-runs` | Forward palette visibility and geometry events to the feature. |
 | `AGENTS.md` | `// FORK: documentation` | Link the fork maintenance guide. |
 | `Tinycast/DesignSystem/Scrolling/OverflowFade.swift` | `// FORK: overflow-double` | Compile fix: explicit `Double` for the fade strengths. |
 | `Scripts/run-tests.sh` | `// FORK: fork-harness` | Register the fork-layer harness. |

@@ -33,6 +33,7 @@ extension View {
             .environment(core.menuSearch)
             .environment(core.windowSwitch)
             .environment(core.runningApps)
+            .environment(core.agentRunsCoordinator)  // FORK: agent-runs
             .environment(core.hotKeys)
             .environment(core.uninstall)
             .environment(core.quicklinks)
