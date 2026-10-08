@@ -159,7 +159,8 @@ enum ForkSearch {
         return total
     }
 
-    /// Case- and diacritic-insensitive containment; ASCII words scan bytes, since texts here can be 100 KB+.
+    /// Containment for text past the scan cap. ASCII words scan bytes case-insensitively (texts can be 100 KB+),
+    /// so they skip accent folding there (`cafe` misses "café"); other words fold case and diacritics.
     static func containsLiteral(_ word: [Character], in text: String) -> Bool {
         guard word.allSatisfy({ $0.asciiValue != nil }) else {
             return text.range(of: String(word), options: [.caseInsensitive, .diacriticInsensitive]) != nil

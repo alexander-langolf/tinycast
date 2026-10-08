@@ -108,10 +108,11 @@ follow the owner's revised fuzzy-search decision:
   anchored or short exclusions stay in the memory filter. Ordinary text matches rank by fzf score,
   ties newest-first; 1–2 non-space characters keep newest-first. Pins retain upstream's first-place
   handling. Fuzzy clipboard scoring scans only the first 4,096 characters of each item, including
-  OCR text; skipped-letter matches beyond that prefix are unavailable. Trigram FTS still indexes
-  full text: retrieved literal positive words of 3+ letters can match beyond the prefix, while
-  short words and anchored words must pass the prefix filter. Full-text literal matches use the
-  word's self-match score when no accepted prefix alignment exists. OCR-only matches retain
+  OCR text; skipped-letter matches beyond that prefix are unavailable. Past the prefix, words (any
+  length, and `suffix$` words) match literally against the whole text and `!words` found anywhere
+  reject the item; `^prefix` words are judged on the prefix. ASCII words do that literal check as a
+  byte scan, so past the prefix `cafe` misses "café" (non-ASCII words fold accents). Literal matches
+  use the word's self-match score when no accepted prefix alignment exists. OCR-only matches retain
   upstream's retrieval and insertion order. The scorer lowercases ASCII bytes directly and rejects
   absent subsequences before computing bonuses or alignment; non-ASCII characters keep the shared fold.
 - A query of only `!words` matches nothing. Lone syntax tokens (`!`, `'`, `^`, `$`) match literally.
