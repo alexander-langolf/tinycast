@@ -58,6 +58,25 @@ enum CalcDateTime {
         return nil
     }
 
+    /// The only lone words that answer: each names one moment, where `monday` or `july` recurs.
+    static func namedMoment(_ word: String, now: Date, calendar: Calendar) -> CalcResult? {
+        let lowered = word.lowercased()
+        switch lowered {
+        case "now", "today", "tomorrow", "yesterday":
+            return bareMoment(lowered, echo: word, now: now, calendar: calendar)
+        case "time":
+            let clock = CalcDateFormatters.string(
+                from: now, calendar: calendar, zone: calendar.timeZone, template: "jmm")
+            return CalcResult(
+                expression: word,
+                sourceBadge: dateString(now, now: now, calendar: calendar),
+                targetBadge: CalcTimeZone.label(for: calendar.timeZone),
+                payload: .value(display: clock, copyText: clock))
+        default:
+            return nil
+        }
+    }
+
     private struct Signals: OptionSet {
         let rawValue: Int
         static let digit = Signals(rawValue: 1 << 0)
@@ -782,8 +801,9 @@ enum CalcDateTime {
     }
 
     private static func timeString(_ date: Date, calendar: Calendar) -> String {
-        let pattern = calendar.component(.second, from: date) == 0 ? "h:mm a" : "h:mm:ss a"
-        return format(date, calendar: calendar, pattern: pattern)
+        let template = calendar.component(.second, from: date) == 0 ? "jmm" : "jmmss"
+        return CalcDateFormatters.string(
+            from: date, calendar: calendar, zone: calendar.timeZone, template: template)
     }
 
     /// The answer's own weekday, which the date itself never spells out.

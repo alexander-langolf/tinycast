@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// Turns one parsed line into attributes; rendered lines hide their syntax, revealed lines dim it.
+/// Turns a parsed line into attributes; bullets keep their dot even when the caret reveals syntax.
 @MainActor
 enum NoteMarkdownStyler {
     typealias Attributes = [NSAttributedString.Key: Any]
@@ -20,6 +20,9 @@ enum NoteMarkdownStyler {
 
     private static func hidden(_ typography: NoteMarkdownTypography) -> Attributes {
         [.font: typography.hidden, .foregroundColor: NSColor.clear]
+    }
+    private static func hiddenEmptyListMarker(_ typography: NoteMarkdownTypography) -> Attributes {
+        [.font: typography.body, .foregroundColor: NSColor.clear]
     }
 
     private static func listSlot(_ typography: NoteMarkdownTypography) -> CGFloat {
@@ -54,19 +57,28 @@ enum NoteMarkdownStyler {
             }
             if let marker = line.markerRange { runs.append((marker, markerLook)) }
         case .bullet, .ordered, .task:
-            if let marker = line.markerRange { runs.append((marker, markerLook)) }
+            let revealsMarker = isRevealed && line.kind != .bullet
+            let isEmpty = line.contentRange.length == 0
+            if let marker = line.markerRange {
+                let listMarkerLook: Attributes =
+                    revealsMarker
+                    ? [.foregroundColor: color(Theme.Colors.textSecondary)]
+                    : (isEmpty ? hiddenEmptyListMarker(typography) : hidden(typography))
+                runs.append((marker, listMarkerLook))
+            }
             if case .task(checked: true) = line.kind {
                 runs.append((line.contentRange, checkedTask))
             }
             let contentIndent = CGFloat(line.level + 1) * listSlot(typography)
-            guard !isRevealed else {
-                base[.paragraphStyle] = hanging(
-                    line.markerRange, in: text, contentIndent: contentIndent,
-                    spacingAfter: listItemSpacing, typography: typography)
-                break
+            base[.paragraphStyle] =
+                revealsMarker || isEmpty
+                ? hanging(
+                    line.markerRange, in: text, contentIndent: contentIndent, spacingAfter: listItemSpacing,
+                    typography: typography)
+                : indented(by: contentIndent, spacingAfter: listItemSpacing)
+            if !revealsMarker {
+                base[.noteBlockDecoration] = listDecoration(line, text: text, typography: typography)
             }
-            base[.paragraphStyle] = indented(by: contentIndent, spacingAfter: listItemSpacing)
-            base[.noteBlockDecoration] = listDecoration(line, text: text, typography: typography)
         case .quote(let depth):
             if let marker = line.markerRange { runs.append((marker, markerLook)) }
             runs.append((line.contentRange, [.foregroundColor: color(Theme.Colors.textSecondary)]))
@@ -267,7 +279,7 @@ enum NoteMarkdownStyler {
     ) -> NoteBlockDecoration {
         NoteBlockDecoration(
             shape: shape, fill: color(fill), ink: color(ink),
-            bodyPointSize: typography.body.pointSize)
+            bodyFont: typography.body, labelFont: typography.label)
     }
 
     /// Pins a dynamic token to the current drawing appearance; the fragment cannot resolve one.

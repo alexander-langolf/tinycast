@@ -1,7 +1,7 @@
-import { Heart } from "lucide-react";
 import { site } from "../data/site";
+import { supportHero } from "../data/support";
 import { Button } from "./ui/button";
-import { GitHubLogo, Logo } from "./ui/icon";
+import { GitHubLogo, Logo, SupportIcon } from "./ui/icon";
 
 // The mark alone on a violet glow, so the page ends on the brand.
 function GlowingMark() {
@@ -23,16 +23,15 @@ export function Support() {
         <GlowingMark />
       </div>
       <h2 className="mx-auto mt-14 max-w-2xl text-closing">
-        Keep Tinycast free.
+        {supportHero.title}
       </h2>
       <p className="mx-auto mt-4 max-w-lg text-pretty text-body-lg text-fg-muted">
-        Tinycast is free and open source, with no account and no telemetry. If
-        it has earned a place on your Mac, your support keeps development going.
+        {supportHero.intro}
       </p>
       <div className="mt-8 flex flex-wrap justify-center gap-3">
         <Button href={site.support} size="lg">
-          <Heart size={16} />
-          Support development
+          <SupportIcon size={18} />
+          Get wallpapers
         </Button>
         <Button href={site.repo} variant="ghost" size="lg">
           <GitHubLogo size={16} />

@@ -442,14 +442,14 @@ enum CalcTimeZone {
     }()
 
     /// Not `localizedName`, which needs a `Locale` — banned in `Model/`.
-    private static func label(for zone: TimeZone) -> String {
+    static func label(for zone: TimeZone) -> String {
         if zone.identifier == "GMT" || zone.identifier == "UTC" { return "UTC" }
         guard let city = zone.identifier.split(separator: "/").last else { return zone.identifier }
         return city.replacingOccurrences(of: "_", with: " ")
     }
 
     private static func clockString(_ date: Date, zone: TimeZone, calendar: Calendar) -> String {
-        CalcDateFormatters.string(from: date, calendar: calendar, zone: zone, pattern: "h:mm a")
+        CalcDateFormatters.string(from: date, calendar: calendar, zone: zone, template: "jmm")
     }
 
     private static func dayOffsetNote(

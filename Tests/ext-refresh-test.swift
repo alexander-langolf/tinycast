@@ -57,6 +57,12 @@ struct ExtensionRefreshTests {
         expect(
             command(json: baseJSON(interval: "weekly"))?.interval == nil,
             "garbage means no schedule, not a crash")
+        let frequent = baseJSON(interval: "10s")
+        expect(command(json: frequent)?.interval == 60, "no-view manifests keep the minute floor")
+        var menu = frequent
+        menu["mode"] = "menu-bar"
+        expect(command(json: menu)?.interval == 10, "menu-bar manifests keep the ten-second floor")
+        expect(command(json: menu)?.intervalRaw == "10s", "menu-bar Settings retain the requested interval")
     }
 
     // MARK: - Schedulability
@@ -73,7 +79,7 @@ struct ExtensionRefreshTests {
             "a view interval never schedules")
         expect(
             !ExtensionRefreshPolicy.isSchedulable(mode: .menuBar, interval: 60),
-            "a menu-bar interval parses but never schedules")
+            "the no-view scheduler excludes menu-bar commands")
     }
 
     // MARK: - Due dates and backoff
@@ -188,6 +194,28 @@ struct ExtensionRefreshTests {
             "userInitiated matches LaunchType.UserInitiated")
     }
 
+    static func refreshNowExplainsARefusal() {
+        let mine = "extension:coffee/status"
+        expect(
+            ExtensionRefreshPolicy.refreshNowRefusal(
+                foregroundRunning: false, refreshingCommand: nil, command: mine) == nil,
+            "an idle runtime refreshes now")
+        expect(
+            ExtensionRefreshPolicy.refreshNowRefusal(
+                foregroundRunning: false, refreshingCommand: mine, command: mine)
+                == "Already refreshing.",
+            "the same command mid-refresh says so")
+        expect(
+            ExtensionRefreshPolicy.refreshNowRefusal(
+                foregroundRunning: false, refreshingCommand: "extension:other/tick", command: mine)
+                != nil,
+            "another command's tick refuses with a reason")
+        expect(
+            ExtensionRefreshPolicy.refreshNowRefusal(
+                foregroundRunning: true, refreshingCommand: nil, command: mine) != nil,
+            "an open foreground command refuses with a reason")
+    }
+
     static func main() {
         parseAcceptsAllUnits()
         parseClampsToTheFloor()
@@ -203,6 +231,7 @@ struct ExtensionRefreshTests {
         ownerRestatementIsDropped()
         indicatorNamesTheState()
         launchTypesMatchTheJSContract()
+        refreshNowExplainsARefusal()
 
         print(failures == 0 ? "Extension refresh tests passed" : "\(failures) tests failed")
         exit(failures == 0 ? 0 : 1)

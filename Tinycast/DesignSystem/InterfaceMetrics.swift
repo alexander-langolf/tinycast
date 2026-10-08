@@ -5,7 +5,7 @@ struct InterfaceMetrics: Equatable, Sendable {
     static let standard = InterfaceMetrics(scale: 1)
 
     let scale: CGFloat
-    /// `nil` is the system face; a family here replaces it wherever text is drawn, never a symbol.
+    /// `nil` is the system face; a family replaces prose faces, never code or symbols.
     let fontFamily: String?
 
     init(scale: CGFloat, fontFamily: String? = nil) {
@@ -38,6 +38,7 @@ struct InterfaceMetrics: Equatable, Sendable {
         var emojiSectionSpacing: CGFloat { scaledPoints(Theme.Spacing.emojiSectionSpacing, scale) }
         var chatTranscriptBottom: CGFloat { scaledPoints(Theme.Spacing.chatTranscriptBottom, scale) }
         var chatFollowTailSlack: CGFloat { scaledPoints(Theme.Spacing.chatFollowTailSlack, scale) }
+        var chatLine: CGFloat { scaledPoints(Theme.Spacing.chatLine, scale) }
     }
 
     struct Radius: Equatable, Sendable {
@@ -67,12 +68,14 @@ struct InterfaceMetrics: Equatable, Sendable {
         var panelHeight: CGFloat { scaledPoints(Theme.Size.panelHeight, scale) }
         var headerHeight: CGFloat { scaledPoints(Theme.Size.headerHeight, scale) }
         var headerIconSlot: CGFloat { scaledPoints(Theme.Size.headerIconSlot, scale) }
+        var searchFieldMinWidth: CGFloat { scaledPoints(Theme.Size.searchFieldMinWidth, scale) }
         var headerPadding: CGFloat { scaledPoints(Theme.Size.headerPadding, scale) }
         /// Derived, not scaled: the compact bar must stay exactly the header in symmetric slack.
         var compactHeight: CGFloat { headerHeight + headerPadding * 2 }
         var bottomBarHeight: CGFloat { scaledPoints(Theme.Size.bottomBarHeight, scale) }
         var barButtonHeight: CGFloat { scaledPoints(Theme.Size.barButtonHeight, scale) }
         var rowIcon: CGFloat { scaledPoints(Theme.Size.rowIcon, scale) }
+        var resultRowIcon: CGFloat { scaledPoints(Theme.Size.resultRowIcon, scale) }
         var colorDot: CGFloat { scaledPoints(Theme.Size.colorDot, scale) }
         var calendarBarWidth: CGFloat { scaledPoints(Theme.Size.calendarBarWidth, scale) }
         var calendarBarHeight: CGFloat { scaledPoints(Theme.Size.calendarBarHeight, scale) }
@@ -171,15 +174,21 @@ struct InterfaceMetrics: Equatable, Sendable {
         var markdownHeading2: Font { font(Theme.Typography.markdownHeading2, .title3, .semibold) }
         var markdownHeading3: Font { font(Theme.Typography.markdownHeading3, .headline) }
         var code: Font { monospaced(Theme.Typography.code, .callout) }
-        var inlineCode: Font {
-            guard !isStandard else { return Theme.Typography.inlineCode }
-            let resolved = font(Theme.Typography.inlineCode, .body)
-            return fontFamily == nil ? resolved.monospaced() : resolved
-        }
+        var inlineCode: Font { monospaced(Theme.Typography.inlineCode, .body) }
         var bar: Font { font(Theme.Typography.bar, .callout, .medium) }
         var chip: Font { font(Theme.Typography.chip, .callout) }
         @MainActor var chipNSFont: NSFont {
             isStandard ? Theme.Typography.chipNSFont : nsFont(.callout)
+        }
+        @MainActor var aliasEditorNSFont: NSFont {
+            isStandard
+                ? Theme.Typography.aliasEditorNSFont
+                : sizedFont(scaledPoints(NSFont.smallSystemFontSize, scale), .regular)
+        }
+        @MainActor var controlNSFont: NSFont {
+            isStandard
+                ? Theme.Typography.controlNSFont
+                : sizedFont(scaledPoints(NSFont.systemFontSize, scale), .regular)
         }
         /// A trailing chevron, so it stays on the system face alongside the other symbol tokens.
         var disclosure: Font { systemFont(Theme.Typography.disclosure, .caption1, .semibold) }
@@ -195,10 +204,19 @@ struct InterfaceMetrics: Equatable, Sendable {
             Typography(scale: 1, fontFamily: fontFamily).font(Theme.Typography.noteTitle, .headline)
         }
 
-        /// A chosen family is the one font everywhere, so it outranks the monospaced design.
+        /// Code keeps the system monospaced face regardless of the prose family.
         private func monospaced(_ base: Font, _ style: NSFont.TextStyle) -> Font {
-            guard fontFamily == nil else { return font(base, style) }
-            return scale == 1 ? base : .system(size: nsFont(style).pointSize, design: .monospaced)
+            scale == 1 ? base : .system(size: systemNSFont(style).pointSize, design: .monospaced)
+        }
+
+        /// The AppKit twin of a text style, for text an `NSTextView` draws beside SwiftUI's own.
+        func textNSFont(
+            _ style: NSFont.TextStyle, weight: NSFont.Weight? = nil, monospaced: Bool = false
+        ) -> NSFont {
+            let base = systemNSFont(style)
+            if monospaced { return .monospacedSystemFont(ofSize: base.pointSize, weight: weight ?? .regular) }
+            guard let weight else { return nsFont(style) }
+            return sizedFont(base.pointSize, weight)
         }
 
         /// Composed like `Theme`'s own: the style carries the face, an explicit weight overrides it.
@@ -236,7 +254,7 @@ struct InterfaceMetrics: Equatable, Sendable {
             return NSFont(descriptor: base.fontDescriptor, size: scaledPoints(base.pointSize, scale)) ?? base
         }
 
-        /// For the one token that states a size instead of naming a style.
+        /// For tokens that take a control size instead of naming a text style.
         private func sizedFont(_ size: CGFloat, _ weight: NSFont.Weight) -> NSFont {
             let system = NSFont.systemFont(ofSize: size, weight: weight)
             return familyFont(matching: system, size: size) ?? system

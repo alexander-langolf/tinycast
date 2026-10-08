@@ -23,20 +23,23 @@ final class NoteBlockDecoration: NSObject, Sendable {
     let fill: NSColor
     /// Number text or language label; a checkmark is cut out of the box instead.
     let ink: NSColor
-    let bodyPointSize: CGFloat
+    let bodyFont: NSFont
+    let labelFont: NSFont
+    var bodyPointSize: CGFloat { bodyFont.pointSize }
 
-    init(shape: Shape, fill: NSColor, ink: NSColor, bodyPointSize: CGFloat) {
+    init(shape: Shape, fill: NSColor, ink: NSColor, bodyFont: NSFont, labelFont: NSFont) {
         self.shape = shape
         self.fill = fill
         self.ink = ink
-        self.bodyPointSize = bodyPointSize
+        self.bodyFont = bodyFont
+        self.labelFont = labelFont
     }
 
     /// Value equality, so restyling a line to the same look does not read as a change.
     override func isEqual(_ object: Any?) -> Bool {
         guard let other = object as? NoteBlockDecoration else { return false }
         return shape == other.shape && fill == other.fill && ink == other.ink
-            && bodyPointSize == other.bodyPointSize
+            && bodyFont == other.bodyFont && labelFont == other.labelFont
     }
 
     override var hash: Int {
@@ -44,7 +47,8 @@ final class NoteBlockDecoration: NSObject, Sendable {
         hasher.combine(shape)
         hasher.combine(fill)
         hasher.combine(ink)
-        hasher.combine(bodyPointSize)
+        hasher.combine(bodyFont)
+        hasher.combine(labelFont)
         return hasher.finalize()
     }
 }

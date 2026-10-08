@@ -30,7 +30,8 @@ struct InterfaceFontTests {
         theSystemFaceIsThemeVerbatim()
         aFamilyReachesEveryTextToken()
         aFamilyKeepsEachStylesWeight()
-        oneFontMeansOneFont()
+        codeIgnoresTheProseFamily()
+        appKitTextHonorsFamilyAndWeight()
         noteTitleTakesTheFamilyButNotTheScale()
         anUnknownFamilyFallsBack()
         symbolTokensIgnoreTheFamily()
@@ -58,6 +59,8 @@ struct InterfaceFontTests {
             t.searchFieldNSFont == Theme.Typography.searchFieldNSFont,
             "searchFieldNSFont is Theme verbatim")
         expect(t.chipNSFont == Theme.Typography.chipNSFont, "chipNSFont is Theme verbatim")
+        expect(t.aliasEditorNSFont == Theme.Typography.aliasEditorNSFont, "alias editor is Theme verbatim")
+        expect(t.controlNSFont == Theme.Typography.controlNSFont, "control is Theme verbatim")
         expect(t.keyCap == Theme.Typography.keyCap, "keyCap is Theme verbatim")
         expect(t.compactKeyCap == Theme.Typography.compactKeyCap, "compactKeyCap is Theme verbatim")
         expect(t.heroKeyCap == Theme.Typography.heroKeyCap, "heroKeyCap is Theme verbatim")
@@ -80,32 +83,80 @@ struct InterfaceFontTests {
         }
         expect(t.searchFieldNSFont.familyName == family, "the search field resolves on \(family)")
         expect(t.chipNSFont.familyName == family, "the chip measurer resolves on \(family)")
+        expect(t.aliasEditorNSFont.familyName == family, "the alias editor takes the family")
+        expect(t.controlNSFont.familyName == family, "the control measurer takes the family")
         expect(
             NoteMarkdownTypography(fontFamily: family).body.familyName == family,
             "the note editor resolves on \(family)")
-        expect(
-            NoteMarkdownTypography(fontFamily: family).codeBlock.familyName == family,
-            "a note code block takes the family too, since one font means one font")
-        expect(
-            NoteMarkdownTypography(fontFamily: family).inlineCode.familyName == family,
-            "note inline code takes the family too")
     }
 
-    /// `code`, `previewCode` and `inlineCode` drop the monospaced design once a family is chosen.
-    static func oneFontMeansOneFont() {
-        let system = InterfaceMetrics.standard.typography
-        let chosen = InterfaceMetrics(scale: 1, fontFamily: family).typography
-        expect(chosen.code != system.code, "code leaves the monospaced design behind")
-        expect(chosen.previewCode != system.previewCode, "previewCode leaves it behind")
-        expect(chosen.inlineCode != system.inlineCode, "inlineCode leaves it behind")
+    static func codeIgnoresTheProseFamily() {
+        for size in InterfaceSize.allCases {
+            let system = InterfaceMetrics(scale: size.scale).typography
+            let chosen = InterfaceMetrics(scale: size.scale, fontFamily: family).typography
+            expect(chosen.code == system.code, "code ignores the family at \(size.title)")
+            expect(chosen.previewCode == system.previewCode, "previewCode ignores the family")
+            expect(chosen.inlineCode == system.inlineCode, "inlineCode ignores the family")
+            if size.scale != 1 {
+                expect(
+                    chosen.code == .system(size: system.nsFont(.callout).pointSize, design: .monospaced),
+                    "code keeps the scaled system monospaced design")
+                expect(
+                    chosen.previewCode
+                        == .system(size: system.nsFont(.subheadline).pointSize, design: .monospaced),
+                    "previewCode keeps the scaled system monospaced design")
+                expect(
+                    chosen.inlineCode == .system(size: system.nsFont(.body).pointSize, design: .monospaced),
+                    "inlineCode keeps the scaled system monospaced design")
+            }
+        }
+        let notes = NoteMarkdownTypography(fontFamily: family)
         expect(
-            chosen.code == Font(chosen.nsFont(.callout)), "code is the family at the callout size")
-        expect(
-            chosen.previewCode == Font(chosen.nsFont(.subheadline)),
-            "previewCode is the family at the subheadline size")
-        expect(
-            chosen.inlineCode == Font(chosen.nsFont(.body)),
-            "inlineCode is the family at the body size, with no monospaced design left on it")
+            notes.inlineCode == NoteMarkdownTypography.system.inlineCode, "note inline code stays fixed-pitch"
+        )
+        expect(notes.codeBlock == NoteMarkdownTypography.system.codeBlock, "note blocks stay fixed-pitch")
+        for level in 1...6 {
+            let heading = notes.heading(level)
+            expect(
+                notes.inlineCode(matching: heading)
+                    == .monospacedSystemFont(ofSize: heading.pointSize, weight: .regular),
+                "heading code keeps its size and the system monospaced face")
+        }
+    }
+
+    static func appKitTextHonorsFamilyAndWeight() {
+        let manager = NSFontManager.shared
+        for size in InterfaceSize.allCases {
+            let chosen = InterfaceMetrics(scale: size.scale, fontFamily: family).typography
+            let system = InterfaceMetrics(scale: size.scale).typography
+            let missing = InterfaceMetrics(scale: size.scale, fontFamily: "NoSuchFamilyInstalledHere")
+                .typography
+            for (name, style) in textStyles {
+                expect(
+                    chosen.textNSFont(style) == chosen.nsFont(style), "\(name) AppKit prose takes the family")
+                expect(missing.textNSFont(style) == system.textNSFont(style), "AppKit prose falls back")
+                expect(
+                    chosen.textNSFont(style, monospaced: true)
+                        == .monospacedSystemFont(ofSize: system.nsFont(style).pointSize, weight: .regular),
+                    "AppKit code stays monospaced with the default weight")
+                for weight: NSFont.Weight in [.regular, .medium, .semibold, .bold] {
+                    let text = chosen.textNSFont(style, weight: weight)
+                    let base = system.textNSFont(style, weight: weight)
+                    expect(text.familyName == family, "weighted \(name) takes the family")
+                    expect(text.pointSize == base.pointSize, "weighted prose keeps the scaled size")
+                    if weight == .regular || weight == .bold {
+                        expect(
+                            manager.weight(of: text) == manager.weight(of: base),
+                            "prose keeps regular and bold weights")
+                    }
+                    expect(missing.textNSFont(style, weight: weight) == base, "weighted prose falls back")
+                    expect(
+                        chosen.textNSFont(style, weight: weight, monospaced: true)
+                            == .monospacedSystemFont(ofSize: base.pointSize, weight: weight),
+                        "AppKit code keeps the system face, weight and scale")
+                }
+            }
+        }
     }
 
     /// Notes sits a style above the app and has never scaled; only the family may reach it.

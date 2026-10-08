@@ -14,18 +14,21 @@ Independently of the folder tree, every mature subsystem has converged on the sa
 │ environment fact is an injected parameter.                                 │
 │ ⇒ Compiled verbatim by a harness, so it cannot drift.                      │
 │                                                                            │
-│ SearchRelevance · EntryNaming · ScriptRomanization · LauncherOrder ·       │
-│ SearchScopes · LauncherRankingStore · FileSearch{Query,Result,Scope} ·      │
+│ SearchRelevance · LauncherMatch · EntryNaming · ScriptRomanization ·       │
+│ LauncherOrder · LauncherSuggestions · LauncherRankingStore · SearchScopes · │
+│ FileSearch{Query,Result,Scope} ·                                           │
 │ Calculator/* · EmojiCatalog · EmojiGridGeometry · SystemAction ·            │
 │ VolumeLevel ·                                                              │
 │ WindowCommand · WindowPlacementEngine · WindowActionMemory · WindowLayout/* ·      │
-│ CustomWindowSize{,Store} ·                                                 │
+│ CustomWindowSize{,Store} · Room/* ·                                        │
 │ PaletteRowIndex ·                                                          │
 │ Uninstall{Target,SearchRoot,Rules,Protection,Plan} ·                       │
 │ Quicklink{,Destination,Store,Archive} · AppleShortcut · Notes/Model/* ·    │
 │ Snippets/Model/* ·                                                         │
 │ ShellCommandRunner · DoubleTap{Modifier,Detector} · ClipboardStore ·       │
 │ RaycastDecoder · Scrypt · AppSettingsKey · SettingsBackupCoverage          │
+│ SettingsFile{JSON,Key,Value,Format,Binding,Issue,Identity} ·               │
+│ HotKeySpelling · WindowManagementFileFormat ·                              │
 │ MeetingLink · MeetingEvent · UpcomingWindow · MeetingDay · MenuBarSummary  │
 │ AutoJoinPolicy · EventDraft · SupportReminderSchedule ·                    │
 │ MenuSearch{Item,Shortcut,Query,TreeNode,SnapshotPolicy,Target} ·           │
@@ -34,15 +37,17 @@ Independently of the folder tree, every mature subsystem has converged on the sa
                                    │ consumed by
 ┌─ EFFECT ─────────────────────────▼─────────────────────────────────────────┐
 │ All platform I/O, one folder per feature.                                  │
-│ AppIndex · SpotlightNames · FileSearchService · SettingsPaneScanner ·      │
+│ AppIndex · FileSearchService · SettingsPaneScanner ·                       │
 │ AXWindowAccess · AXScreens · WindowInventory · WindowLayoutRunner ·        │
+│ RoomWindowSweep · RoomRunner ·                                             │
 │ IconCache · WindowMover · UninstallScanner · UninstallRunner ·             │
 │ SystemActionRunner · QuicklinkLauncher · TextInjector ·             │
 │ SnippetKeywordListener · NotesRepository · CurrencyRateStore · Paster ·    │
-│ HotKeyCenter · HyperKeyTap · DoubleTapMonitor · RunningAppsMonitor ·       │
+│ HotKeyCenter · HyperKeyTap · ModifierTapMonitor · RunningAppsMonitor ·     │
 │ CalendarStore · MeetingLauncher · MeetingClock · CameraSession ·           │
 │ SupportReminderStore · AXMenuAccess · WindowZOrder · WindowSwitchSweep ·   │
-│ AppleShortcutRunner                                                        │
+│ AppleShortcutRunner · SettingsFileRepository · SettingsFileMonitor ·       │
+│ WindowManagementSettingsFile                                               │
 └──────────────────────────────────┬─────────────────────────────────────────┘
                                    │ published through
 ┌─ OBSERVABLE STATE ───────────────▼─────────────────────────────────────────┐
@@ -86,10 +91,10 @@ the shared primitives and system shims every feature draws on. Neither may depen
 app: the stores (`AppIndex`, `ClipboardStore`, `SnippetsStore`, `QuicklinkStore`, `CustomCommandStore`,
 `FavoritesStore`, `VisibilityStore`, `AliasStore`, `LauncherRankingStore`, `CalculatorHistoryStore`,
 `CurrencyRateStore`, `FrequentEmojiStore`, `CalendarStore`), the managers, monitors and clocks
-(`ClipboardManager`, the opt-in `ClipboardTextIndexer`,
+(`ClipboardManager`, the opt-in `ClipboardTextIndexer`, the opt-in `SettingsFileRepository`,
 `HotKeyManager`, `HyperKeyTap`, `RunningAppsMonitor`, `SnippetKeywordListener`), the shared state
 (`AppSettings`, `PaletteState`, `FileSearchSession`, `MenuSearchSession`, `UninstallSession`,
-`MeetingClock`), `NotesStore`, the twenty feature coordinators, and the
+`MeetingClock`), `NotesStore`, the twenty-one feature coordinators, and the
 window controllers.
 
 `AppDelegate.applicationDidFinishLaunching` calls `AppCore.shared.start()` and nothing else. That is the
@@ -106,37 +111,48 @@ fine too; deciding something with one is what the rule forbids. `showNotice`, `c
 
 New long-lived state belongs on `AppCore`, wired in `start()`. Do not create a competing singleton: this is a singleton, not a container.
 
-Clipboard text recognition is the one feature that leaves the process. `AppCore` owns the indexer;
+Clipboard text recognition runs outside the process. `AppCore` owns the indexer;
 the stateless `ClipboardTextWorker` runs one bundled `ClipboardTextHelper` per item, from
 `Contents/Helpers`, and reaps it before returning. Vision's and PDFKit's allocations therefore belong
 to a process that exits, and the helper — which has no database, clipboard or settings access — is
 handed an input path and answers with bounded text down a pipe.
 
+Dictation similarly runs its model adapters in a bundled helper, with bounded in-memory audio and
+text over pipes. The coordinator keeps microphone capture, UI and insertion in Tinycast; the model
+store starts the helper on demand and reaps it after the selected idle delay or a model switch.
+`AppCore` owns the audio ducker and starts volume recovery on every launch, even when Dictation is off.
+
 ## Entry points and windows
 
 `TinycastApp` (`@main`) declares only two `MenuBarExtra` scenes — Tinycast's own item and the
 calendar's, each inserted by one preference and independent of the other; everything else visible is
-driven imperatively from AppKit.
+driven imperatively from AppKit. Extension menu extras are dynamic `NSStatusItem`s owned entirely by
+`Features/Extensions/`, through `ExtensionManager`, with no scene or lifecycle wiring in the core.
 
 - **Command palette** — a borderless floating `NSPanel` (`Palette/PalettePanel.swift`) hosting SwiftUI
   via `NSHostingView`, managed by `PaletteWindowController`. It toggles between a compact bar and the
   full launcher by resizing the window. The controller **solely** owns the frame, resolved once per show
   to a top-left anchor so it grows downward, and the hosting view sets `sizingOptions = []` so SwiftUI
   never drives the window size — without that the hosting view resizes the panel to fit content and the
-  top edge drifts on the compact↔expanded swap. The panel auto-dismisses on `windowDidResignKey`.
+  top edge drifts on the compact↔expanded swap. The panel auto-dismisses on `windowDidResignKey`,
+  unless a modal panel holds key.
   See [features/palette.md](features/palette.md).
 - **Settings and Onboarding** — titled `NSWindow`s, one `Windows/AppWindowController.swift` each, owned
   by `SettingsCoordinator` and `OnboardingCoordinator`. SwiftUI `Settings` and `Window` scenes are
   unreliable for accessory apps, so this is deliberate. Their lifecycles are independent of the
   palette's in both directions.
 - **Notes** — a persistent, titled, non-activating `NotesPanel` managed by `NotesWindowController`.
-  The user owns its size and AppKit autosaves the frame; its TextKit 2 editor renders Markdown over the
-  literal source, switches among local Markdown files and stays visible on focus loss. The displayed
-  string is the canonical file source; there is no source/display mapping.
+  Its height fits the note up to 860pt and AppKit autosaves the frame; its TextKit 2 editor renders
+  Markdown over the literal source, switches among local Markdown files and stays visible on focus
+  loss. The displayed string is the canonical file source; there is no source/display mapping.
   See [features/notes.md](features/notes.md).
-- **The main menu** — shaped by `TinycastApp`'s `.commands`, which rebinds ⌘Q to Close Settings. It is
-  only ever on screen while a titled window is open, so it is Settings' menu bar. It must stay
-  declarative.
+- **AI Chat** — a titled `AppWindowController` window owned by `AIChatCoordinator`: an
+  `NSSplitViewController` with a collapsible sidebar of saved chats beside the open conversation, as
+  Settings is built. The conversation lives on `AppCore.aiChats`, not the window, so closing it cancels
+  nothing. Quick AI is the same feature's palette screen. See [features/ai.md](features/ai.md).
+- **The main menu** — shaped by `TinycastApp`'s `.commands`, which rebinds ⌘Q to Close Window: the AI
+  Chat window when it is key, otherwise Settings. It is only ever on screen while a titled window is
+  open, so it is those windows' menu bar. It must stay declarative.
 - **Dialogs** — borderless `DialogPanel`s driven by `DialogController`, the app's only presenter for
   confirmations, failure reports and value prompts. Presentation is `async`, so nothing blocks the main
   actor, and the presenter refuses a second dialog while one is up — that, not a flag, is what stops a
@@ -205,7 +221,7 @@ everything that feature owns.
 Tinycast/
   App/              @main, AppDelegate, AppCore — the composition root
   DesignSystem/     Theme (the token source), KeyCapChip, Tooltip, SymbolImage,
-                    VisualEffectView, PopoverMenu, SettingsComponents, Scrolling/, Interaction/
+                    GlassEffectView, PopoverMenu, SettingsComponents, Scrolling/, Interaction/
   Platform/         system shims: Permissions, LaunchAtLogin, InputSourceSwitcher, ScreenTarget,
                     AppDisplayName,
                     NotificationToken, AppPaths, Signposts, HealthTicker, Memo, ActivationPolicy,
@@ -225,9 +241,10 @@ Tinycast/
         Service/    effects — stores, monitors, runners, AppKit glue
         UI/         screens, views, and the feature's coordinator
         Settings/   the feature's own panes
-    Settings/       the Settings shell only: SettingsCoordinator, the sidebar/detail/toolbar and
-                    navigation types, SettingsTab, AppSettings, AppSettingsKey, and Panes/ for the
-                    two panes no feature owns
+    Settings/       the Settings shell only: SettingsCoordinator, the root/sidebar/detail views, the chrome,
+                    navigation types, SettingsTab, AppSettings, AppSettingsKey, the settings file
+                    (Model/, Service/, SettingsFileSchema), and Panes/ for the two panes no feature
+                    owns
 Tests/              the standalone harnesses, one Swift file each
 Scripts/            run-tests.sh, the two data generators, packaging, formatting, editor setup
 ```

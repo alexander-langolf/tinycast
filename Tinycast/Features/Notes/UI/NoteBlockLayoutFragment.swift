@@ -91,7 +91,7 @@ final class NoteBlockLayoutFragment: NSTextLayoutFragment {
         context.setFillColor(decoration.fill.cgColor)
         context.fillPath()
         if roundsTop, let language {
-            let font = NSFont.systemFont(ofSize: NSFont.preferredFont(forTextStyle: .caption1).pointSize)
+            let font = decoration.labelFont
             let line = Self.line(language, font: font, color: decoration.ink)
             let width = CTLineGetTypographicBounds(line, nil, nil, nil)
             let baseline = top + (layoutFragmentFrame.height + font.capHeight) / 2
@@ -124,7 +124,7 @@ final class NoteBlockLayoutFragment: NSTextLayoutFragment {
     }
 
     private func drawLabel(_ label: String, level: Int, left: CGFloat, top: CGFloat, in context: CGContext) {
-        let font = NSFont.monospacedDigitSystemFont(ofSize: decoration.bodyPointSize, weight: .regular)
+        let font = decoration.bodyFont
         let line = Self.line(label, font: font, color: decoration.ink)
         let width = CTLineGetTypographicBounds(line, nil, nil, nil)
         let slotEnd = left + CGFloat(level + 1) * slot - Self.orderedLabelPadding

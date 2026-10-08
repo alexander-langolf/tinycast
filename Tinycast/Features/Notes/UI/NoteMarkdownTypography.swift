@@ -14,6 +14,7 @@ struct NoteMarkdownTypography {
     let heading3: NSFont
     let inlineCode: NSFont
     let codeBlock: NSFont
+    let label: NSFont
     /// Small enough that a hidden marker leaves no visible gap, while staying a real glyph run.
     let hidden = NSFont.systemFont(ofSize: 0.01)
 
@@ -26,12 +27,13 @@ struct NoteMarkdownTypography {
         func size(_ style: NSFont.TextStyle) -> CGFloat {
             NSFont.preferredFont(forTextStyle: style).pointSize
         }
+        label = InterfaceMetrics(scale: 1, fontFamily: fontFamily).typography.textNSFont(.caption1)
         body = face(size(.title3), .regular)
         heading1 = face(size(.largeTitle), .bold)
         heading2 = face(size(.title1), .bold)
         heading3 = face(size(.title2), .semibold)
-        inlineCode = Self.mono(body.pointSize, on: fontFamily)
-        codeBlock = Self.mono(body.pointSize - 1, on: fontFamily)
+        inlineCode = Self.mono(body.pointSize)
+        codeBlock = Self.mono(body.pointSize - 1)
     }
 
     /// Levels 4 to 6 share the third heading's style.
@@ -50,12 +52,11 @@ struct NoteMarkdownTypography {
     }
 
     func inlineCode(matching font: NSFont) -> NSFont {
-        font.pointSize == body.pointSize ? inlineCode : Self.mono(font.pointSize, on: fontFamily)
+        font.pointSize == body.pointSize ? inlineCode : Self.mono(font.pointSize)
     }
 
-    /// A chosen family is the one font everywhere, so it outranks the monospaced design here too.
-    private static func mono(_ points: CGFloat, on family: String?) -> NSFont {
-        let system = NSFont.monospacedSystemFont(ofSize: points, weight: .regular)
-        return InterfaceMetrics.face(system, on: family, size: points) ?? system
+    /// Code stays monospaced even when the surrounding prose uses a custom family.
+    private static func mono(_ points: CGFloat) -> NSFont {
+        NSFont.monospacedSystemFont(ofSize: points, weight: .regular)
     }
 }

@@ -2,7 +2,7 @@ import SwiftUI
 
 /// The standalone camera: a live stage, a mirror switch, and a photo straight to the clipboard.
 struct CameraView: View {
-    let coordinator: CameraCoordinator
+    @Environment(CameraCoordinator.self) private var coordinator
 
     var body: some View {
         VStack(spacing: 0) {
@@ -14,9 +14,10 @@ struct CameraView: View {
         }
         .frame(width: Theme.Size.cameraStage.width)
         .background(Theme.Colors.panelScrim)
-        .background(VisualEffectView())
+        .background(GlassEffectView())
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.dialog, style: .continuous))
         .panelEntrance()
+        .environment(\.metrics, coordinator.metrics)
     }
 
     private var isLive: Bool {

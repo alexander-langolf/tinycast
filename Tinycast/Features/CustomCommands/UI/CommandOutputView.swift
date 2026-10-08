@@ -16,7 +16,7 @@ struct CommandOutputView: View {
             if let run = presenter.run {
                 VStack(alignment: .leading, spacing: 0) {
                     header(run)
-                    TerminalLogView(run: run, fontFamily: settings.interfaceFontFamily)
+                    TerminalLogView(run: run)
                     footer(run)
                 }
             }

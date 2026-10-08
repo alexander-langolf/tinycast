@@ -90,6 +90,7 @@ struct AIMessage: Equatable, Sendable {
 }
 
 struct AIRequest: Equatable, Sendable {
+    let conversationID: UUID?
     let instructions: String?
     let messages: [AIMessage]
     let maxOutputTokens: Int
@@ -100,8 +101,9 @@ struct AIRequest: Equatable, Sendable {
 
     init(
         instructions: String? = nil, messages: [AIMessage], maxOutputTokens: Int = 4_096,
-        webSearch: Bool = false, tools: [AITool] = []
+        webSearch: Bool = false, tools: [AITool] = [], conversationID: UUID? = nil
     ) {
+        self.conversationID = conversationID
         self.instructions = instructions
         self.messages = messages
         self.maxOutputTokens = maxOutputTokens
@@ -113,23 +115,37 @@ struct AIRequest: Equatable, Sendable {
     func continuing(with messages: [AIMessage], tools: [AITool]) -> AIRequest {
         AIRequest(
             instructions: instructions, messages: messages, maxOutputTokens: maxOutputTokens,
-            webSearch: webSearch, tools: tools)
+            webSearch: webSearch, tools: tools, conversationID: conversationID)
     }
 }
 
 struct AIUsage: Equatable, Sendable {
     var inputTokens: Int?
     var outputTokens: Int?
+    /// Prompt tokens served from or written to a cache; Anthropic counts them outside `inputTokens`.
+    var cachedInputTokens: Int?
+    /// The part of `outputTokens` the model spent thinking.
+    var reasoningTokens: Int?
+    /// The model's whole window, where a route reports it; only Claude's CLI does.
+    var contextWindow: Int?
+    var costUSD: Double?
 
     var totalTokens: Int? {
         guard let inputTokens, let outputTokens else { return nil }
         return inputTokens + outputTokens
+    }
+
+    /// What the conversation now occupies in the window: every prompt token plus the reply.
+    var contextTokens: Int? {
+        totalTokens.map { $0 + (cachedInputTokens ?? 0) }
     }
 }
 
 enum AIStreamEvent: Equatable, Sendable {
     case text(String)
     case thinking
+    /// Reasoning text, where a route shares it; never answer text, and never sent back as context.
+    case reasoning(String)
     case searching(String?)
     case searched(String?)
     /// What a transport emits; the loop consumes it and never passes it on to the transcript.

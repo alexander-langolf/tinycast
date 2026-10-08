@@ -2,12 +2,14 @@ import SwiftUI
 
 /// The join preview: your camera over the meeting it is about to open.
 struct CameraPreviewView: View {
-    @Environment(\.metrics) private var metrics
+    @Environment(CalendarCoordinator.self) private var coordinator
     let meeting: MeetingEvent
     let now: Date
     let feed: CameraSession.Feed
     let onJoin: () -> Void
     let onCancel: () -> Void
+
+    private var metrics: InterfaceMetrics { coordinator.cameraMetrics }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -19,9 +21,10 @@ struct CameraPreviewView: View {
         }
         .frame(width: Theme.Size.cameraPreview.width)
         .background(Theme.Colors.panelScrim)
-        .background(VisualEffectView())
+        .background(GlassEffectView())
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.dialog, style: .continuous))
         .panelEntrance()
+        .environment(\.metrics, metrics)
     }
 
     private var footer: some View {

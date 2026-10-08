@@ -67,16 +67,22 @@ needed. Run it from the **Actions** tab (`Release` → **Run workflow**) and pic
 
 It builds on a `macos-26` runner with Xcode 26 and publishes a GitHub Release tagged
 `v<full-version>` with a versioned DMG and zip asset, marked prerelease for beta. On success it also
-bumps the matching cask in the tap and announces the release on Discord.
+bumps the matching cask in the tap and announces the release on Discord. A stable run also
+dispatches the Website workflow, because the site reads the latest version and the
+[changelog](https://tinycast.dev/changelog/) from GitHub at build time.
 
 A stable run then fans out to a second job, `universal`, which rebuilds the same commit with
 `ARCHS="arm64 x86_64"` and attaches `Tinycast-Universal-<version>.dmg` / `.zip` to the release the
 first job created, then bumps `tinycast-universal`. macOS 26 is the last release that boots on Intel,
 and those Macs need both slices. Both jobs pin `ARCHS` explicitly and assert the slices on *every*
-shipping binary — the app and the bundled `ClipboardTextHelper`: trusting `ARCHS_STANDARD` is what
+shipping binary — the app, `ClipboardTextHelper` and `Tinycast Dictation`: trusting `ARCHS_STANDARD` is what
 shipped a thin arm64 build to Intel users once already, and it also keeps the Apple silicon download
 from silently gaining a slice it never needs. A thin helper inside a universal app is the quiet form
-of the same bug: the app boots on Intel and only clipboard OCR stops working.
+of the same bug: the app boots on Intel and only clipboard OCR or dictation stops working.
+
+Channel builds override `TINYCAST_BUNDLE_IDENTIFIER`, not the target-wide `PRODUCT_BUNDLE_IDENTIFIER`.
+The Dictation helper derives its own identifier with a `.dictation` suffix; signature verification
+checks that its bundle and signing identifiers agree and remain distinct from the main app.
 
 ### Release notes
 
@@ -117,25 +123,3 @@ lines is load-bearing.
 Both stable casks install `Tinycast.app` under `com.tinycast.app`, so they `conflicts_with` one
 another and Homebrew routes each Mac by `depends_on`: `tinycast` requires `arch: :arm64`, and
 `tinycast-universal` takes the Intel Macs.
-
-## Website
-
-`.github/workflows/website.yml` builds `website/` (Next.js static export + Tailwind, with Fumadocs for
-the docs section) and deploys it to Cloudflare at `https://tinycast.dev/` on every push to `main`
-that touches `website/`. It needs `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` repo secrets.
-
-A second job publishes `website/redirect/` — a lone `CNAME` file — to GitHub Pages, which is what
-makes GitHub 301 every `https://abue-ammar.github.io/tinycast/<path>` to `https://tinycast.dev/<path>`
-at its own edge. Enable it once via **Settings → Pages → Source = GitHub Actions** and
-**Custom domain = tinycast.dev**. See [website/README.md](../website/README.md).
-
-```sh
-cd website && npm install && npm run dev     # local preview
-```
-
-`wrangler deploy` uploads `website/out` — a Next.js export lands there, not in `dist/`. Media over
-Workers' 25 MiB per-asset cap is the exception: it lives in `website/media/`, is served from an R2
-bucket behind `cdn.tinycast.dev`, and is mirrored by its own
-[`website-media.yml`](../.github/workflows/website-media.yml) so this workflow never carries it.
-Both need the same two Cloudflare secrets, and the API token needs **R2 Storage: Edit** on top of
-**Workers Scripts: Edit**.
