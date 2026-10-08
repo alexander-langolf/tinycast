@@ -40,6 +40,21 @@ struct ForkSearchTest {
         check("fuzzy accepts scattered letters", hit("slk", "Slack") != nil)
         check("no match is nil", hit("xyz", "Slack") == nil)
         check("diacritics fold", hit("resume", "Résumé photo.jpg") != nil)
+        for exact in [false, true] {
+            check(
+                "expanded fold keeps source positions (exact: \(exact))",
+                hit("straße", "Straße", exact: exact)?.positions == Array(0...5))
+            check(
+                "expanded ligature keeps source positions (exact: \(exact))",
+                hit("file", "ﬁle", exact: exact)?.positions == [0, 1, 2])
+            check(
+                "expanded sharp s deduplicates positions (exact: \(exact))",
+                hit("ss", "ß", exact: exact)?.positions == [0])
+        }
+        check(
+            "hump after an expanded fold uses its source index",
+            (ForkFzf.match(Array("sx"), in: "ßx", exact: false, humps: [1])?.score ?? 0)
+                > (hit("sx", "ßx")?.score ?? 0))
         check(
             "camelCase hump scores as a boundary",
             (hit("ft", "ForkTypography")?.score ?? 0) > (hit("ft", "Forkfootnote")?.score ?? 0))
@@ -111,6 +126,15 @@ struct ForkSearchTest {
             "initials match as subsequence",
             FuzzyMatch.match(query: "sysset", candidate: "System Settings")?.tier == .subsequence)
         check("no typo tolerance", FuzzyMatch.match(query: "sytsem", candidate: "System Settings") == nil)
+        let tight = FuzzyMatch.match(query: "gh", candidate: "github")
+        let scattered = FuzzyMatch.match(query: "gh", candidate: "gxxxxh")
+        check("subsequence tier kept", tight?.tier == .subsequence)
+        check(
+            "subsequence spread stays below the reference",
+            tight.map { $0.spread < FuzzyMatch.referenceSpread(2) } == true)
+        check(
+            "tighter subsequence has larger spread",
+            tight != nil && scattered != nil && tight!.spread > scattered!.spread)
     }
 
     static func launcher() {
@@ -155,6 +179,40 @@ struct ForkSearchTest {
         check("filter honours exclusions", !ForkSearch.contains("github !issues", in: "GitHub Issues"))
         check("filter rejects a typo", !ForkSearch.contains("gihtub", in: "GitHub Issues"))
         check("enabled missing keyword does not match", !ForkSearch.contains("mail", in: nil))
+        let foldedPairs = [("straße", "Straße"), ("strasse", "Straße"), ("file", "ﬁle"), ("ss", "ß")]
+        for profile in [ForkSearch.Profile.fuzzy, .accurate] {
+            for (query, text) in foldedPairs {
+                check(
+                    "expanded fold: \(query) in \(text) (\(profile))",
+                    ForkSearch.contains(query, in: text, profile: profile))
+            }
+            for token in ["!", "'", "^", "$"] {
+                check(
+                    "lone syntax is literal: \(token) (\(profile))",
+                    ForkSearch.contains(token, in: "hey" + token, profile: profile))
+                check(
+                    "lone syntax is an exact positive term: \(token) (\(profile))",
+                    ForkSearch.terms(token, profile: profile)
+                        == [
+                            ForkSearch.Term(
+                                text: Array(token), exact: true, prefix: false, suffix: false,
+                                negated: false)
+                        ])
+            }
+        }
+        check("only exclusions match nothing", !ForkSearch.contains("!foo !bar", in: "hey!"))
+        check(
+            "pinned OCR accepts any-order exact words",
+            ForkSearch.contains("march invoice", in: "invoice for March", profile: .accurate))
+        check(
+            "short OCR query matches",
+            ForkSearch.contains("gh", in: "gh pr create --fill", profile: .accurate))
+        check("missing OCR text rejects", !ForkSearch.contains("gh", in: nil, profile: .accurate))
+        ForkSearch.setEnabled(false)
+        check(
+            "off: OCR keeps upstream substring matching",
+            ForkSearch.contains("INVOICE", in: "invoice for March", profile: .accurate)
+                && !ForkSearch.contains("march invoice", in: "invoice for March", profile: .accurate))
     }
 
     static func clipboardFTS() {
@@ -165,9 +223,27 @@ struct ForkSearchTest {
         ForkSearch.setEnabled(true)
         defer { ForkSearch.setEnabled(false) }
         check("words ANDed", ForkSearch.clipboardFTS("march invoice") == "\"march\" AND \"invoice\"")
-        check("short words left to memory", ForkSearch.clipboardFTS("gh pr create") == "\"create\"")
-        check("no long word → memory", ForkSearch.clipboardFTS("gh pr") == nil)
+        check(
+            "short words keep upstream phrase",
+            ForkSearch.clipboardFTS("gh pr create") == "\"gh pr create\"")
+        check(
+            "all short words keep upstream phrase", ForkSearch.clipboardFTS("gh pr") == "\"gh pr\"")
+        check("raw short query falls back", ForkSearch.clipboardFTS("gh") == nil)
+        check(
+            "syntax-stripped short word keeps phrase",
+            ForkSearch.clipboardFTS("^gh create") == "\"^gh create\"")
         check("!word becomes NOT", ForkSearch.clipboardFTS("stardust !bump") == "\"stardust\" NOT \"bump\"")
+        check("plain exclusion becomes NOT", ForkSearch.clipboardFTS("foo !bar") == "\"foo\" NOT \"bar\"")
+        for excluded in ["!bar$", "!^bar", "!!foo", "!'bar", "!gh"] {
+            check(
+                "exclusion stays in memory: \(excluded)",
+                ForkSearch.clipboardFTS("foo " + excluded) == "\"foo\"")
+        }
+        check("only exclusions have no FTS positives", ForkSearch.clipboardFTS("!foo !bar") == nil)
+        check(
+            "old command keeps upstream retrieval phrase and matches the accurate filter",
+            ForkSearch.clipboardFTS("gh pr create --fill") == "\"gh pr create --fill\""
+                && ForkSearch.contains("gh pr create --fill", in: "gh pr create --fill", profile: .accurate))
         check("quotes escaped", ForkSearch.clipboardFTS("say\"hi") == "\"say\"\"hi\"")
         check(
             "accurate item filter",

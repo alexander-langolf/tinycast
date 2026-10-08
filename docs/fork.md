@@ -97,8 +97,13 @@ Settled in the prototype on branch `prototype/fuzzy-search`:
 - Words are ANDed in any order; fzf extended syntax: `'exact`, `^prefix`, `suffix$`, `!exclude`. No typo tolerance.
 - Two profiles: **fuzzy** (letters may be skipped inside a word) everywhere except the clipboard, which uses
   **accurate** (every word must appear exactly, any order).
-- Clipboard retrieval turns words of 3+ letters into ANDed FTS5 phrases, then ranks by fzf score with
-  newest-first as the tie-break. Queries of 1–2 letters keep recency or use order.
+- Clipboard retrieval turns positive words of 3+ letters into ANDed FTS5 phrases. Queries containing
+  a 1–2 letter positive word use upstream's whole-phrase retrieval: no any-order benefit, no regression
+  from dropping short words before the retrieval limit. Only plain `!words` become FTS exclusions;
+  anchored or short exclusions stay in the in-memory filter. Text matches rank by fzf score with
+  newest-first as the tie-break; OCR matches are not re-ranked. Queries of 1–2 letters keep recency
+  or use order.
+- A query of only `!words` matches nothing. Lone syntax tokens (`!`, `'`, `^`, `$`) match literally.
 - File search keeps upstream Spotlight retrieval with the fzf rerank: a subsequence glob was too slow and too
   broad (`docs/fork-search-spike.md`). Fuzzy file retrieval would need a path index of its own.
 - Plain substring filters in Uninstall, calculator history, AI chat lists, window layouts and settings

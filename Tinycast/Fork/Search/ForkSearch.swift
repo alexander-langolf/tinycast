@@ -27,16 +27,18 @@ enum ForkSearch {
     static func isShort(_ query: String) -> Bool { query.filter { !$0.isWhitespace }.count <= 2 }
 
     static func terms(_ query: String, profile: Profile) -> [Term] {
-        query.split(whereSeparator: \.isWhitespace).compactMap { token in
+        query.split(whereSeparator: \.isWhitespace).map { token in
             var t = Substring(token)
             var exact = profile == .accurate, prefix = false, suffix = false, negated = false
             if t.hasPrefix("!") { negated = true; exact = true; t = t.dropFirst() }
             if t.hasPrefix("'") { exact = true; t = t.dropFirst() }
             if t.hasPrefix("^") { prefix = true; exact = true; t = t.dropFirst() }
-            if t.count > 1, t.hasSuffix("$") { suffix = true; exact = true; t = t.dropLast() }
+            if t.hasSuffix("$") { suffix = true; exact = true; t = t.dropLast() }
             let folded = Array(FuzzyMatch.normalized(String(t)))
-            return folded.isEmpty
-                ? nil : Term(text: folded, exact: exact, prefix: prefix, suffix: suffix, negated: negated)
+            if folded.isEmpty {
+                return Term(text: Array(token), exact: true, prefix: false, suffix: false, negated: false)
+            }
+            return Term(text: folded, exact: exact, prefix: prefix, suffix: suffix, negated: negated)
         }
     }
 
@@ -88,18 +90,26 @@ enum ForkSearch {
         return match(query, fields: [text], profile: profile) != nil
     }
 
-    /// The trigram FTS expression for a clipboard query. Off: upstream's quoted phrase (3+ chars).
-    /// On: each word of 3+ letters as an ANDed phrase and `!word` as NOT; nil when no word is long enough.
+    /// Short positive words keep upstream's phrase so the FTS limit cannot discard real matches.
     static func clipboardFTS(_ query: String) -> String? {
         let quote = { (s: Substring) in "\"" + s.replacingOccurrences(of: "\"", with: "\"\"") + "\"" }
         guard isEnabled else { return query.count >= 3 ? quote(Substring(query)) : nil }
         var positive: [String] = [], negative: [String] = []
         for token in query.split(whereSeparator: \.isWhitespace) {
             let negated = token.hasPrefix("!")
+            if negated {
+                let word = token.dropFirst()
+                if word.count >= 3, !word.hasPrefix("!"), !word.hasPrefix("^"),
+                    !word.hasPrefix("'"), !word.hasSuffix("$")
+                {
+                    negative.append(quote(word))
+                }
+                continue
+            }
             var t = token.drop { "!'^".contains($0) }
             if t.count > 1, t.hasSuffix("$") { t = t.dropLast() }
-            guard t.count >= 3 else { continue }
-            negated ? negative.append(quote(t)) : positive.append(quote(t))
+            guard t.count >= 3 else { return query.count >= 3 ? quote(Substring(query)) : nil }
+            positive.append(quote(t))
         }
         guard !positive.isEmpty else { return nil }
         return positive.joined(separator: " AND ") + negative.map { " NOT " + $0 }.joined()
@@ -140,9 +150,16 @@ enum ForkSearch {
                         at: ForkFzf.charClass(Array(c)[p.first!])) >= ForkFzf.bonusBoundary
                     ? .wordStart
                     : contiguous ? .substring : .subsequence
+        var spread = 0
+        if tier == .subsequence {
+            guard let reference = match(q, fields: [q], profile: .fuzzy)?.score, reference > 0 else {
+                return nil
+            }
+            spread = r.score * FuzzyMatch.referenceSpread(q.count) / reference
+        }
         return FuzzyMatch.Match(
             tier: tier, offset: p.first ?? 0, queryLength: q.count, candidateLength: length,
-            spread: tier == .subsequence ? r.score : 0)
+            spread: spread)
     }
 
     /// The launcher's texts are folded or transliterated already; `humps` restore the camel starts folding lost.

@@ -4,7 +4,7 @@ import Foundation
 enum ForkFzf {
     struct Hit: Sendable, Equatable {
         let score: Int
-        /// Character offsets into the text, one per term character.
+        /// Unique character offsets into the source text, in ascending order.
         let positions: [Int]
     }
 
@@ -48,17 +48,29 @@ enum ForkFzf {
     /// `humps` are extra word starts a folded text no longer shows (the launcher's camel humps).
     static func match(_ term: [Character], in raw: String, exact: Bool, humps: [Int] = []) -> Hit? {
         let chars = Array(raw)
-        let text = chars.map { FuzzyMatch.normalized(String($0)).first ?? $0 }
-        guard !term.isEmpty, term.count <= text.count else { return nil }
-        var bonuses = [Int](repeating: 0, count: text.count)
+        var text: [Character] = []
+        var sources: [Int] = []
+        var bonuses: [Int] = []
+        let humpStarts = Set(humps)
         var prev = CharClass.white
         for j in chars.indices {
             let cur = charClass(chars[j])
-            bonuses[j] = bonus(after: prev, at: cur)
+            let folded = Array(FuzzyMatch.normalized(String(chars[j])))
+            let expanded = folded.isEmpty ? [chars[j]] : folded
+            var firstBonus = bonus(after: prev, at: cur)
+            if humpStarts.contains(j) { firstBonus = max(firstBonus, bonusCamel) }
+            for (offset, char) in expanded.enumerated() {
+                text.append(char)
+                sources.append(j)
+                bonuses.append(offset == 0 ? firstBonus : bonusConsecutive)
+            }
             prev = cur
         }
-        for j in humps where j < bonuses.count { bonuses[j] = max(bonuses[j], bonusCamel) }
-        return exact ? exactMatch(term, text, bonuses) : align(term, text, bonuses)
+        guard !term.isEmpty, term.count <= text.count else { return nil }
+        guard let hit = exact ? exactMatch(term, text, bonuses) : align(term, text, bonuses) else {
+            return nil
+        }
+        return Hit(score: hit.score, positions: Set(hit.positions.map { sources[$0] }).sorted())
     }
 
     /// The bonus a character earns inside a consecutive run, as fzf carries the run's first bonus.

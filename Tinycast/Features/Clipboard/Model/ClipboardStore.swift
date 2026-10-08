@@ -718,8 +718,8 @@ final class ClipboardStore {
         while !Task.isCancelled, sqlite3_step(stmt) == SQLITE_ROW {
             guard let item = row(stmt) else { continue }
             if let residentIDs, !residentIDs.contains(item.id) { continue }
-            if isShort || item.isPinned,
-                columnString(stmt, 7)?.localizedCaseInsensitiveContains(query) != true
+            if isShort || item.isPinned,  // FORK: search
+                ForkSearch.contains(query, in: columnString(stmt, 7), profile: .accurate) != true
             {
                 continue
             }
