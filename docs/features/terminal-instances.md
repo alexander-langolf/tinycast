@@ -59,9 +59,10 @@ a write dispatch source flushes the remaining bytes while the read source contin
 After ten seconds without the first prompt, the card shows “Shell hasn't reached a prompt: Cmd-O to
 open in kitty, Cmd-W to close”. The notice clears at the first prompt, exit or close. ⌃C is ignored
 while the shell starts: it would stop the shim before the prompt marks are installed. While a long
-command is still being written, ⌃C drops the unsent rest (and sends a second ⌃C 0.5 s later, once zsh
-has caught up); the card stays running until zsh draws its
-next prompt, so the next command can't lose characters to the abort.
+command is still being written, ⌃C drops the unsent rest. If zsh had not started the command (no
+C mark) and no prompt follows within 0.5 s, the session sends one more ⌃C: the first only discards
+the half-read line. The card stays running until zsh draws its next prompt, so the next command
+can't lose characters to the abort.
 
 Closing captures the foreground and shell process groups, then sends SIGHUP immediately on the
 caller's thread. Queue cleanup cancels both pty sources and closes the descriptor after both

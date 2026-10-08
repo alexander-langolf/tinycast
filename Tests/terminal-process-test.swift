@@ -70,19 +70,25 @@ struct TerminalProcessTest {
                 && long.output.trimmingCharacters(in: .whitespacesAndNewlines) == "30000",
             long.output.debugDescription)
 
-        // ⌃C while a long command is still being written drops the rest; after the next prompt the
-        // following command runs whole.
-        let beforeDrop = count(recorder)
-        process.send("echo -n " + String(repeating: "b", count: 30000) + " | wc -c\r")
-        process.interrupt()
-        check(
-            "⌃C during a pending write brings a prompt back",
-            await waitFor(recorder, after: beforeDrop, timeout: 20) { $0.contains(.promptReady) })
-        let after = await run(process, recorder, "echo ok")
-        check(
-            "the next command runs whole after a dropped one",
-            after.status == 0 && after.output.trimmingCharacters(in: .whitespacesAndNewlines) == "ok",
-            after.output.debugDescription)
+        // ⌃C while zsh is still taking a long line in: mirrors TerminalSession.interrupt, which sends one
+        // more ⌃C when no prompt follows within 0.5 s and the command never started (no C mark).
+        for (length, delay) in [(30000, 0), (1200, 10), (2500, 50)] {
+            let start = count(recorder)
+            process.send("echo -n " + String(repeating: "b", count: length) + " | wc -c\r")
+            try? await Task.sleep(for: .milliseconds(delay))
+            process.interrupt()
+            let prompted = await waitFor(recorder, after: start, timeout: 0.5) { $0.contains(.promptReady) }
+            let started = recorder.marks.withLock { Array($0.dropFirst(start)).contains(.commandStarted) }
+            if !prompted && !started { process.interrupt() }
+            check(
+                "⌃C \(delay) ms into a \(length)-character line brings a prompt back",
+                await waitFor(recorder, after: start, timeout: 20) { $0.contains(.promptReady) })
+            let after = await run(process, recorder, "echo ok")
+            check(
+                "the next command runs whole after ⌃C on a \(length)-character line",
+                after.status == 0 && after.output.trimmingCharacters(in: .whitespacesAndNewlines) == "ok",
+                after.output.debugDescription)
+        }
 
         let failed = await run(process, recorder, "(exit 3)")
         check("a failing command reports its status", failed.status == 3, String(describing: failed.status))

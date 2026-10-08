@@ -23,6 +23,9 @@ final class TerminalSession {
     @ObservationIgnored private var reader: Task<Void, Never>?
     @ObservationIgnored private var startupTimeout: Task<Void, Never>?
     @ObservationIgnored private var isTerminated = false
+    /// Whether the current command reached zsh (its C mark); a ⌃C before that can strand zsh mid-line.
+    @ObservationIgnored private var commandStarted = false
+    @ObservationIgnored private var interruptFollowUp: Task<Void, Never>?
 
     /// Past this the head is dropped, as the Command Output window does.
     private static let logLimit = 256 * 1024
@@ -84,10 +87,20 @@ final class TerminalSession {
         guard !isTerminated, phase == .running else { return }
         // The phase stays running until zsh's next prompt, so the next command can't race the abort.
         process?.interrupt()
+        guard !commandStarted else { return }
+        // zsh was still reading the line: the first ⌃C only discards it, and no prompt follows until a
+        // second one. A started command never gets the second, so its own ⌃C handling stays single.
+        interruptFollowUp?.cancel()
+        interruptFollowUp = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(500))
+            guard let self, !Task.isCancelled, self.phase == .running, !self.commandStarted else { return }
+            self.process?.interrupt()
+        }
     }
 
     func terminate() {
         isTerminated = true
+        interruptFollowUp?.cancel()
         clearStartupNotice()
         queued = nil
         process?.terminate()
@@ -101,6 +114,7 @@ final class TerminalSession {
         rows = 0
         isFullScreen = false
         phase = .running
+        commandStarted = false
         process.send(command + "\r")
     }
 
@@ -120,6 +134,8 @@ final class TerminalSession {
         switch mark {
         case .promptReady:
             clearStartupNotice()
+            interruptFollowUp?.cancel()
+            interruptFollowUp = nil
             if let command = queued, let process {
                 queued = nil
                 send(command, to: process)
@@ -134,7 +150,7 @@ final class TerminalSession {
             guard !isFullScreen else { return }
             append(text)
         case .commandStarted:
-            break
+            commandStarted = true
         }
     }
 

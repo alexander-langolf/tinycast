@@ -112,24 +112,15 @@ final class TerminalProcess: @unchecked Sendable {
     }
 
     /// ⌃C goes ahead of any unsent input: a command still being written is dropped, since a ⌃C queued
-    /// behind it would only flush the terminal's input and leave the shell mid-line. zsh then abandons
-    /// the partial line and draws a new prompt; input sent before that prompt can lose characters.
+    /// behind it would only flush the terminal's input and leave the shell mid-line. `TerminalSession`
+    /// follows up when the shell was still reading the line and no prompt comes back.
     func interrupt() {
         queue.async { [self] in
             guard readSource != nil else { return }
-            let hadUnsent = inputOffset < pendingInput.count
             pendingInput.removeAll(keepingCapacity: true)
             inputOffset = 0
             pendingInput.append(3)
             flushInput()
-            // The first ⌃C lands while zsh is still consuming the partial line and only aborts that;
-            // a second one, once it has caught up, returns it to a fresh prompt.
-            guard hadUnsent else { return }
-            queue.asyncAfter(deadline: .now() + .milliseconds(500)) { [self] in
-                guard readSource != nil else { return }
-                pendingInput.append(3)
-                flushInput()
-            }
         }
     }
 
