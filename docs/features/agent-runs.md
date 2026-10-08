@@ -5,11 +5,11 @@
 - **The status snapshot owns card lifetime.** Every returned run is eligible regardless of state;
   a run missing from the next successful snapshot disappears immediately. Nothing is persisted.
 - **Polling belongs to palette visibility.** Opening starts an immediate read, then reads every two
-  seconds without overlapping. Hiding cancels the task and its in-flight process and clears all runs.
+  seconds without overlapping. Hiding cancels the task and its in-flight process but keeps the last snapshot, so the next summon shows cards at once while the first poll refreshes them.
   A cancelled read cannot publish into a reopened palette.
 - **Process execution, pipe reads and JSON decoding stay off the main actor.** The monitor publishes
   on the main actor only when the decoded array changes, like `RunningAppsMonitor`.
-- **A failed read keeps the last good snapshot until the next successful read or hide.** Failures go
+- **A failed read keeps the last good snapshot until the next successful read.** Failures go
   to the `AgentRuns` logger; an unavailable helper does not interrupt launcher use.
 - **Runs live in a separate, non-activating child panel.** `PaletteWindowController` owns its frame
   and attaches it with `addChildWindow`. It is visible only with a visible palette and nonempty

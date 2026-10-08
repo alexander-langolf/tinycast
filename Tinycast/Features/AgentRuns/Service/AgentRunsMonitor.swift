@@ -37,7 +37,7 @@ final class AgentRunsMonitor {
     func stop() {
         pollTask?.cancel()
         pollTask = nil
-        if !runs.isEmpty { runs = [] }
+        // Keep the last snapshot: the next summon shows it at once while the first poll refreshes it.
     }
 
     isolated deinit {
