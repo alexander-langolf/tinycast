@@ -95,15 +95,13 @@ private struct SnippetRow: View {
 struct SnippetPreview: View {
     let record: StoredSnippet?
 
-    @Environment(\.metrics) private var metrics
-
     var body: some View {
         if let record {
             VStack(alignment: .leading, spacing: 0) {
                 // The raw template: expanding here would read the clipboard on every arrow key.
                 ScrollView {
                     Text(record.snippet.text)
-                        .font(metrics.typography.previewCode)
+                        .font(.system(.subheadline, design: .monospaced))
                         .textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .topLeading)
                 }

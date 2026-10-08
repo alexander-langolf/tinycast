@@ -6,7 +6,7 @@ struct FileSearchScreen: PaletteScreen {
     let vm: PaletteState
     let openActions: () -> Void
 
-    private var metrics: InterfaceMetrics { core.settings.metrics }
+    private var metrics: InterfaceMetrics { core.settings.interfaceSize.metrics }
 
     var rows: [FileSearchResult] { session.results }
 

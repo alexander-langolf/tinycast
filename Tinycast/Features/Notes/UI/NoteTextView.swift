@@ -74,7 +74,7 @@ final class NoteTextView: NSTextView, InjectableTextView {
         NSAttributedString(
             string: "Start writing…",
             attributes: [
-                .font: font ?? NoteMarkdownTypography.system.body,
+                .font: NoteMarkdownTypography.body,
                 .foregroundColor: NSColor(Theme.Colors.textTertiary)
             ]
         ).draw(at: textContainerOrigin)

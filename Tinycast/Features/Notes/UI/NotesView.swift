@@ -1,10 +1,8 @@
 import SwiftUI
 
 struct NotesView: View {
+    @Environment(\.metrics) private var metrics  // FORK: typography
     @Environment(NotesCoordinator.self) private var notes
-    @Environment(AppSettings.self) private var settings
-
-    private var metrics: InterfaceMetrics { settings.unscaledMetrics }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -36,7 +34,7 @@ struct NotesView: View {
 
     private var title: some View {
         Text(notes.activeTitle)
-            .font(metrics.typography.noteTitle)
+            .font(metrics.typography.noteTitle)  // FORK: typography
             .lineLimit(1)
             .truncationMode(.tail)
             .padding(.horizontal, Theme.Size.noteTitleInset)
@@ -57,7 +55,6 @@ struct NotesView: View {
             NoteEditorView(
                 input: notes.editorInput,
                 rendersMarkdown: notes.rendersMarkdown,
-                typography: settings.noteTypography,
                 onSourceChange: notes.updateSource,
                 onCharacterCountChange: notes.updateCharacterCount,
                 onFormattingChange: notes.updateFormatting,
@@ -93,11 +90,11 @@ struct NotesView: View {
             SymbolImage(name: "text.page", size: Theme.Size.noteEmptyGlyph)
                 .foregroundStyle(Theme.Colors.textTertiary)
             Text("No Notes")
-                .font(metrics.typography.rowTitle)
+                .font(metrics.typography.rowTitle)  // FORK: typography
                 .foregroundStyle(Theme.Colors.textSecondary)
             Button("Create Note", action: notes.createNote)
                 .buttonStyle(.plain)
-                .font(metrics.typography.bar)
+                .font(metrics.typography.bar)  // FORK: typography
                 .padding(.horizontal, Theme.Spacing.xl)
                 .frame(height: Theme.Size.barButtonHeight)
                 .frosted(in: Capsule())
@@ -113,7 +110,7 @@ struct NotesView: View {
 
     private var characterCount: some View {
         Text(notes.characterCountLabel)
-            .font(metrics.typography.rowTrailing)
+            .font(metrics.typography.rowTrailing)  // FORK: typography
             .foregroundStyle(Theme.Colors.textTertiary)
             .lineLimit(1)
             .accessibilityLabel("\(notes.characterCountLabel) in this note")

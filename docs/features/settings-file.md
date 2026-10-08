@@ -107,9 +107,6 @@ because the app rewrites the file.
 }
 ```
 
-`appearance.interfaceFont` is an installed font family name, or `null` for the system face.
-It follows the same live prose-only font choice as General settings; code stays monospaced.
-
 An enum is its raw value, an unset optional is `null`, and a number with a unit names it in the key.
 Where a number has a special case, the case is a word:
 

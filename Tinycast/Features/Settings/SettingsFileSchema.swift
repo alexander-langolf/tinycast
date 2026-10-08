@@ -38,7 +38,8 @@ enum SettingsFileSchema {
         case .supportReminders: return bind(settings, \.supportRemindersEnabled)
         case .appearance: return bind(settings, \.appearance)
         case .interfaceSize: return bind(settings, \.interfaceSize)
-        case .interfaceFont: return bind(settings, \.interfaceFontFamily)
+        // FORK: font-mirror
+        case .interfaceFont: return bind(ForkAppearance.current!, \.fontFamily)
         case .compactMode: return bind(settings, \.compactMode)
         case .showFavoritesInCompactMode: return bind(settings, \.showFavoritesInCompactMode)
         case .openOnCursorScreen: return bind(settings, \.openOnCursorScreen)

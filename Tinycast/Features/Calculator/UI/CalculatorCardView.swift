@@ -50,7 +50,7 @@ struct CalculatorCard: View {
                         text: CalcSyntax.highlighted(result.expression),
                         badge: result.sourceBadge)
                     Image(systemName: "arrow.right")
-                        .font(metrics.typography.cardTitle)
+                        .font(.title3.weight(.semibold))
                         .foregroundStyle(.tertiary)
                     LeadCardColumn(
                         text: CalcSyntax.highlighted(display), badge: result.targetBadge,
@@ -64,7 +64,7 @@ struct CalculatorCard: View {
                     Text(message)
                         .lineLimit(1)
                 }
-                .font(metrics.typography.rowTitle)
+                .font(.body)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity)
             }

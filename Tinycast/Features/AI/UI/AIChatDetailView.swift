@@ -8,7 +8,6 @@ struct AIChatDetailView: View {
     @State private var isDropTargeted = false
     @State private var showsContext = false
 
-    private var metrics: InterfaceMetrics { coordinator.windowMetrics }
     private var chat: AIChatState { coordinator.chats.window }
 
     /// The last reply's options, once it has finished; typing or sending moves past them.
@@ -21,11 +20,8 @@ struct AIChatDetailView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            pane(
-                composerHeight: ChatComposerTextView.maximumHeight(
-                    in: geometry.size.height, metrics: metrics))
+            pane(composerHeight: ChatComposerTextView.maximumHeight(in: geometry.size.height))
         }
-        .environment(\.metrics, metrics)
         .animation(.easeOut(duration: Theme.Duration.tooltip), value: showsContext)
         .dropDestination(for: URL.self) { files, _ in
             coordinator.attach(files: files, to: chat)
@@ -125,7 +121,6 @@ struct AIChatDetailView: View {
 
 /// Staged files, the text, then the chat's options and Send, on one pane of Liquid Glass.
 private struct AIChatComposer: View {
-    @Environment(\.metrics) private var metrics
     let chat: AIChatState
     let coordinator: AIChatCoordinator
     let settings: AISettingsStore
@@ -143,19 +138,15 @@ private struct AIChatComposer: View {
         @Bindable var chat = chat
         VStack(alignment: .leading, spacing: Theme.Spacing.md) {
             if !chat.session.messages.isEmpty, let notice = chat.notice {
-                Label {
-                    Text(notice).font(metrics.typography.rowTrailing)
-                } icon: {
-                    Image(systemName: "exclamationmark.triangle").font(.callout)
-                }
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, Theme.Spacing.sm)
+                Label(notice, systemImage: "exclamationmark.triangle")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, Theme.Spacing.sm)
             }
             chips
             ZStack(alignment: .topLeading) {
                 if chat.draft.isEmpty {
                     Text("Ask anything…")
-                        .font(metrics.typography.rowTitle)
                         .foregroundStyle(.tertiary)
                         .allowsHitTesting(false)
                 }
@@ -262,7 +253,6 @@ private struct AIChatComposer: View {
 
 /// A composer control's face: one glyph slot, the callout title, then the menu's chevron.
 private struct ComposerControlLabel<Icon: View>: View {
-    @Environment(\.metrics) private var metrics
     var title: String?
     var showsChevron = true
     @ViewBuilder let icon: Icon
@@ -274,7 +264,7 @@ private struct ComposerControlLabel<Icon: View>: View {
             }
             if let title {
                 Text(title)
-                    .font(metrics.typography.rowTrailing)
+                    .font(.callout)
                     .lineLimit(1)
                     .truncationMode(.middle)
             }
@@ -418,7 +408,6 @@ private struct DictationButton: View {
 
 /// Web search is on beside the +; a click turns it off, the + menu turns it back on.
 private struct WebSearchPill: View {
-    @Environment(\.metrics) private var metrics
     let settings: AISettingsStore
     let isCompact: Bool
 
@@ -429,7 +418,7 @@ private struct WebSearchPill: View {
             HStack(spacing: Theme.Spacing.xs) {
                 ComposerSymbol(name: "globe")
                     .frame(width: Theme.Size.aiChatComposerGlyph, height: Theme.Size.aiChatComposerGlyph)
-                if !isCompact { Text("Search").font(metrics.typography.rowTrailing) }
+                if !isCompact { Text("Search").font(.callout) }
             }
             .foregroundStyle(Color.accentColor)
             .padding(.horizontal, isCompact ? 0 : Theme.Spacing.md)
@@ -564,7 +553,6 @@ private struct AIToolsMenu: View {
 
 /// Where find is in the open chat, with the same steps ⌘G and ⇧⌘G take.
 private struct FindCounter: View {
-    @Environment(\.metrics) private var metrics
     let position: Int
     let count: Int
     let step: (Int) -> Void
@@ -572,7 +560,7 @@ private struct FindCounter: View {
     var body: some View {
         HStack(spacing: Theme.Spacing.sm) {
             Text(count == 0 ? "No matches" : "\(position) of \(count)")
-                .font(metrics.typography.rowTrailing)
+                .font(.callout)
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
             Button {
@@ -630,17 +618,16 @@ private struct ContextRing: View {
 
 /// Tinycast's own card, never a popover: the tokens the chat holds, then what the next turn sends.
 private struct ContextCard: View {
-    @Environment(\.metrics) private var metrics
     let report: ChatContextReport
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: Theme.Radius.menuPanel, style: .continuous)
         VStack(alignment: .leading, spacing: Theme.Spacing.md) {
             HStack {
-                Text("Context").font(metrics.typography.panelTitle)
+                Text("Context").font(.headline)
                 Spacer(minLength: Theme.Spacing.xxl)
                 Text(report.fill.formatted(.percent.precision(.fractionLength(0))))
-                    .font(metrics.typography.panelTitle)
+                    .font(.headline)
                     .monospacedDigit()
                     .foregroundStyle(report.tint)
             }
@@ -648,7 +635,7 @@ private struct ContextCard: View {
                 .tint(report.tint)
             if report.historyBytes > report.budget {
                 Text("The oldest messages no longer fit and are left out.")
-                    .font(metrics.typography.keyCap)
+                    .font(.caption)
                     .foregroundStyle(Theme.Colors.destructive)
             }
             Grid(
@@ -682,7 +669,7 @@ private struct ContextCard: View {
                     "MCP servers",
                     report.toolServers == 0 ? "None" : "\(report.toolServers) in reach")
             }
-            .font(metrics.typography.rowTrailing)
+            .font(.callout)
         }
         .padding(Theme.Spacing.xl)
         .frame(width: Theme.Size.chatContextCard, alignment: .leading)
@@ -695,7 +682,7 @@ private struct ContextCard: View {
     private func section(_ title: String) -> some View {
         GridRow {
             Text(title.uppercased())
-                .font(metrics.typography.compactKeyCap.weight(.semibold))
+                .font(.caption2.weight(.semibold))
                 .foregroundStyle(.tertiary)
                 .gridCellColumns(2)
                 .padding(.top, Theme.Spacing.xs)
@@ -759,7 +746,7 @@ private struct MenuIconImage: View {
     }
 
     private static func sized(_ name: String, edge: CGFloat) -> NSImage? {
-        guard let source = NSImage(named: name) else { return nil }
+        guard let source = ForkAssets.image(named: name) else { return nil }  // FORK: named-asset
         let size = NSSize(width: edge, height: edge)
         let image = NSImage(size: size, flipped: false) { rect in
             source.draw(in: rect)

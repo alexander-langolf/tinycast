@@ -23,23 +23,25 @@ final class NoteBlockDecoration: NSObject, Sendable {
     let fill: NSColor
     /// Number text or language label; a checkmark is cut out of the box instead.
     let ink: NSColor
-    let bodyFont: NSFont
-    let labelFont: NSFont
-    var bodyPointSize: CGFloat { bodyFont.pointSize }
+    let bodyPointSize: CGFloat
+    let forkFonts: [ForkFontSnapshot]  // FORK: notes-font-snapshot
 
-    init(shape: Shape, fill: NSColor, ink: NSColor, bodyFont: NSFont, labelFont: NSFont) {
+    init(
+        shape: Shape, fill: NSColor, ink: NSColor, bodyPointSize: CGFloat, forkFonts: [ForkFontSnapshot] = []
+    ) {  // FORK: notes-font-snapshot
         self.shape = shape
         self.fill = fill
         self.ink = ink
-        self.bodyFont = bodyFont
-        self.labelFont = labelFont
+        self.bodyPointSize = bodyPointSize
+        self.forkFonts = forkFonts  // FORK: notes-font-snapshot
     }
 
     /// Value equality, so restyling a line to the same look does not read as a change.
     override func isEqual(_ object: Any?) -> Bool {
         guard let other = object as? NoteBlockDecoration else { return false }
         return shape == other.shape && fill == other.fill && ink == other.ink
-            && bodyFont == other.bodyFont && labelFont == other.labelFont
+            // FORK: notes-font-snapshot
+            && bodyPointSize == other.bodyPointSize && forkFonts == other.forkFonts
     }
 
     override var hash: Int {
@@ -47,8 +49,8 @@ final class NoteBlockDecoration: NSObject, Sendable {
         hasher.combine(shape)
         hasher.combine(fill)
         hasher.combine(ink)
-        hasher.combine(bodyFont)
-        hasher.combine(labelFont)
+        hasher.combine(bodyPointSize)
+        hasher.combine(forkFonts)  // FORK: notes-font-snapshot
         return hasher.finalize()
     }
 }

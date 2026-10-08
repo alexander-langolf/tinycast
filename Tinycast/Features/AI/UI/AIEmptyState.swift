@@ -11,21 +11,17 @@ struct AIEmptyState: View {
     var body: some View {
         VStack(spacing: metrics.spacing.md) {
             Image(systemName: "sparkles")
-                .font(metrics.typography.placeholderGlyph)
+                .font(.largeTitle)
                 .symbolRenderingMode(.hierarchical)
                 .foregroundStyle(.tertiary)
             Text("Ask anything")
-                .font(metrics.typography.rowTitle)
                 .foregroundStyle(.secondary)
             if let message {
                 Text(message)
                     .font(metrics.typography.rowTrailing)
                     .foregroundStyle(Theme.Colors.textTertiary)
                     .multilineTextAlignment(.center)
-                if canConfigure {
-                    Button("Configure AI", action: onConfigure)
-                        .font(metrics.typography.rowTitle)
-                }
+                if canConfigure { Button("Configure AI", action: onConfigure) }
             } else {
                 HStack(spacing: metrics.spacing.sm) {
                     Text("Send a message")

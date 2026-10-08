@@ -3,7 +3,6 @@ import SwiftUI
 
 /// The window's composer field: Return sends, ⇧↩ and ⌥↩ break the line, and it grows to a cap.
 struct ChatComposerTextView: NSViewRepresentable {
-    @Environment(\.metrics) private var metrics
     @Binding var text: String
     /// A new value pulls focus into the field: a switched chat is one you are about to type into.
     let focusKey: UUID
@@ -14,27 +13,25 @@ struct ChatComposerTextView: NSViewRepresentable {
     let onInvalidate: (ComposerTextView) -> Void
     let onSubmit: () -> Void
 
-    static func lineHeight(_ metrics: InterfaceMetrics) -> CGFloat {
-        let font = metrics.typography.textNSFont(.body)
-        return (font.ascender - font.descender + font.leading).rounded(.up)
+    // FORK: prose-font
+    private static var font: NSFont { ForkTypography.resolve(.preferredFont(forTextStyle: .body)) }
+
+    static var lineHeight: CGFloat {
+        (font.ascender - font.descender + font.leading).rounded(.up)
     }
 
-    static func maximumHeight(in availableHeight: CGFloat, metrics: InterfaceMetrics) -> CGFloat {
-        let lineHeight = lineHeight(metrics)
+    static func maximumHeight(in availableHeight: CGFloat) -> CGFloat {
         let lines = (availableHeight * Theme.Size.aiChatComposerHeightFraction / lineHeight).rounded(.down)
         return max(1, min(Theme.Size.aiChatComposerMaxLines, lines)) * lineHeight
     }
 
-    static func textHeight(
-        _ text: String, width: CGFloat, maximumHeight: CGFloat, metrics: InterfaceMetrics
-    ) -> CGFloat {
-        let font = metrics.typography.textNSFont(.body)
+    static func textHeight(_ text: String, width: CGFloat, maximumHeight: CGFloat) -> CGFloat {
         let measured = (text.hasSuffix("\n") ? text + " " : text) as NSString
         let height = measured.boundingRect(
             with: CGSize(width: width, height: .greatestFiniteMagnitude),
             options: [.usesLineFragmentOrigin, .usesFontLeading], attributes: [.font: font]
         ).height.rounded(.up)
-        return min(max(lineHeight(metrics), height), maximumHeight)
+        return min(max(lineHeight, height), maximumHeight)
     }
 
     func makeCoordinator() -> Coordinator {
@@ -54,7 +51,7 @@ struct ChatComposerTextView: NSViewRepresentable {
         textView.isRichText = false
         textView.importsGraphics = false
         textView.allowsUndo = true
-        textView.font = metrics.typography.textNSFont(.body)
+        textView.font = Self.font
         textView.textColor = .labelColor
         textView.textContainerInset = .zero
         textView.textContainer?.lineFragmentPadding = 0
@@ -67,8 +64,7 @@ struct ChatComposerTextView: NSViewRepresentable {
 
     func updateNSView(_ scroll: NSScrollView, context: Context) {
         guard let textView = scroll.documentView as? ComposerTextView else { return }
-        let font = metrics.typography.textNSFont(.body)
-        if textView.font != font { textView.font = font }
+        textView.font = Self.font  // FORK: prose-font
         if context.coordinator.focusedKey != focusKey { onInvalidate(textView) }
         context.coordinator.text = $text
         context.coordinator.onInvalidate = onInvalidate
@@ -102,8 +98,7 @@ struct ChatComposerTextView: NSViewRepresentable {
         guard let width = proposal.width, width > 0 else { return nil }
         return CGSize(
             width: width,
-            height: Self.textHeight(
-                text, width: width, maximumHeight: maximumTextHeight, metrics: metrics))
+            height: Self.textHeight(text, width: width, maximumHeight: maximumTextHeight))
     }
 
     @MainActor

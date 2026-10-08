@@ -20,8 +20,6 @@ final class CameraCoordinator {
         self.core = core
     }
 
-    var metrics: InterfaceMetrics { core.settings.unscaledMetrics }
-
     /// The camera settles first: a panel over a starting session shows a black stage.
     func show() async {
         // A panel system UI left without key takes it back, so ↵ and Esc reach it again.
@@ -71,7 +69,8 @@ final class CameraCoordinator {
     }
 
     private func present() {
-        let hosting = NSHostingView(rootView: CameraView().environment(self))
+        // FORK: accent-scope
+        let hosting = NSHostingView(rootView: CameraView(coordinator: self).forkAppearance())
         hosting.setFrameSize(hosting.fittingSize)
         let panel = CameraPanel(content: hosting)
         panel.onAction = { [weak self] action in

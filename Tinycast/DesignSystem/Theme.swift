@@ -205,9 +205,6 @@ enum Theme {
         /// The narrowest the pane column may get before a grouped row's control starts colliding.
         static let settingsDetailMinimum: CGFloat = 420
         static let settingsRowIcon: CGFloat = 20
-        static let interfaceFontField: CGFloat = 150
-        static let interfaceFontPicker: CGFloat = 240
-        static let interfaceFontPickerHeight: CGFloat = 280
         /// A sidebar glyph inside its tinted tile; the tile's inset brings it to the row icon's size.
         static let settingsSidebarGlyph: CGFloat = 14
         /// AI Chat's opening size; the user owns it from there, autosaved.
@@ -409,16 +406,6 @@ enum Theme {
         static let menuSymbolSize: CGFloat = 14
         static let menuSymbolWeight = Font.Weight.medium
         static let noteTitle = Font.headline
-        /// The answer line on a card that states one value: the calculator's and the colour's.
-        static let cardTitle = Font.title3.weight(.semibold)
-        /// A preview that must show its own characters exactly: a colour code, a snippet's body.
-        static let previewCode = Font.system(.subheadline, design: .monospaced)
-        /// The oversized symbol an empty or unpreviewable surface stands behind.
-        static let placeholderGlyph = Font.largeTitle
-        /// The third size a token may state: a font specimen has to name the size it draws at.
-        static let fontSpecimenSize: CGFloat = 13
-        @MainActor static let aliasEditorNSFont = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
-        @MainActor static let controlNSFont = NSFont.systemFont(ofSize: NSFont.systemFontSize)
         /// The composer row's glyphs; Send's arrow is bolder, and Stop's square smaller to match it.
         static let composerSymbol = Font.system(size: 13, weight: .medium)
         static let composerSend = Font.system(size: 13, weight: .bold)
@@ -428,7 +415,7 @@ enum Theme {
     enum Colors {
         /// Resolves against the window's `effectiveAppearance`, so a token repaints on its own.
         static func adaptive(dark: NSColor, light: NSColor) -> Color {
-            Color(nsColor: NSColor(name: nil) { $0.isDark ? dark : light })
+            ForkColors.adaptive(dark: dark, light: light)  // FORK: color-tokens
         }
 
         /// The alpha ramp, inverted: white ink over the dark surface, black ink over the light one.

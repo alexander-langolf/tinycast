@@ -85,6 +85,19 @@ run() {
     done
     local name=$1
     shift
+    # // FORK: harness-sources keeps standalone harnesses on the shipped fork implementation.
+    case " $* " in
+        *"/Theme.swift "*|*"/InterfaceMetrics.swift "*|*"/NoteMarkdownTypography.swift "*|*"/SettingsFileSchema.swift "*|*"/IconCache.swift "*)
+            set -- "$@" Tinycast/Fork/ForkAppearance.swift Tinycast/Fork/ForkTypography.swift \
+                Tinycast/Fork/ForkColors.swift Tinycast/Fork/ForkAssets.swift Tinycast/Fork/ForkAppearanceScope.swift
+            ;;
+    esac
+    case " $* " in
+        *"/SettingsSearchCatalog.swift "*) set -- "$@" Tinycast/Fork/ForkSettingsSearch.swift ;;
+    esac
+    case " $* " in
+        *"/NoteBlockDecoration.swift "*) set -- "$@" Tinycast/Fork/ForkFontSnapshot.swift ;;
+    esac
     if [ -n "$only" ] && [ "$name" != "$only" ]; then return 0; fi
     if [ "$index_only" -eq 1 ] && [ "$emit_db" -eq 0 ]; then return 0; fi
     ran=$((ran + 1))
@@ -112,6 +125,10 @@ run() {
     # xargs splits the queue on whitespace, so no harness source path may contain a space.
     printf '%s %s %s %s\n' "$pri" "$name" "$opt" "$*" >> "$QUEUE"
 }
+
+# // FORK: fork-harness pins typography, fallback, caching and untouched colours.
+run fork-layer-test Tinycast/Platform/Appearance.swift Tinycast/DesignSystem/Theme.swift \
+    Tinycast/DesignSystem/InterfaceMetrics.swift
 
 L=Tinycast/Features/Launcher/Model
 run slow -O fuzz-test      $L/SearchRelevance.swift $L/ScriptRomanization.swift \
@@ -228,12 +245,6 @@ run interface-size-test    Tinycast/Platform/Appearance.swift \
                            Tinycast/DesignSystem/InterfaceMetrics.swift \
                            Tinycast/Features/Settings/InterfaceSize.swift \
                            Tinycast/Features/Extensions/Model/ExtensionFormMetrics.swift
-run interface-font-test    Tinycast/Platform/Appearance.swift \
-                           Tinycast/DesignSystem/Theme.swift \
-                           Tinycast/DesignSystem/InterfaceMetrics.swift \
-                           Tinycast/Features/Settings/InterfaceSize.swift \
-                           Tinycast/Features/Settings/FontCatalog.swift \
-                           Tinycast/Features/Notes/UI/NoteMarkdownTypography.swift
 run palette-placement-test Tinycast/Platform/Appearance.swift \
                            Tinycast/DesignSystem/Theme.swift \
                            Tinycast/DesignSystem/InterfaceMetrics.swift \
@@ -318,8 +329,7 @@ run dictation-field-test   Tinycast/Features/Dictation/Model/DictationModel.swif
                            Tinycast/Features/Snippets/Model/*.swift \
                            Tinycast/Platform/AccessibilityText.swift \
                            Tinycast/Platform/PasteboardFiles.swift \
-                           Tinycast/Platform/Appearance.swift Tinycast/DesignSystem/Theme.swift \
-                           Tinycast/DesignSystem/InterfaceMetrics.swift
+                           Tinycast/Platform/Appearance.swift Tinycast/DesignSystem/Theme.swift
 run dictation-volume-test  Tinycast/Features/Dictation/Model/DictationVolumeSnapshot.swift \
                            Tinycast/Features/Dictation/Service/DictationAudioDucker.swift \
                            Tinycast/Platform/AppPaths.swift

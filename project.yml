@@ -1,4 +1,5 @@
 name: Tinycast
+include: [project.fork.yml] # // FORK: project-include
 options:
   bundleIdPrefix: com.tinycast
   deploymentTarget:

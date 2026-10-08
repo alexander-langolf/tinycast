@@ -42,9 +42,7 @@ struct NoteHeadingMenuView: View {
 }
 
 private struct NoteHeadingMenuRow: View {
-    @Environment(AppSettings.self) private var settings
-
-    private var metrics: InterfaceMetrics { settings.unscaledMetrics }
+    @Environment(\.metrics) private var metrics  // FORK: typography
     let title: String
     let shortcut: String
     let isCurrent: Bool
@@ -57,13 +55,15 @@ private struct NoteHeadingMenuRow: View {
                 Image(systemName: "checkmark")
                     .font(
                         .system(
-                            size: Theme.Typography.menuSymbolSize, weight: Theme.Typography.menuSymbolWeight)
+                            // FORK: typography
+                            size: metrics.typography.menuSymbolSize,
+                            weight: metrics.typography.menuSymbolWeight)
                     )
                     .foregroundStyle(Theme.Colors.menuSymbol)
                     .opacity(isCurrent ? 1 : 0)
                     .frame(width: Theme.Size.menuIcon, height: Theme.Size.menuIcon)
                 Text(title)
-                    .font(metrics.typography.menuRow)
+                    .font(metrics.typography.menuRow)  // FORK: typography
                     .lineLimit(1)
                 Spacer(minLength: Theme.Spacing.sm)
                 HStack(spacing: Theme.Spacing.xxs) {

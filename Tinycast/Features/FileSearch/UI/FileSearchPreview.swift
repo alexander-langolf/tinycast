@@ -46,7 +46,7 @@ private struct FileSearchPreviewStage: View {
     @ViewBuilder private var stage: some View {
         if result.isDirectory {
             Image(systemName: "folder")
-                .font(metrics.typography.placeholderGlyph)
+                .font(.system(.largeTitle))
                 .symbolRenderingMode(.hierarchical)
                 .foregroundStyle(.tertiary)
         } else if palette.isVisible, !palette.fileSearchQuickLook {

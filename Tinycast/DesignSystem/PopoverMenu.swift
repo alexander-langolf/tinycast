@@ -367,7 +367,7 @@ private struct PopoverMenuRow: View {
                             )
                             .frame(width: metrics.size.menuIcon, height: metrics.size.menuIcon)
                     case .asset(let name):
-                        Image(name)
+                        Image(ForkAssets.name(name))  // FORK: named-asset
                             .resizable()
                             .aspectRatio(contentMode: .fit)
                             .foregroundStyle(item.isDestructive ? Color.red : Color.secondary)

@@ -322,7 +322,7 @@ struct NotesEditorTests {
         let revealedColor = color(in: editor.textView, at: marker)
         check(
             "the caret's line shows its markers at body size in a dimmed colour",
-            font(in: editor.textView, at: marker)?.pointSize == NoteMarkdownTypography.system.body.pointSize
+            font(in: editor.textView, at: marker)?.pointSize == NoteMarkdownTypography.body.pointSize
                 && revealedColor != nil && revealedColor != NSColor.clear
                 && revealedColor != color(in: editor.textView, at: content))
 
@@ -333,8 +333,8 @@ struct NotesEditorTests {
         let typing = editor.textView.typingAttributes
         check(
             "typing attributes return to the body style after leaving a heading",
-            typing[.font] as? NSFont == NoteMarkdownTypography.system.body
-                && typing.count == NoteMarkdownStyler.literal(.system).count)
+            typing[.font] as? NSFont == NoteMarkdownTypography.body
+                && typing.count == NoteMarkdownStyler.literal.count)
 
         editor.window.makeFirstResponder(nil)
         check(
@@ -352,7 +352,7 @@ struct NotesEditorTests {
         let bold = (editor.textView.string as NSString).range(of: "**b**").location
         check(
             "opening a fence above text restyles the lines below as code",
-            font(in: editor.textView, at: bold) == NoteMarkdownTypography.system.codeBlock
+            font(in: editor.textView, at: bold) == NoteMarkdownTypography.codeBlock
                 && decoration(in: editor.textView, at: bold) != nil)
 
         editor.textView.setSelectedRange(NSRange(location: 4, length: 0))
@@ -390,8 +390,8 @@ struct NotesEditorTests {
         let code = (editor.textView.string as NSString).range(of: "`a`").location
         check(
             "typing a delimiter row turns every row into a literal monospaced table",
-            font(in: editor.textView, at: code) == NoteMarkdownTypography.system.codeBlock
-                && font(in: editor.textView, at: lastRow()) == NoteMarkdownTypography.system.codeBlock
+            font(in: editor.textView, at: code) == NoteMarkdownTypography.codeBlock
+                && font(in: editor.textView, at: lastRow()) == NoteMarkdownTypography.codeBlock
                 && editor.textView.string.contains("| `c` | d |"))
     }
 
@@ -404,7 +404,7 @@ struct NotesEditorTests {
         storage.enumerateAttributes(in: NSRange(location: 0, length: storage.length)) { attributes, _, _ in
             literal =
                 literal && attributes.count == 2
-                && attributes[.font] as? NSFont == NoteMarkdownTypography.system.body
+                && attributes[.font] as? NSFont == NoteMarkdownTypography.body
                 && attributes[.noteBlockDecoration] == nil
         }
         check("rendering off leaves exactly the literal attributes", literal)
@@ -430,7 +430,7 @@ struct NotesEditorTests {
                 let line = fragment.textLineFragments.first?.typographicBounds ?? .zero
                 return NoteCheckboxGeometry.rect(
                     level: 0, firstLineHeight: line.height,
-                    bodyPointSize: NoteMarkdownTypography.system.body.pointSize
+                    bodyPointSize: NoteMarkdownTypography.body.pointSize
                 ).offsetBy(dx: 0, dy: fragment.layoutFragmentFrame.minY + line.minY)
             }
             check("task checkboxes have breathing room", box(bottom).minY - box(top).maxY >= Theme.Spacing.md)
@@ -463,7 +463,7 @@ struct NotesEditorTests {
             decoration(in: editor.textView, at: 8)?.shape == .bullet(level: 0))
         check(
             "an empty bullet keeps normal text metrics",
-            font(in: editor.textView, at: 8) == NoteMarkdownTypography.system.body)
+            font(in: editor.textView, at: 8) == NoteMarkdownTypography.body)
         check("an empty bullet keeps list spacing", style(at: 8)?.paragraphSpacing == Theme.Spacing.md)
         editor.textView.setSelectedRange(NSRange(location: 10, length: 0))
         check(
@@ -562,7 +562,7 @@ struct NotesEditorTests {
             let firstLine = task.textLineFragments.first?.typographicBounds ?? .zero
             let box = NoteCheckboxGeometry.rect(
                 level: 0, firstLineHeight: firstLine.height,
-                bodyPointSize: NoteMarkdownTypography.system.body.pointSize)
+                bodyPointSize: NoteMarkdownTypography.body.pointSize)
             let surface = task.renderingSurfaceBounds.offsetBy(dx: task.layoutFragmentFrame.minX, dy: 0)
             check("the checkbox lies inside the task's drawing surface", surface.contains(box))
         } else {
@@ -817,8 +817,7 @@ struct NotesEditorTests {
         editor.textView.insertText("new", replacementRange: editor.textView.selectedRange())
         check(
             "typing after a checkbox stays visible",
-            color(in: editor.textView, at: 6) == NoteMarkdownStyler.literal(.system)[.foregroundColor]
-                as? NSColor)
+            color(in: editor.textView, at: 6) == NoteMarkdownStyler.literal[.foregroundColor] as? NSColor)
         editor.textView.selectAll(nil)
         editor.textView.insertText("```\n[]", replacementRange: editor.textView.selectedRange())
         editor.textView.insertText(" ", replacementRange: editor.textView.selectedRange())
@@ -879,8 +878,7 @@ struct NotesEditorTests {
         }
         let firstLine = fragment.textLineFragments.first?.typographicBounds ?? .zero
         let box = NoteCheckboxGeometry.rect(
-            level: 0, firstLineHeight: firstLine.height,
-            bodyPointSize: NoteMarkdownTypography.system.body.pointSize)
+            level: 0, firstLineHeight: firstLine.height, bodyPointSize: NoteMarkdownTypography.body.pointSize)
         return CGPoint(x: box.midX, y: fragment.layoutFragmentFrame.minY + firstLine.minY + box.midY)
     }
 
@@ -952,7 +950,7 @@ struct NotesEditorTests {
             onFormattingChange: onFormattingChange)
         let coordinator = NoteEditorView.Coordinator(parent: view)
         let textView = NoteTextView(usingTextLayoutManager: true)
-        NoteEditorView.configure(textView, typography: .system)
+        NoteEditorView.configure(textView)
         textView.delegate = coordinator
         textView.editorUndoManager = coordinator.editorUndoManager
         textView.setFrameSize(NSSize(width: 320, height: 1))

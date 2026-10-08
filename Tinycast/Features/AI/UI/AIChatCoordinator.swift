@@ -84,7 +84,6 @@ final class AIChatCoordinator {
     }
 
     /// The window's views read these through the coordinator, never through `AppCore`.
-    var windowMetrics: InterfaceMetrics { settings.unscaledMetrics }
     var history: ChatHistoryStore { core.chatHistory }
     var aiSettings: AISettingsStore { core.aiSettings }
     var dictation: DictationCoordinator { core.dictationCoordinator }

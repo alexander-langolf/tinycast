@@ -107,7 +107,7 @@ struct HeaderMenuButton: View {
                 case .symbol(let name):
                     HeaderMenuSymbol(name: name, size: metrics.scaled(symbolSize))
                 case .asset(let name):
-                    Image(name)
+                    Image(ForkAssets.name(name))  // FORK: named-asset
                         .resizable()
                         .aspectRatio(contentMode: .fit)
                         .frame(width: metrics.size.barBrandIcon, height: metrics.size.barBrandIcon)

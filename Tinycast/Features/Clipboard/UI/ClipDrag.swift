@@ -29,7 +29,8 @@ extension ClipDragPayload {
         let string = NSAttributedString(
             string: String(line.prefix(60)),
             attributes: [
-                .font: NSFont.systemFont(ofSize: 12), .foregroundColor: NSColor.labelColor
+                .font: ForkTypography.resolve(NSFont.systemFont(ofSize: 12)),  // FORK: prose-font
+                .foregroundColor: NSColor.labelColor
             ])
         let inset = NSSize(width: 10, height: 6)
         let text = string.size()

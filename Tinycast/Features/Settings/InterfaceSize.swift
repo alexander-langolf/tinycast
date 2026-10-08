@@ -23,4 +23,6 @@ enum InterfaceSize: String, CaseIterable, Identifiable, Sendable {
         case .larger: 1.2
         }
     }
+
+    var metrics: InterfaceMetrics { InterfaceMetrics(scale: scale) }
 }

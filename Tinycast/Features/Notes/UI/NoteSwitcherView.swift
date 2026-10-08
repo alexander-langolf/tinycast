@@ -131,9 +131,7 @@ extension View {
 }
 
 private struct NoteSwitcherRow: View {
-    @Environment(AppSettings.self) private var settings
-
-    private var metrics: InterfaceMetrics { settings.unscaledMetrics }
+    @Environment(\.metrics) private var metrics  // FORK: typography
     let summary: NoteSummary
     let selected: Bool
     let editing: Bool
@@ -165,7 +163,7 @@ private struct NoteSwitcherRow: View {
                     .onExitCommand(perform: onCancelRename)
             } else {
                 Text(summary.displayTitle)
-                    .font(metrics.typography.rowTitle)
+                    .font(metrics.typography.rowTitle)  // FORK: typography
                     .lineLimit(1)
             }
             Spacer(minLength: Theme.Spacing.md)

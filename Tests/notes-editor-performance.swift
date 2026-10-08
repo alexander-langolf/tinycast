@@ -101,7 +101,7 @@ struct NotesEditorPerformance {
             onFormattingChange: { _, _ in }, onReady: { _ in })
         let coordinator = NoteEditorView.Coordinator(parent: view)
         let textView = NoteTextView(usingTextLayoutManager: true)
-        NoteEditorView.configure(textView, typography: .system)
+        NoteEditorView.configure(textView)
         textView.delegate = coordinator
         textView.editorUndoManager = coordinator.editorUndoManager
         textView.setFrameSize(NSSize(width: 480, height: 1))

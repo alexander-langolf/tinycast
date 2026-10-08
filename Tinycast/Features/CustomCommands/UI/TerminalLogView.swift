@@ -4,8 +4,8 @@ import SwiftUI
 /// An `NSTextView`, not `Text`: only the text system appends without re-laying out.
 struct TerminalLogView: NSViewRepresentable {
     let run: CommandRun
-    private static let font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
 
+    private static let font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
     private static let inset = CGSize(width: Theme.Spacing.xxl, height: Theme.Spacing.xs)
     /// Within this of the bottom counts as following along, matching the chat transcript's band.
     private static let tailSlack = Theme.Spacing.chatFollowTailSlack
@@ -41,8 +41,7 @@ struct TerminalLogView: NSViewRepresentable {
         let coordinator = context.coordinator
         let following = isAtBottom(scrollView)
 
-        let isSameRun =
-            coordinator.runID == run.id && coordinator.generation == run.generation
+        let isSameRun = coordinator.runID == run.id && coordinator.generation == run.generation
         guard !isSameRun || run.revision != coordinator.revision else { return }
 
         // One step on is streaming and costs only the new text; anything else is drawn whole.

@@ -3,7 +3,7 @@ import SwiftUI
 
 /// What every camera surface puts above its footer: live video, or why there is none.
 struct CameraStage: View {
-    @Environment(\.metrics) private var metrics
+    @Environment(\.metrics) private var metrics  // FORK: typography
     let feed: CameraSession.Feed
     var mirrored = true
 
@@ -22,7 +22,7 @@ struct CameraStage: View {
         VStack(spacing: Theme.Spacing.md) {
             SymbolImage(name: "video.slash", size: Theme.Size.dialogIcon)
             Text(message)
-                .font(metrics.typography.rowTrailing)
+                .font(metrics.typography.rowTrailing)  // FORK: typography
                 .multilineTextAlignment(.center)
         }
         .foregroundStyle(Theme.Colors.textSecondary)

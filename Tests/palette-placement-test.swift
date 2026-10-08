@@ -229,7 +229,7 @@ struct PalettePlacementTests {
     static func expandedDetentFollowsGeometry() {
         let shifted = CGRect(x: 300, y: 50, width: 1800, height: 1000)
         for size in InterfaceSize.allCases {
-            let panelHeight = InterfaceMetrics(scale: size.scale).size.panelHeight
+            let panelHeight = size.metrics.size.panelHeight
             let top = PalettePlacement.expandedCenterY(
                 in: shifted, expandedHeight: panelHeight)
             expect(
@@ -296,7 +296,7 @@ struct PalettePlacementTests {
 
     static func everyInterfaceSize() {
         for size in InterfaceSize.allCases {
-            let metrics = InterfaceMetrics(scale: size.scale)
+            let metrics = size.metrics
             let width = metrics.size.panelWidth
             let label = "at \(size.rawValue)"
 

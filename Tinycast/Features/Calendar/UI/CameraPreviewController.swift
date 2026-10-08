@@ -11,25 +11,23 @@ final class CameraPreviewController {
     private var presenting = false
 
     /// The camera settles first: a panel over a starting session shows a black stage.
-    func present(meeting: MeetingEvent, now: Date, coordinator: CalendarCoordinator) async -> Bool {
+    func present(meeting: MeetingEvent, now: Date) async -> Bool {
         guard !presenting else { return false }
         presenting = true
         defer { presenting = false }
         let feed = await session.start()
         return await withCheckedContinuation { continuation in
             self.continuation = continuation
-            show(meeting: meeting, now: now, feed: feed, coordinator: coordinator)
+            show(meeting: meeting, now: now, feed: feed)
         }
     }
 
-    private func show(
-        meeting: MeetingEvent, now: Date, feed: CameraSession.Feed, coordinator: CalendarCoordinator
-    ) {
+    private func show(meeting: MeetingEvent, now: Date, feed: CameraSession.Feed) {
         let view = CameraPreviewView(
             meeting: meeting, now: now, feed: feed,
             onJoin: { [weak self] in self?.finish(true) },
             onCancel: { [weak self] in self?.finish(false) })
-        let hosting = NSHostingView(rootView: view.environment(coordinator))
+        let hosting = NSHostingView(rootView: view.forkAppearance())  // FORK: accent-scope
         hosting.setFrameSize(hosting.fittingSize)
         let panel = CameraPanel(content: hosting)
         panel.onAction = { [weak self] action in self?.finish(action == .primary) }

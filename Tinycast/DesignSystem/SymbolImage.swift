@@ -9,13 +9,13 @@ struct SymbolImage: View {
     var body: some View {
         if NSImage(systemSymbolName: name, accessibilityDescription: nil) == nil {
             if monochrome {
-                Image(name)
+                Image(ForkAssets.name(name))  // FORK: named-asset
                     .renderingMode(.template)
                     .resizable()
                     .scaledToFit()
                     .frame(width: size, height: size)
             } else {
-                Image(name)
+                Image(ForkAssets.name(name))  // FORK: named-asset
                     .resizable()
                     .scaledToFit()
                     .frame(width: size, height: size)

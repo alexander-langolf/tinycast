@@ -252,6 +252,7 @@ private struct LauncherItemCell: View {
                 }
             }
         }
+        .forkAppearance()  // FORK: accent-scope
         .environment(visibility)
         .environment(aliases)
         .environment(hotKeys)

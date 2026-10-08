@@ -1,22 +1,15 @@
 import SwiftUI
 
-/// `Theme`'s palette geometry at the user's Interface Size and font; `.standard` is `Theme`.
+/// `Theme`'s palette geometry at the user's Interface Size; `.standard` is `Theme` verbatim.
 struct InterfaceMetrics: Equatable, Sendable {
     static let standard = InterfaceMetrics(scale: 1)
 
     let scale: CGFloat
-    /// `nil` is the system face; a family replaces prose faces, never code or symbols.
-    let fontFamily: String?
-
-    init(scale: CGFloat, fontFamily: String? = nil) {
-        self.scale = scale
-        self.fontFamily = fontFamily
-    }
 
     var spacing: Spacing { Spacing(scale: scale) }
     var radius: Radius { Radius(scale: scale) }
     var size: Size { Size(scale: scale) }
-    var typography: Typography { Typography(scale: scale, fontFamily: fontFamily) }
+    var typography: Typography { Typography(scale: scale) }
 
     /// For a tuned length a surface owns itself, where `Theme` states no token for it.
     func scaled(_ value: CGFloat) -> CGFloat { scaledPoints(value, scale) }
@@ -142,20 +135,22 @@ struct InterfaceMetrics: Equatable, Sendable {
     /// `NSFont` is the only public source of a text style's size and face.
     struct Typography: Sendable {
         let scale: CGFloat
-        let fontFamily: String?
-
-        /// Both knobs at their default, where every token is `Theme` verbatim.
-        private var isStandard: Bool { scale == 1 && fontFamily == nil }
 
         var searchFieldSize: CGFloat { scaledPoints(Theme.Typography.searchFieldSize, scale) }
         var searchField: Font {
-            isStandard ? Theme.Typography.searchField : Font(sizedFont(searchFieldSize, .regular))
+            scale == 1 && ForkTypography.shared.family == nil  // FORK: typography-metrics
+                ? Theme.Typography.searchField
+                : ForkTypography.prose(
+                    // FORK: typography-metrics
+                    .system(size: searchFieldSize, weight: .regular), size: searchFieldSize)
         }
         /// Isolated because `Theme`'s twin is, not because resolving a font needs main.
         @MainActor var searchFieldNSFont: NSFont {
-            isStandard ? Theme.Typography.searchFieldNSFont : sizedFont(searchFieldSize, .regular)
+            scale == 1 && ForkTypography.shared.family == nil  // FORK: typography-metrics
+                ? Theme.Typography.searchFieldNSFont
+                // FORK: typography-metrics
+                : ForkTypography.resolve(.systemFont(ofSize: searchFieldSize, weight: .regular))
         }
-        /// Sizes an SF Symbol, not text: a family swap would drop its weight and scale mapping.
         var headerIcon: Font {
             scale == 1
                 ? Theme.Typography.headerIcon
@@ -165,6 +160,7 @@ struct InterfaceMetrics: Equatable, Sendable {
         var rowTitle: Font { font(Theme.Typography.rowTitle, .body) }
         var rowTrailing: Font { font(Theme.Typography.rowTrailing, .callout) }
         var sectionHeader: Font { font(Theme.Typography.sectionHeader, .subheadline, .medium) }
+        var noteTitle: Font { font(Theme.Typography.noteTitle, .headline) }  // FORK: typography-metrics
         var panelTitle: Font { font(Theme.Typography.panelTitle, .headline) }
         var calcResult: Font { font(Theme.Typography.calcResult, .title1) }
         var keyCap: Font { font(Theme.Typography.keyCap, .caption1) }
@@ -173,111 +169,65 @@ struct InterfaceMetrics: Equatable, Sendable {
         var markdownHeading1: Font { font(Theme.Typography.markdownHeading1, .title2, .semibold) }
         var markdownHeading2: Font { font(Theme.Typography.markdownHeading2, .title3, .semibold) }
         var markdownHeading3: Font { font(Theme.Typography.markdownHeading3, .headline) }
-        var code: Font { monospaced(Theme.Typography.code, .callout) }
-        var inlineCode: Font { monospaced(Theme.Typography.inlineCode, .body) }
+        var code: Font {
+            scale == 1
+                ? Theme.Typography.code
+                : .system(size: nsFont(.callout).pointSize, design: .monospaced)
+        }
+        var inlineCode: Font {  // FORK: code-font
+            font(Theme.Typography.rowTitle, .body, symbol: true).monospaced()
+        }
         var bar: Font { font(Theme.Typography.bar, .callout, .medium) }
+        var barSymbol: Font {  // FORK: symbol-font
+            font(Theme.Typography.bar, .callout, .medium, symbol: true)
+        }
         var chip: Font { font(Theme.Typography.chip, .callout) }
-        @MainActor var chipNSFont: NSFont {
-            isStandard ? Theme.Typography.chipNSFont : nsFont(.callout)
+        @MainActor var chipNSFont: NSFont {  // FORK: typography-metrics
+            ForkTypography.resolve(nsFont(.callout))
         }
-        @MainActor var aliasEditorNSFont: NSFont {
-            isStandard
-                ? Theme.Typography.aliasEditorNSFont
-                : sizedFont(scaledPoints(NSFont.smallSystemFontSize, scale), .regular)
-        }
-        @MainActor var controlNSFont: NSFont {
-            isStandard
-                ? Theme.Typography.controlNSFont
-                : sizedFont(scaledPoints(NSFont.systemFontSize, scale), .regular)
-        }
-        /// A trailing chevron, so it stays on the system face alongside the other symbol tokens.
-        var disclosure: Font { systemFont(Theme.Typography.disclosure, .caption1, .semibold) }
+        // FORK: symbol-font
+        var disclosure: Font { font(Theme.Typography.disclosure, .caption1, .semibold, symbol: true) }
         var menuRow: Font { font(Theme.Typography.menuRow, .body) }
+        var menuSymbolSize: CGFloat {  // FORK: symbol-font
+            scaledPoints(Theme.Typography.menuSymbolSize, scale)
+        }
+        var menuSymbolWeight: Font.Weight { Theme.Typography.menuSymbolWeight }  // FORK: symbol-font
         var menuShortcut: Font { font(Theme.Typography.menuShortcut, .callout) }
-        var menuIcon: Font { systemFont(Theme.Typography.menuIcon, .body) }
-        var cardTitle: Font { font(Theme.Typography.cardTitle, .title3, .semibold) }
-        var previewCode: Font { monospaced(Theme.Typography.previewCode, .subheadline) }
-        /// An oversized SF Symbol, so it stays on the system face like the other symbol tokens.
-        var placeholderGlyph: Font { systemFont(Theme.Typography.placeholderGlyph, .largeTitle) }
-        /// Notes sits a style above the app and never scales, so only the family reaches it.
-        var noteTitle: Font {
-            Typography(scale: 1, fontFamily: fontFamily).font(Theme.Typography.noteTitle, .headline)
-        }
-
-        /// Code keeps the system monospaced face regardless of the prose family.
-        private func monospaced(_ base: Font, _ style: NSFont.TextStyle) -> Font {
-            scale == 1 ? base : .system(size: systemNSFont(style).pointSize, design: .monospaced)
-        }
+        // FORK: symbol-font
+        var menuIcon: Font { font(Theme.Typography.menuIcon, .body, symbol: true) }
 
         /// The AppKit twin of a text style, for text an `NSTextView` draws beside SwiftUI's own.
         func textNSFont(
             _ style: NSFont.TextStyle, weight: NSFont.Weight? = nil, monospaced: Bool = false
         ) -> NSFont {
-            let base = systemNSFont(style)
+            let base = nsFont(style)
             if monospaced { return .monospacedSystemFont(ofSize: base.pointSize, weight: weight ?? .regular) }
-            guard let weight else { return nsFont(style) }
-            return sizedFont(base.pointSize, weight)
+            // FORK: typography-metrics
+            guard let weight else { return ForkTypography.resolve(base) }
+            return ForkTypography.resolve(.systemFont(ofSize: base.pointSize, weight: weight))
         }
 
         /// Composed like `Theme`'s own: the style carries the face, an explicit weight overrides it.
         private func font(
-            _ base: Font, _ style: NSFont.TextStyle, _ weight: Font.Weight? = nil
+            // FORK: symbol-font
+            _ base: Font, _ style: NSFont.TextStyle, _ weight: Font.Weight? = nil, symbol: Bool = false
         )
             -> Font
         {
-            guard !isStandard else { return base }
-            let resolved = Font(nsFont(style))
-            return weight.map(resolved.weight) ?? resolved
-        }
-
-        /// The family-blind twin, for the tokens that size a symbol rather than set type.
-        private func systemFont(
-            _ base: Font, _ style: NSFont.TextStyle, _ weight: Font.Weight? = nil
-        )
-            -> Font
-        {
-            guard scale != 1 else { return base }
-            let resolved = Font(systemNSFont(style))
-            return weight.map(resolved.weight) ?? resolved
-        }
-
-        /// The style resolved on the chosen family; a copied descriptor would pin the system face.
-        func nsFont(_ style: NSFont.TextStyle) -> NSFont {
-            let system = systemNSFont(style)
-            return familyFont(matching: system, size: system.pointSize) ?? system
+            // FORK: typography-metrics
+            guard scale != 1 || (!symbol && ForkTypography.shared.family != nil) else { return base }
+            let system = nsFont(style)
+            let scaled = Font(system)
+            let weighted = weight.map(scaled.weight) ?? scaled
+            return symbol ? weighted : ForkTypography.prose(weighted, matching: system, weight: weight)
         }
 
         /// Its own descriptor, so `.headline` stays Bold and `.caption2` Medium rather than lightening.
-        private func systemNSFont(_ style: NSFont.TextStyle) -> NSFont {
+        private func nsFont(_ style: NSFont.TextStyle) -> NSFont {
             let base = NSFont.preferredFont(forTextStyle: style)
             guard scale != 1 else { return base }
             return NSFont(descriptor: base.fontDescriptor, size: scaledPoints(base.pointSize, scale)) ?? base
         }
-
-        /// For tokens that take a control size instead of naming a text style.
-        private func sizedFont(_ size: CGFloat, _ weight: NSFont.Weight) -> NSFont {
-            let system = NSFont.systemFont(ofSize: size, weight: weight)
-            return familyFont(matching: system, size: size) ?? system
-        }
-
-        private func familyFont(matching base: NSFont, size: CGFloat) -> NSFont? {
-            InterfaceMetrics.face(base, on: fontFamily, size: size)
-        }
-    }
-}
-
-extension InterfaceMetrics {
-    /// `NSFontManager` is what carries a face across families; a family that cannot keeps the face.
-    static func face(_ base: NSFont, on family: String?, size: CGFloat) -> NSFont? {
-        guard let family else { return nil }
-        let manager = NSFontManager.shared
-        let font = manager.font(
-            withFamily: family,
-            traits: manager.traits(of: base),
-            weight: manager.weight(of: base),
-            size: size)
-        guard let font, font.familyName == family else { return nil }
-        return font
     }
 }
 

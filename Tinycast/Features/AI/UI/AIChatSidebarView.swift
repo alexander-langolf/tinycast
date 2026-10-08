@@ -9,7 +9,6 @@ struct AIChatSidebarView: View {
     @FocusState private var searchFocused: Bool
     @FocusState private var renameFocused: Bool
 
-    private var metrics: InterfaceMetrics { coordinator.windowMetrics }
     private var chats: AIChatSurfacesState { coordinator.chats }
     private var history: ChatHistoryStore { coordinator.history }
 
@@ -43,7 +42,6 @@ struct AIChatSidebarView: View {
                 .padding(.bottom, Theme.Spacing.md)
             list
         }
-        .environment(\.metrics, metrics)
         // The field sits under the toolbar's material, so it needs its own clearance from the top.
         .padding(.top, Theme.Spacing.md)
         .onExitCommand {
@@ -60,9 +58,7 @@ struct AIChatSidebarView: View {
         let answering = chats.answeringIDs
         let openID = chats.window.session.id
         if sections.isEmpty {
-            emptyState
-                .font(metrics.typography.rowTitle)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            emptyState.frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             List(selection: selection) {
                 ForEach(sections) { section in
@@ -77,7 +73,6 @@ struct AIChatSidebarView: View {
                     }
                 }
             }
-            .font(metrics.typography.rowTitle)
             .listStyle(.sidebar)
             .contextMenu(forSelectionType: UUID.self) { ids in
                 if let id = ids.first, let conversation = history.conversation(id: id) {
@@ -111,7 +106,6 @@ struct AIChatSidebarView: View {
     ) -> some View {
         if renaming == conversation.id {
             TextField("Chat name", text: $renameText, prompt: Text(conversation.title))
-                .font(metrics.typography.rowTitle)
                 .textFieldStyle(.plain)
                 .focused($renameFocused)
                 .onSubmit { commitRename(conversation.id) }
@@ -174,7 +168,6 @@ struct AIChatSidebarView: View {
 
 /// A chat's title, then a spinner while it answers or a pin; hover is a fainter selection.
 private struct ChatSidebarRow: View {
-    @Environment(\.metrics) private var metrics
     let conversation: ChatConversation
     let isAnswering: Bool
     let isSelected: Bool
@@ -183,7 +176,6 @@ private struct ChatSidebarRow: View {
     var body: some View {
         HStack(spacing: Theme.Spacing.sm) {
             Text(conversation.displayTitle)
-                .font(metrics.typography.rowTitle)
                 .lineLimit(1)
                 .truncationMode(.tail)
             Spacer(minLength: 0)
@@ -219,7 +211,6 @@ private struct ChatSidebarRow: View {
 
 /// The sidebar's search field, drawn the way Settings' own is so the two windows match.
 private struct ChatSearchField: View {
-    @Environment(\.metrics) private var metrics
     @Binding var query: String
     @FocusState.Binding var focused: Bool
 
@@ -228,7 +219,6 @@ private struct ChatSearchField: View {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(.secondary)
             TextField("", text: $query, prompt: Text("Search"))
-                .font(metrics.typography.rowTitle)
                 .textFieldStyle(.plain)
                 .labelsHidden()
                 .focused($focused)

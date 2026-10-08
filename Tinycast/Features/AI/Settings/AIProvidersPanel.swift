@@ -881,7 +881,8 @@ private struct AIProviderTile: View {
     private var glyph: some View {
         switch icon {
         case .asset(let name):
-            Image(name).resizable().renderingMode(.template).scaledToFit()
+            // FORK: named-asset
+            Image(ForkAssets.name(name)).resizable().renderingMode(.template).scaledToFit()
         case .symbol(let name):
             Image(systemName: name).resizable().scaledToFit()
         case .file, .thumbnail, .blank:

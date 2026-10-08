@@ -6,7 +6,7 @@ struct SnippetsScreen: PaletteScreen {
     let core: AppCore
     let vm: PaletteState
 
-    private var metrics: InterfaceMetrics { core.settings.metrics }
+    private var metrics: InterfaceMetrics { core.settings.interfaceSize.metrics }
     let openActions: () -> Void
 
     /// A disabled snippet is off everywhere, so the browser lists exactly what the launcher does.

@@ -42,8 +42,6 @@ final class CalendarCoordinator {
         self.core = core
     }
 
-    var cameraMetrics: InterfaceMetrics { settings.unscaledMetrics }
-
     /// The window every surface reads, so the card, the chord and the schedule cannot disagree.
     var window: UpcomingWindow { UpcomingWindow(leadMinutes: settings.joinWindowMinutes.rawValue) }
 
@@ -331,8 +329,7 @@ final class CalendarCoordinator {
     ) async {
         // The preview is itself a confirmation, so it stands in for one when both are on.
         if settings.cameraPreview {
-            guard await cameraPreview.present(meeting: meeting, now: Date(), coordinator: self)
-            else { return }
+            guard await cameraPreview.present(meeting: meeting, now: Date()) else { return }
         } else if uninvited, settings.autoJoinConfirms {
             NSApp.activate(ignoringOtherApps: true)
             guard

@@ -122,9 +122,6 @@ private struct NoteBarGlyph: View {
 }
 
 private struct NoteHeadingButton: View {
-    @Environment(AppSettings.self) private var settings
-
-    private var metrics: InterfaceMetrics { settings.unscaledMetrics }
     let level: Int?
     let isOpen: Bool
     let action: () -> Void
@@ -139,7 +136,7 @@ private struct NoteHeadingButton: View {
                 NoteBarGlyph(name: "textformat.size")
                 // Rotates rather than swaps, so opening the menu cannot shift the bar.
                 Image(systemName: "chevron.down")
-                    .font(metrics.typography.disclosure)
+                    .font(Theme.Typography.disclosure)
                     .rotationEffect(.degrees(isOpen ? 180 : 0))
                     .animation(reduceMotion ? nil : Theme.MenuMotion.chevronAnimation, value: isOpen)
             }

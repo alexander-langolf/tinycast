@@ -188,8 +188,10 @@ final class AppSettings {
     var quicklinkSelectionFallback = QuicklinkSelectionFallback.ask
     var quicklinkOpensNewWindow = false
     var quicklinkConfirmsBeforeDelete = false
-    var metrics: Int { 0 }
+    var interfaceSize = InterfaceSize()
 }
+
+struct InterfaceSize { var metrics: Int { 0 } }
 enum CommandID { case createQuicklink, searchQuicklinks, importQuicklinks, exportQuicklinks }
 
 @MainActor

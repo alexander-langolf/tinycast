@@ -17,7 +17,7 @@ struct ColorCard: View {
             LeadCardColumn(
                 text: AttributedString(primary.string(for: color)), badge: primary.title)
             Image(systemName: "arrow.right")
-                .font(metrics.typography.cardTitle)
+                .font(.title3.weight(.semibold))
                 .foregroundStyle(.tertiary)
             // Stretched to the value column rather than sized: no notation is a fixed height.
             ColorSwatch(color: color, cornerRadius: metrics.radius.card)

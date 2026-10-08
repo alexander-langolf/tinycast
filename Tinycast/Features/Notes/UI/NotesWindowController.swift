@@ -168,8 +168,8 @@ final class NotesWindowController: NSObject, NSWindowDelegate {
 
     private func ensurePanel() -> NotesPanel {
         if let panel { return panel }
-        let root = NotesView().environment(coordinator).environment(AppCore.shared.settings)
-        let hosting = NSHostingView(rootView: root)
+        let root = NotesView().environment(coordinator)
+        let hosting = NSHostingView(rootView: root.forkAppearance())  // FORK: accent-scope
         hosting.sizingOptions = []
         let panel = NotesPanel(
             content: hosting,

@@ -30,12 +30,12 @@ final class RoomPreviewController {
     var isShowing: Bool { !panels.isEmpty }
 
     /// `cards` back to front; `avoiding` is the palette's frame in screen coordinates.
-    func show(_ cards: [RoomPreviewCard], avoiding: CGRect?, coordinator: RoomCoordinator) {
+    func show(_ cards: [RoomPreviewCard], avoiding: CGRect?) {
         let geometry = AXGeometry(screens: NSScreen.screens)
         model.avoiding = avoiding.map(geometry.flip)
         guard isShowing else {
             model.cards = cards
-            open(geometry: geometry, coordinator: coordinator)
+            open(geometry: geometry)
             return
         }
         let glide = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? nil : Theme.RoomMotion.glide
@@ -62,12 +62,12 @@ final class RoomPreviewController {
         }
     }
 
-    private func open(geometry: AXGeometry, coordinator: RoomCoordinator) {
+    private func open(geometry: AXGeometry) {
         panels = NSScreen.screens.map { screen in
             let frame = geometry.flip(screen.frame)
             let host = NSHostingView(
                 rootView: RoomPreviewView(model: model, origin: frame.origin, size: frame.size)
-                    .environment(coordinator))
+                    .forkAppearance())  // FORK: accent-scope
             // The controller owns the frame; without this the hosting view would size the window.
             host.sizingOptions = []
             let panel = RoomPreviewPanel()

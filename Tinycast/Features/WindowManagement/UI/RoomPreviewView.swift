@@ -4,7 +4,6 @@ import SwiftUI
 
 /// One display's share of the preview: the desk blurred and dimmed, the room's cards on top.
 struct RoomPreviewView: View {
-    @Environment(RoomCoordinator.self) private var coordinator
     let model: RoomPreviewModel
     /// This display's top-left in AX space. AX and SwiftUI both grow down, so no flip is needed.
     let origin: CGPoint
@@ -30,7 +29,6 @@ struct RoomPreviewView: View {
         .frame(width: size.width, height: size.height, alignment: .topLeading)
         .background(DeskBlur())
         .accessibilityHidden(true)
-        .environment(\.metrics, coordinator.previewMetrics)
     }
 
     private var cardTransition: AnyTransition {
@@ -43,7 +41,6 @@ struct RoomPreviewView: View {
 
 /// A window-to-be: a title bar naming the app and window, the app's icon in its body.
 private struct RoomPreviewCardView: View {
-    @Environment(\.metrics) private var metrics
     let card: RoomPreviewCard
     /// The palette's frame in this card's coordinates, which the icon stays out from under.
     let avoiding: CGRect?
@@ -77,12 +74,12 @@ private struct RoomPreviewCardView: View {
                 }
             }
             Text(card.appName)
-                .font(metrics.typography.panelTitle)
+                .font(.headline)
                 .foregroundStyle(.primary)
                 .layoutPriority(1)
             if !card.title.isEmpty {
                 Text("—  \(card.title)")
-                    .font(metrics.typography.rowTitle)
+                    .font(.body)
                     .foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)

@@ -44,7 +44,8 @@ final class AppWindowController: NSObject, NSWindowDelegate {
     ) -> Bool {
         let root = content()
         return show(chrome: chrome) {
-            let hosting = NSHostingController(rootView: root)
+            // FORK: accent-scope
+            let hosting = NSHostingController(rootView: root.forkAppearance())
             // Keep the window's size authoritative: an unconstrained fill would drive the frame.
             hosting.sizingOptions = []
             return hosting

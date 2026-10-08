@@ -1,10 +1,11 @@
 import AppKit
 import SwiftUI
 
-/// Explicit widths prevent a segment from widening under the pointer on its first selection.
+/// The system segmented control at one size for life, each segment as wide as its label.
+///
+/// Left to size itself, the control opens tight around its labels and widens the first time the
+/// selection changes, under the pointer; stating each segment's width opens it already settled.
 struct SteadySegmentedPicker<Value: Hashable>: NSViewRepresentable {
-    @Environment(\.metrics) private var metrics
-
     struct Option {
         let value: Value
         let title: String
@@ -21,25 +22,18 @@ struct SteadySegmentedPicker<Value: Hashable>: NSViewRepresentable {
             labels: options.map(\.title), trackingMode: .selectOne,
             target: context.coordinator, action: #selector(Coordinator.changed(_:)))
         control.setAccessibilityLabel(title)
-        applyFont(to: control, force: true)
-        return control
-    }
-
-    func updateNSView(_ control: NSSegmentedControl, context: Context) {
-        context.coordinator.parent = self
-        applyFont(to: control)
-        control.selectedSegment = options.firstIndex { $0.value == selection } ?? -1
-    }
-
-    private func applyFont(to control: NSSegmentedControl, force: Bool = false) {
-        let font = metrics.typography.controlNSFont
-        guard force || control.font != font else { return }
-        control.font = font
+        let font = control.font ?? .systemFont(ofSize: NSFont.systemFontSize)
         for (index, option) in options.enumerated() {
             let label = (option.title as NSString).size(withAttributes: [.font: font]).width
             control.setWidth(
                 (label + Theme.Size.segmentLabelInset * 2).rounded(.up), forSegment: index)
         }
+        return control
+    }
+
+    func updateNSView(_ control: NSSegmentedControl, context: Context) {
+        context.coordinator.parent = self
+        control.selectedSegment = options.firstIndex { $0.value == selection } ?? -1
     }
 
     /// The control's own idea of its width also shrinks after the first switch, so it is not asked.

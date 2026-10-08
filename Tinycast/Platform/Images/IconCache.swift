@@ -289,7 +289,7 @@ enum IconCache {
         .withSymbolConfiguration(config) {
             return symbol
         }
-        guard let asset = NSImage(named: name) else { return nil }
+        guard let asset = ForkAssets.image(named: name) else { return nil }  // FORK: named-asset
         // A 24pt box lands the asset's ink at the symbols' ~22pt optical height.
         let assetSize = NSSize(width: 24, height: 24)
         return NSImage(size: assetSize, flipped: false) { rect in

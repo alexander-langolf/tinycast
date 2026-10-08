@@ -58,8 +58,6 @@ final class RoomCoordinator {
         self.core = core
     }
 
-    var previewMetrics: InterfaceMetrics { settings.unscaledMetrics }
-
     private static let commands: Set<CommandID> = [.switchRoom, .createRoom]
 
     // MARK: - Feature presence
@@ -204,7 +202,7 @@ final class RoomCoordinator {
         }
         guard !cards.isEmpty else { return preview.hide() }
         // Back to front, so the main window's card ends on top, as the window itself will.
-        preview.show(cards.reversed(), avoiding: paletteCoordinator.panelFrame, coordinator: self)
+        preview.show(cards.reversed(), avoiding: paletteCoordinator.panelFrame)
     }
 
     // MARK: - Entering
@@ -352,7 +350,7 @@ final class RoomCoordinator {
                 appURL: member.appURL)
         }
         guard !cards.isEmpty else { return preview.hide() }
-        preview.show(cards.reversed(), avoiding: paletteCoordinator.panelFrame, coordinator: self)
+        preview.show(cards.reversed(), avoiding: paletteCoordinator.panelFrame)
     }
 
     private struct Member {

@@ -204,7 +204,7 @@ private struct AboutLinkRow: View {
                 .font(.system(size: 13, weight: .medium))
         case .brand(let name):
             // Brand marks paint edge to edge, so they sit under the symbol box to match.
-            Image(name)
+            Image(ForkAssets.name(name))  // FORK: named-asset
                 .renderingMode(.template)
                 .resizable()
                 .scaledToFit()

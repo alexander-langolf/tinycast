@@ -3,11 +3,8 @@ import SwiftUI
 
 /// One flat surface: the log is the page, separated by space and weight, not by rules.
 struct CommandOutputView: View {
+    @Environment(\.metrics) private var metrics  // FORK: typography
     let presenter: CommandOutputPresenter
-
-    @Environment(AppSettings.self) private var settings
-
-    private var metrics: InterfaceMetrics { settings.unscaledMetrics }
 
     static let initialSize = CGSize(width: 720, height: 460)
 
@@ -33,9 +30,9 @@ struct CommandOutputView: View {
                 .foregroundStyle(Theme.Colors.textSecondary)
             VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
                 Text(run.name)
-                    .font(metrics.typography.panelTitle)
+                    .font(.headline)
                 Text(run.commandText)
-                    .font(metrics.typography.code)
+                    .font(metrics.typography.code)  // FORK: typography
                     .foregroundStyle(Theme.Colors.textTertiary)
                     .lineLimit(1)
                     .truncationMode(.middle)
@@ -66,7 +63,7 @@ struct CommandOutputView: View {
     ) -> some View {
         BarButton(chrome: .rounded, action: action) {
             Image(systemName: symbol)
-                .font(metrics.typography.bar)
+                .font(metrics.typography.barSymbol)  // FORK: typography
                 .foregroundStyle(Theme.Colors.textSecondary)
         }
         .tooltip(help)
@@ -97,7 +94,7 @@ struct CommandOutputView: View {
                     .foregroundStyle(Theme.Colors.textTertiary)
             }
         }
-        .font(metrics.typography.rowTrailing)
+        .font(.callout)
         .foregroundStyle(Theme.Colors.textSecondary)
         .overlay(alignment: .topLeading) { hint(run) }
         .padding(.horizontal, Theme.Spacing.xxl)
@@ -121,7 +118,7 @@ struct CommandOutputView: View {
                 Button("Open Settings") { presenter.showCommandSettings() }
                     .buttonStyle(.link)
             }
-            .font(metrics.typography.rowTrailing)
+            .font(.callout)
             .foregroundStyle(Theme.Colors.textSecondary)
             .fixedSize()
             .alignmentGuide(.top) { $0[.bottom] + Theme.Spacing.md }
@@ -139,10 +136,8 @@ struct CommandOutputView: View {
 
 /// Copies the whole log, then shows a checkmark long enough to be believed.
 private struct CopyLogButton: View {
+    @Environment(\.metrics) private var metrics  // FORK: typography
     let log: String
-    @Environment(AppSettings.self) private var settings
-
-    private var metrics: InterfaceMetrics { settings.unscaledMetrics }
     @State private var copiedAt: Date?
 
     var body: some View {
@@ -151,7 +146,7 @@ private struct CopyLogButton: View {
             copiedAt = Date()
         } label: {
             Image(systemName: copiedAt == nil ? "square.on.square" : "checkmark")
-                .font(metrics.typography.bar)
+                .font(metrics.typography.barSymbol)  // FORK: typography
                 .foregroundStyle(copiedAt == nil ? Theme.Colors.textSecondary : Theme.Colors.success)
         }
         .tooltip("Copy Output")

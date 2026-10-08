@@ -119,7 +119,10 @@ final class DictationPanelController {
         let screen = NSScreen.main ?? NSScreen.screens.first
         guard let frame = screen?.visibleFrame else { return }
         let panel =
-            panel ?? DictationPanel(content: NSHostingView(rootView: DictationPanelView(state: state)))
+            panel
+            ?? DictationPanel(
+                // FORK: accent-scope
+                content: NSHostingView(rootView: DictationPanelView(state: state).forkAppearance()))
         panel.onAccept = onAccept
         panel.onCancel = onCancel
         self.panel = panel

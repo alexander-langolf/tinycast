@@ -5,7 +5,7 @@ struct MenuBarLabel: View {
     let appName: String
 
     var body: some View {
-        Image("MenuBarIcon")
+        Image(nsImage: ForkAssets.image(named: "MenuBarIcon") ?? NSImage())  // FORK: status-icon
             .accessibilityLabel(appName)
     }
 }

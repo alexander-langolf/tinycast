@@ -39,6 +39,7 @@ final class ExtensionListPanelController {
     private var hosting: NSHostingView<AnyView>?
 
     func present(_ content: AnyView, frame: NSRect, parent: NSWindow, palette: PaletteState) {
+        let content = AnyView(content.forkAppearance())  // FORK: accent-scope
         let panel = ensurePanel(state: palette)
         if let hosting {
             hosting.rootView = content

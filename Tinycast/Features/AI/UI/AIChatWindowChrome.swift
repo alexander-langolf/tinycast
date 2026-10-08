@@ -163,8 +163,6 @@ final class AIChatWindowChrome: NSObject, WindowChrome, NSToolbarDelegate, NSSea
     private func observeTitle() {
         withObservationTracking {
             window?.title = coordinator.title(of: chat)
-            let font = coordinator.windowMetrics.typography.textNSFont(.body)
-            if searchItem.searchField.font != font { searchItem.searchField.font = font }
         } onChange: { [weak self] in
             Task { @MainActor in self?.observeTitle() }
         }
@@ -224,7 +222,6 @@ enum AIChatActionsMenu {
         chat: AIChatState, coordinator: AIChatCoordinator, findInChat: @escaping () -> Void
     ) -> NSMenu {
         let menu = NSMenu()
-        menu.font = coordinator.windowMetrics.typography.textNSFont(.body)
         let saved = coordinator.isSaved(chat)
         if chat.isStreaming {
             menu.addItem(

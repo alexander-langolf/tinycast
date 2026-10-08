@@ -1,0 +1,10 @@
+# Fork sources and ForkAssets.xcassets are included by the upstream Tinycast source directory.
+# Per-configuration settings outrank the upstream target's base icon setting after include merging.
+targets:
+  Tinycast:
+    settings:
+      configs:
+        Debug:
+          ASSETCATALOG_COMPILER_APPICON_NAME: ForkAppIcon
+        Release:
+          ASSETCATALOG_COMPILER_APPICON_NAME: ForkAppIcon

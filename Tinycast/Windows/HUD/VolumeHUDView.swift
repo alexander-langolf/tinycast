@@ -2,7 +2,7 @@ import SwiftUI
 
 /// The volume box: glyph, bar, number, on the palette's surface recipe rather than glass.
 struct VolumeHUDView: View {
-    @Environment(\.metrics) private var metrics
+    @Environment(\.metrics) private var metrics  // FORK: typography
     let state: VolumeState
 
     var body: some View {
@@ -25,7 +25,7 @@ struct VolumeHUDView: View {
                 .frame(height: Theme.Size.volumeTrackHeight)
                 // Muted prints the word: the bar is empty, and a number would contradict it.
                 Text(state.muted ? "Muted" : VolumeLevel.percentage(state.level))
-                    .font(metrics.typography.rowTrailing)
+                    .font(metrics.typography.rowTrailing)  // FORK: typography
                     .foregroundStyle(Theme.Colors.textSecondary)
                     .monospacedDigit()
                     .frame(width: Theme.Size.volumeReadout, alignment: .trailing)

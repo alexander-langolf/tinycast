@@ -267,7 +267,11 @@ struct ExtensionMarkdownView: View {
                 switch block {
                 case .heading(let level, let text):
                     Text(inline(text))
-                        .font(.system(size: headingSize(level), weight: .semibold))
+                        .font(
+                            ForkTypography.prose(
+                                .system(size: headingSize(level), weight: .semibold),
+                                size: headingSize(level), weight: .semibold)
+                        )  // FORK: prose-font
                         .padding(.top, metrics.spacing.xs)
                 case .paragraph(let text):
                     Text(inline(text))

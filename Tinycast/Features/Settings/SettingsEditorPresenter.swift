@@ -405,7 +405,8 @@ extension View {
         core: AppCore, navigation: SettingsNavigationState,
         editorPresenter: SettingsEditorPresenter
     ) -> some View {
-        environment(\.settingsEditorPresenter, editorPresenter)
+        forkAppearance()  // FORK: accent-scope
+            .environment(\.settingsEditorPresenter, editorPresenter)
             .environment(navigation)
             .environment(core)
             .environment(core.settings)

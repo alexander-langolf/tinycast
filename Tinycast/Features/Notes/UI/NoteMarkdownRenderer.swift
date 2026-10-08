@@ -7,8 +7,6 @@ final class NoteMarkdownRenderer: NSObject, @MainActor NSTextStorageDelegate {
     private(set) var revealed = IndexSet()
     /// The Render Markdown setting; flipping it takes effect on the next `reset()`.
     var isEnabled: Bool
-    /// The interface font in force; changing it takes effect on the next `reset()`.
-    var typography: NoteMarkdownTypography
     weak var textView: NoteTextView? {
         didSet { textView?.textStorage?.delegate = self }
     }
@@ -17,9 +15,8 @@ final class NoteMarkdownRenderer: NSObject, @MainActor NSTextStorageDelegate {
     private var pendingEdit: (old: NSRange, new: NSRange)?
     private var isStyling = false
 
-    init(isEnabled: Bool, typography: NoteMarkdownTypography) {
+    init(isEnabled: Bool) {
         self.isEnabled = isEnabled
-        self.typography = typography
         super.init()
     }
 
@@ -32,15 +29,15 @@ final class NoteMarkdownRenderer: NSObject, @MainActor NSTextStorageDelegate {
             markdown = .empty
             revealed = []
             restyle(NSRange(location: 0, length: storage.length)) {
-                storage.setAttributes(NoteMarkdownStyler.literal(typography), range: $0)
+                storage.setAttributes(NoteMarkdownStyler.literal, range: $0)
             }
-            textView.typingAttributes = NoteMarkdownStyler.literal(typography)
+            textView.typingAttributes = NoteMarkdownStyler.literal
             return
         }
         markdown = NoteMarkdownParser.parse(units: Self.units(of: storage))
         revealed = nextRevealed()
         apply(IndexSet(integersIn: markdown.lines.indices))
-        textView.typingAttributes = NoteMarkdownStyler.literal(typography)
+        textView.typingAttributes = NoteMarkdownStyler.literal
     }
 
     /// Picks up any edit, however it arrived, then re-hides and reveals lines for the selection.
@@ -57,7 +54,7 @@ final class NoteMarkdownRenderer: NSObject, @MainActor NSTextStorageDelegate {
         let changed = revealed.symmetricDifference(next)
         revealed = next
         if !changed.isEmpty { apply(changed) }
-        textView.typingAttributes = NoteMarkdownStyler.literal(typography)
+        textView.typingAttributes = NoteMarkdownStyler.literal
     }
 
     /// The parse of the source as it is right now, for edit plans that must not act on a stale one.
@@ -160,8 +157,7 @@ final class NoteMarkdownRenderer: NSObject, @MainActor NSTextStorageDelegate {
             restyle(span) { _ in
                 for index in lines {
                     let style = NoteMarkdownStyler.style(
-                        at: index, in: markdown, text: text, isRevealed: revealed.contains(index),
-                        typography: typography)
+                        at: index, in: markdown, text: text, isRevealed: revealed.contains(index))
                     textView.textStorage?.setAttributes(style.base, range: markdown.lines[index].range)
                     for run in style.runs {
                         textView.textStorage?.addAttributes(run.attributes, range: run.range)

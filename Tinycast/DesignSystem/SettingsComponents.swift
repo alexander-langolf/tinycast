@@ -358,7 +358,6 @@ struct SettingsFilterField: View {
 }
 
 private struct AliasTextField: NSViewRepresentable {
-    @Environment(\.metrics) private var metrics
     @Binding var text: String
     @Binding var focused: Bool
     let onCancel: () -> Void
@@ -374,7 +373,7 @@ private struct AliasTextField: NSViewRepresentable {
         editor.allowsUndo = true
         editor.drawsBackground = false
         editor.backgroundColor = .clear
-        editor.font = metrics.typography.aliasEditorNSFont
+        editor.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
         editor.textContainerInset = NSSize(width: 0, height: 5.5)
         editor.textContainer?.lineFragmentPadding = 0
         editor.textContainer?.maximumNumberOfLines = 1
@@ -386,7 +385,6 @@ private struct AliasTextField: NSViewRepresentable {
 
     func updateNSView(_ editor: NSTextView, context: Context) {
         context.coordinator.field = self
-        editor.font = metrics.typography.aliasEditorNSFont
         if editor.string != text { editor.string = text }
         editor.isEditable = isEnabled
         editor.isSelectable = isEnabled
