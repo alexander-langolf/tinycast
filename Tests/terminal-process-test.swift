@@ -70,6 +70,20 @@ struct TerminalProcessTest {
                 && long.output.trimmingCharacters(in: .whitespacesAndNewlines) == "30000",
             long.output.debugDescription)
 
+        // ⌃C while a long command is still being written drops the rest; after the next prompt the
+        // following command runs whole.
+        let beforeDrop = count(recorder)
+        process.send("echo -n " + String(repeating: "b", count: 30000) + " | wc -c\r")
+        process.interrupt()
+        check(
+            "⌃C during a pending write brings a prompt back",
+            await waitFor(recorder, after: beforeDrop, timeout: 20) { $0.contains(.promptReady) })
+        let after = await run(process, recorder, "echo ok")
+        check(
+            "the next command runs whole after a dropped one",
+            after.status == 0 && after.output.trimmingCharacters(in: .whitespacesAndNewlines) == "ok",
+            after.output.debugDescription)
+
         let failed = await run(process, recorder, "(exit 3)")
         check("a failing command reports its status", failed.status == 3, String(describing: failed.status))
 

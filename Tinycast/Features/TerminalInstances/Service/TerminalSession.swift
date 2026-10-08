@@ -44,7 +44,7 @@ final class TerminalSession {
             }
             guard let self, self.phase == .starting, !self.isTerminated else { return }
             self.startupNotice =
-                "Shell hasn't reached a prompt: Ctrl-C to interrupt, Cmd-O to open in kitty, Cmd-W to close"
+                "Shell hasn't reached a prompt: Cmd-O to open in kitty, Cmd-W to close"
         }
         let directory = directory
         let columns = columns
@@ -78,9 +78,12 @@ final class TerminalSession {
         send(command, to: process)
     }
 
+    /// Only a running command: ⌃C while zsh reads its startup files would stop the shim before it installs
+    /// the prompt marks, leaving the session without prompts.
     func interrupt() {
-        guard !isTerminated, phase == .starting || phase == .running else { return }
-        process?.send("\u{03}")
+        guard !isTerminated, phase == .running else { return }
+        // The phase stays running until zsh's next prompt, so the next command can't race the abort.
+        process?.interrupt()
     }
 
     func terminate() {
