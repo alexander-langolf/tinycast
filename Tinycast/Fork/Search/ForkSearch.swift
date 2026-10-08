@@ -88,6 +88,37 @@ enum ForkSearch {
         return match(query, fields: [text], profile: profile) != nil
     }
 
+    /// The trigram FTS expression for a clipboard query. Off: upstream's quoted phrase (3+ chars).
+    /// On: each word of 3+ letters as an ANDed phrase and `!word` as NOT; nil when no word is long enough.
+    static func clipboardFTS(_ query: String) -> String? {
+        let quote = { (s: Substring) in "\"" + s.replacingOccurrences(of: "\"", with: "\"\"") + "\"" }
+        guard isEnabled else { return query.count >= 3 ? quote(Substring(query)) : nil }
+        var positive: [String] = [], negative: [String] = []
+        for token in query.split(whereSeparator: \.isWhitespace) {
+            let negated = token.hasPrefix("!")
+            var t = token.drop { "!'^".contains($0) }
+            if t.count > 1, t.hasSuffix("$") { t = t.dropLast() }
+            guard t.count >= 3 else { continue }
+            negated ? negative.append(quote(t)) : positive.append(quote(t))
+        }
+        guard !positive.isEmpty else { return nil }
+        return positive.joined(separator: " AND ") + negative.map { " NOT " + $0 }.joined()
+    }
+
+    /// Clipboard order: input arrives newest first; ties keep it. Off: unchanged.
+    static func rankAccurate<T>(_ items: [T], query: String, text: (T) -> String?) -> [T] {
+        guard isEnabled else { return items }
+        let scored = items.enumerated().compactMap { offset, item -> (score: Int, offset: Int, item: T)? in
+            guard let s = text(item), let r = match(query, fields: [s], profile: .accurate) else {
+                return nil
+            }
+            return (r.score, offset, item)
+        }
+        guard !isShort(query) else { return scored.map(\.item) }
+        return scored.sorted { $0.score != $1.score ? $0.score > $1.score : $0.offset < $1.offset }.map(
+            \.item)
+    }
+
     /// The tiered matcher's answer computed by fzf, with tiers kept so `SearchRelevance` weights still apply.
     static func tiered(_ q: String, _ c: String) -> FuzzyMatch.Match? {
         let length = c.count

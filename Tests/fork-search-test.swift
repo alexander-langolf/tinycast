@@ -19,6 +19,8 @@ struct ForkSearchTest {
         tiered()
         launcher()
         contains()
+        clipboardFTS()
+        clipboardRank()
         print(failures == 0 ? "\nALL PASSED" : "\n\(failures) FAILED")
         exit(failures == 0 ? 0 : 1)
     }
@@ -153,5 +155,52 @@ struct ForkSearchTest {
         check("filter honours exclusions", !ForkSearch.contains("github !issues", in: "GitHub Issues"))
         check("filter rejects a typo", !ForkSearch.contains("gihtub", in: "GitHub Issues"))
         check("enabled missing keyword does not match", !ForkSearch.contains("mail", in: nil))
+    }
+
+    static func clipboardFTS() {
+        ForkSearch.setEnabled(false)
+        check("off: upstream phrase", ForkSearch.clipboardFTS("march invoice") == "\"march invoice\"")
+        check("off: short query falls back", ForkSearch.clipboardFTS("gh") == nil)
+        check("off: quotes escaped", ForkSearch.clipboardFTS("say\"hi") == "\"say\"\"hi\"")
+        ForkSearch.setEnabled(true)
+        defer { ForkSearch.setEnabled(false) }
+        check("words ANDed", ForkSearch.clipboardFTS("march invoice") == "\"march\" AND \"invoice\"")
+        check("short words left to memory", ForkSearch.clipboardFTS("gh pr create") == "\"create\"")
+        check("no long word → memory", ForkSearch.clipboardFTS("gh pr") == nil)
+        check("!word becomes NOT", ForkSearch.clipboardFTS("stardust !bump") == "\"stardust\" NOT \"bump\"")
+        check("quotes escaped", ForkSearch.clipboardFTS("say\"hi") == "\"say\"\"hi\"")
+        check(
+            "accurate item filter",
+            ForkSearch.contains("march invoice", in: "invoice for March", profile: .accurate)
+                && !ForkSearch.contains("inv mrch", in: "invoice for March", profile: .accurate))
+    }
+
+    static func clipboardRank() {
+        let newestFirst = ["March 2026 invoice total", "attaching the invoice for March", "unrelated"]
+        ForkSearch.setEnabled(true)
+        defer { ForkSearch.setEnabled(false) }
+        let ranked = ForkSearch.rankAccurate(newestFirst, query: "invoice march") { $0 }
+        check("non-matches dropped", ranked.count == 2)
+        check("best match first", ranked.first == "March 2026 invoice total")
+        check(
+            "short query keeps newest-first",
+            ForkSearch.rankAccurate(newestFirst, query: "in") { $0 }
+                == newestFirst.filter { $0.contains("in") })
+        let differentScores = ["preinvoice premarch", "invoice march"]
+        check(
+            "higher score beats recency",
+            ForkSearch.rankAccurate(differentScores, query: "invoice march") { $0 }
+                == Array(differentScores.reversed()))
+        check(
+            "short query keeps order despite different scores",
+            ForkSearch.rankAccurate(differentScores, query: "in") { $0 } == differentScores)
+        let equalScores = ["invoice march newer", "invoice march older"]
+        check(
+            "equal scores keep incoming newest-first",
+            ForkSearch.rankAccurate(equalScores, query: "invoice march") { $0 } == equalScores)
+        ForkSearch.setEnabled(false)
+        check(
+            "off: input unchanged",
+            ForkSearch.rankAccurate(newestFirst, query: "invoice march") { $0 } == newestFirst)
     }
 }
