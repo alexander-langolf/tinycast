@@ -49,7 +49,7 @@
   <p class="lead">
     Tinycast matches typed text three different ways today. The launcher uses a strong word-start aligner, menus, notes and settings use a simpler tiered matcher, and the clipboard, snippets and quicklinks only find text that appears exactly as typed.
     Pick a search box, type a query, and compare four matchers side by side, including a proposed single matcher for every input.
-    The question: does the proposed matcher find what you expect, without flooding the results or burying recent items?
+    The question: does an fzf-style matcher (with an exact-words profile for the clipboard) find what you expect, without flooding the results or burying recent items?
   </p>
 
   <section>
@@ -58,8 +58,8 @@
     <div class="row" style="margin-top:12px">
       <input type="text" id="q" placeholder="Type a search…" autocomplete="off" spellcheck="false">
       <label><input type="checkbox" id="gate"> Files: only what Spotlight returns (every word must appear inside the file name)</label>
-      <label><input type="checkbox" id="typo" checked> Proposed: allow one typo in words of 4+ letters</label>
-      <label>Recency weight <input type="range" id="rw" min="0" max="2" step="0.25"> <span id="rwv"></span></label>
+      <label style="display:none"><input type="checkbox" id="typo"></label>
+      <label style="display:none"><input type="range" id="rw"><span id="rwv"></span></label>
     </div>
   </section>
 
@@ -238,7 +238,99 @@ const Search = (() => {
     return { score, indices, typo, why: `quality ${quality.toFixed(2)} × recency boost ${(1 + opts.recencyWeight * fresh).toFixed(2)}${typo ? ' · ' + hits.find(h => h.r.typo).r.why : ''}${terms.length > 1 && !inOrder ? ' · words out of order' : ''}` };
   }
 
-  return { fold, substring, fuzzyTier, launcherAlign, typoMatch, proposed, isWordStart: wordStart };
+
+  // ---- fzf v2 (Smith-Waterman-style alignment with fzf's constants) ----
+  const SCORE_MATCH = 16, GAP_START = -3, GAP_EXT = -1;
+  const B_WHITE = 10, B_DELIM = 9, B_NONWORD = 8, B_CAMEL = 7, B_CONSEC = -(GAP_START + GAP_EXT), FIRST_MULT = 2;
+  const DELIMS = new Set(['/', ',', ':', ';', '|']);
+  function charClass(c) { if (c === undefined || c === ' ' || c === '\t' || c === '\n') return 'white'; if (DELIMS.has(c)) return 'delim'; if (isLower(c)) return 'lower'; if (isUpper(c)) return 'upper'; if (isDigit(c)) return 'digit'; if (/\p{L}/u.test(c)) return 'lower'; return 'nonword'; }
+  function bonusAt(raw, j) {
+    const prev = charClass(j === 0 ? undefined : raw[j - 1]), cur = charClass(raw[j]);
+    const word = cur === 'lower' || cur === 'upper' || cur === 'digit';
+    if (word) {
+      if (prev === 'white') return B_WHITE;
+      if (prev === 'delim') return B_DELIM;
+      if (prev === 'nonword') return B_NONWORD;
+      if ((prev === 'lower' && cur === 'upper') || (prev !== 'digit' && cur === 'digit')) return B_CAMEL;
+      return 0;
+    }
+    return cur === 'nonword' || cur === 'delim' ? B_NONWORD : 0;
+  }
+  // Best alignment of one term in text. exact=true: the term must appear contiguously (fzf 'term).
+  function fzf(term, text, exact = false) {
+    const ft = fold(text), m = term.length, n = ft.length;
+    if (!m || m > n) return null;
+    if (exact) {
+      let best = null;
+      for (let i = ft.indexOf(term); i >= 0; i = ft.indexOf(term, i + 1)) {
+        let sc = 0, first = bonusAt(text, i), run = first;
+        for (let k = 0; k < m; k++) { const b = Math.max(bonusAt(text, i + k), run, k ? B_CONSEC : 0); run = Math.max(run, bonusAt(text, i + k)); sc += SCORE_MATCH + (k === 0 ? first * FIRST_MULT : b); }
+        if (!best || sc > best.score) best = { score: sc, indices: range(i, m) };
+      }
+      return best;
+    }
+    // H[i][j]: best score with term[i] at text j; C[i][j]: bonus carried by the consecutive run ending at j.
+    let H = new Array(n).fill(-Infinity), C = new Array(n).fill(0);
+    const back = [];
+    for (let j = 0; j < n; j++) if (ft[j] === term[0]) { const b = bonusAt(text, j); H[j] = SCORE_MATCH + b * FIRST_MULT; C[j] = b; }
+    back.push(new Array(n).fill(-1));
+    for (let i = 1; i < m; i++) {
+      const H2 = new Array(n).fill(-Infinity), C2 = new Array(n).fill(0), bk = new Array(n).fill(-1);
+      let gapBest = -Infinity, gapAt = -1; // max over k<=j-2 of H[k] + k  (gap of g letters costs -2-g)
+      for (let j = 1; j < n; j++) {
+        if (j >= 2 && H[j - 2] + (j - 2) > gapBest) { gapBest = H[j - 2] + (j - 2); gapAt = j - 2; }
+        if (ft[j] !== term[i]) continue;
+        const b = bonusAt(text, j);
+        const viaRun = H[j - 1] === -Infinity ? -Infinity : H[j - 1] + SCORE_MATCH + Math.max(b, C[j - 1], B_CONSEC);
+        const viaGap = gapBest === -Infinity ? -Infinity : gapBest - (j - 1) + GAP_START - 1 + 2 + SCORE_MATCH + b;
+        if (viaRun === -Infinity && viaGap === -Infinity) continue;
+        if (viaRun >= viaGap) { H2[j] = viaRun; C2[j] = Math.max(b, C[j - 1], B_CONSEC); bk[j] = j - 1; }
+        else { H2[j] = viaGap; C2[j] = b; bk[j] = gapAt; }
+      }
+      H = H2; C = C2; back.push(bk);
+    }
+    let best = -Infinity, at = -1;
+    for (let j = 0; j < n; j++) if (H[j] > best) { best = H[j]; at = j; }
+    if (at < 0) return null;
+    const idx = [];
+    for (let i = m - 1, j = at; i >= 0; j = back[i][j], i--) idx.unshift(j);
+    return { score: best, indices: idx };
+  }
+
+  // Recommended: fzf extended search. Words AND, any order; 'word exact, ^prefix, word$ suffix, !word excludes.
+  // Profile 'accurate' (clipboard): every word is exact. No typo tolerance anywhere.
+  function recommended(query, item, profile) {
+    const raw = fold(query).split(/\s+/).filter(Boolean);
+    if (!raw.length) return null;
+    const fields = item.fields;
+    let total = 0; const hits = [];
+    for (const tok of raw) {
+      let t = tok, exact = profile === 'accurate', neg = false, pre = false, suf = false;
+      if (t.startsWith('!')) { neg = true; t = t.slice(1); exact = true; }
+      if (t.startsWith("'")) { exact = true; t = t.slice(1); }
+      if (t.startsWith('^')) { pre = true; exact = true; t = t.slice(1); }
+      if (t.endsWith('$') && t.length > 1) { suf = true; exact = true; t = t.slice(0, -1); }
+      if (!t) continue;
+      let best = null;
+      fields.forEach((f, fi) => {
+        const r = fzf(t, f.text, exact);
+        if (!r) return;
+        const ft = fold(f.text);
+        if (pre && r.indices[0] !== 0) return;
+        if (suf && r.indices[r.indices.length - 1] !== ft.length - 1) return;
+        const sc = r.score * f.weight;
+        if (!best || sc > best.sc) best = { sc, fi, r };
+      });
+      if (neg) { if (best) return null; continue; }
+      if (!best) return null;
+      total += best.sc; hits.push(best);
+    }
+    if (!hits.length) return null;
+    const indices = fields.map((_, fi) => hits.filter(h => h.fi === fi).flatMap(h => h.r.indices));
+    return { score: total, indices, why: `fzf ${Math.round(total)}${profile === 'accurate' ? ' · exact words' : ''}` };
+  }
+
+  return { fold, substring, fuzzyTier, launcherAlign, typoMatch, proposed, recommended, fzf, isWordStart: wordStart };
 })();
 
 /* ================= Sample data (in memory) ================= */
@@ -348,7 +440,11 @@ function rankAll(st) {
 
   out.tiers = q ? byPrimary(Search.fuzzyTier).sort((a, b) => b.score - a.score || b.item.fresh - a.item.fresh) : [];
   out.launcher = q ? byPrimary((qq, t) => Search.launcherAlign(qq, t, 'medium')).sort((a, b) => b.score - a.score || b.item.fresh - a.item.fresh) : [];
-  out.proposed = q ? pool.map(it => { const r = Search.proposed(q, it, { typo: st.typo, recencyWeight: st.recencyWeight }); return r && { item: it, ...r }; }).filter(Boolean).sort((a, b) => b.score - a.score) : [];
+  // Recommended: fzf scoring; 1–2 typed letters sort by recency/use, 3+ by score with recency breaking ties.
+  const profile = st.surface === 'clipboard' ? 'accurate' : 'fuzzy';
+  const short = q.replace(/\s+/g, '').length <= 2;
+  out.proposed = q ? pool.map(it => { const r = Search.recommended(q, it, profile); return r && { item: it, ...r, why: r.why + (short ? ' · short query: newest first' : '') }; }).filter(Boolean)
+    .sort((a, b) => short ? (b.item.pinned ? 1 : 0) - (a.item.pinned ? 1 : 0) || b.item.fresh - a.item.fresh : b.score - a.score || b.item.fresh - a.item.fresh) : [];
   out.poolSize = pool.length; out.total = all.length; out.terms = terms;
   return out;
 }
@@ -358,7 +454,7 @@ const COLS = [
   { key: 'today', title: 'Today', sub: { clipboard: 'Exact phrase only, pinned first, then newest. No ranking by match quality.', files: 'Spotlight candidates, re-ranked by the tiered matcher on the file name.', apps: 'Launcher aligner (medium sensitivity), ties broken by use.' } },
   { key: 'tiers', title: 'Tiered matcher', sub: 'What menus, notes, settings and emoji use: exact > prefix > word start > substring > scattered letters.' },
   { key: 'launcher', title: 'Launcher aligner', sub: 'The launcher\'s matcher on its own: rewards word starts and camelCase, penalises gaps.' },
-  { key: 'proposed', title: 'Proposed: one matcher for all', sub: 'Each word matched anywhere, in any order, by the aligner; one typo allowed; recency or use blended in.' },
+  { key: 'proposed', title: 'Recommended (fzf)', sub: { clipboard: 'Accuracy profile: every word must appear as typed, any order; ranked by fzf score, then recency. No typos.', files: 'fzf v2 on name and folder, words in any order; \'exact ^prefix suffix$ !exclude. No typos.', apps: 'fzf v2, words in any order; \'exact ^prefix suffix$ !exclude. No typos.' } },
 ];
 
 let st = { surface: 'clipboard', query: '', gate: true, typo: true, recencyWeight: 1 };
@@ -402,8 +498,7 @@ function render() {
     ['Query', st.query ? `“${esc(st.query)}”` : '(empty)'],
     ['Words', r.terms.length ? r.terms.map(esc).join(' · ') : '—'],
     ['Items searched', `${r.poolSize} of ${r.total}` + (st.surface === 'files' && st.gate ? ' (Spotlight gate on)' : '')],
-    ['Typo allowance', st.typo ? 'one typo, words of 4+ letters' : 'off'],
-    ['Recency weight', st.recencyWeight.toFixed(2)],
+    ['Recommended profile', st.surface === 'clipboard' ? 'accurate: exact words, any order' : 'fuzzy: fzf v2, any order'],
     ...COLS.map(c => [`${c.title} top hit`, esc(tops[c.key])]),
   ].map(([k, v]) => `<div><b>${k}</b>${v}</div>`).join('');
 
@@ -428,15 +523,18 @@ const SCENARIOS = [
   { title: 'Abbreviations', desc: 'Initials and short fragments: “gh pr”, “vsc” for Visual Studio Code, “sysset” for System Settings. The launcher already handles these. Should the clipboard?',
     reset: { surface: 'clipboard', query: '', recencyWeight: 1, typo: true },
     steps: [['Clipboard: “gh pr”', { query: 'gh pr' }], ['Clipboard: “xcb tinycast”', { query: 'xcb tinycast' }], ['Apps: “vsc”', { surface: 'apps', query: 'vsc', recencyWeight: 0.75 }], ['Apps: “sysset”', { query: 'sysset' }]] },
-  { title: 'One typo', desc: 'A slip of the finger: “slakc”, “pasword”, “stardsut”. Nothing tolerates typos today. Try turning the typo allowance off and on, and look for results that shouldn\'t have matched.',
-    reset: { surface: 'apps', query: '', recencyWeight: 0.75, typo: true },
-    steps: [['Apps: “slakc”', { query: 'slakc' }], ['Clipboard: “pasword reset”', { surface: 'clipboard', query: 'pasword reset', recencyWeight: 1 }], ['Clipboard: “stardsut”', { query: 'stardsut' }], ['Turn typo allowance off', { typo: false }]] },
+  { title: 'Typos (no match, by design)', desc: 'fzf has no typo tolerance, and neither does the recommendation: a wrong letter means no match, so results stay trustworthy. Compare “slakc” (nothing) with “slk” (initials-style, matches).',
+    reset: { surface: 'apps', query: '', recencyWeight: 0.75 },
+    steps: [['Apps: “slakc”', { query: 'slakc' }], ['Apps: “slk”', { query: 'slk' }], ['Clipboard: “pasword”', { surface: 'clipboard', query: 'pasword', recencyWeight: 1 }], ['Clipboard: “password”', { query: 'password' }]] },
   { title: 'Files hidden by Spotlight', desc: 'File search asks Spotlight for names that contain every word, then re-ranks. A fuzzy query like “fork typo” never reaches the matcher, because Spotlight returns nothing. Turn the gate off to see what an index of our own (or a looser Spotlight query) would allow.',
     reset: { surface: 'files', query: '', gate: true, recencyWeight: 0.5, typo: true },
     steps: [['Type “forktypo”', { query: 'forktypo' }], ['Type “fork typo”', { query: 'fork typo' }], ['Turn the Spotlight gate off', { gate: false }], ['Type “ariel pkg”', { query: 'ariel pkg' }], ['Type “inv march”', { query: 'inv march' }]] },
-  { title: 'Short queries flood results', desc: 'One or two letters match almost everything. What should come first: the best-shaped match, or the most recent item? Move the recency weight and watch the proposed column reorder.',
-    reset: { surface: 'clipboard', query: '', recencyWeight: 1, typo: true },
-    steps: [['Type “a”', { query: 'a' }], ['Type “st”', { query: 'st' }], ['Recency weight 0', { recencyWeight: 0 }], ['Recency weight 2', { recencyWeight: 2 }]] },
+  { title: 'Short queries', desc: 'With one or two letters almost everything matches, so the recommendation shows the newest items first (pinned on top). From three letters it switches to match quality, with recency breaking ties. Watch the order flip between “st” and “sta”.',
+    reset: { surface: 'clipboard', query: '', recencyWeight: 1 },
+    steps: [['Type “a”', { query: 'a' }], ['Type “st”', { query: 'st' }], ['Type “sta”', { query: 'sta' }], ['Apps: “s”', { surface: 'apps', query: 's', recencyWeight: 0.75 }], ['Apps: “saf”', { query: 'saf' }]] },
+  { title: 'fzf search syntax', desc: 'Power syntax from fzf, in every box: \'word means exact, ^ means starts with, $ means ends with, ! excludes, and words can come in any order.',
+    reset: { surface: 'clipboard', query: '', recencyWeight: 1 },
+    steps: [['Clipboard: “stardust”', { query: 'stardust' }], ['Clipboard: “stardust !bump”', { query: 'stardust !bump' }], ['Clipboard: “^git”', { query: '^git' }], ['Files: “ariel json$”', { surface: 'files', query: 'ariel json$', gate: false, recencyWeight: 0.5 }], ['Files: “ariel \'package.json”', { query: "ariel 'package.json" }]] },
   { title: 'Should not match', desc: 'The proposed matcher must not invent results. Scattered letters across a long text are noise, and a typo match on very short words is risky. Each step should return few or no proposed hits.',
     reset: { surface: 'clipboard', query: '', recencyWeight: 1, typo: true },
     steps: [['Type “xyz”', { query: 'xyz' }], ['Type “lnd”', { query: 'lnd' }], ['Type “seep”', { query: 'seep' }], ['Files: “zzz”', { surface: 'files', query: 'zzz', gate: false, recencyWeight: 0.5 }]] },
