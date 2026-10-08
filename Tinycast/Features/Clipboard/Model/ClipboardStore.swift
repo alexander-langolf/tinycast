@@ -78,7 +78,7 @@ struct ClipboardItem: Identifiable, Hashable, Sendable {
 
     /// Case-insensitive substring match: how the store filters without FTS.
     func matches(_ query: String) -> Bool {
-        ForkSearch.contains(query, in: text, profile: .accurate)  // FORK: search
+        ForkSearch.clipboardScore(query, text) != nil  // FORK: search
     }
 }
 
@@ -575,7 +575,7 @@ final class ClipboardStore {
         // Pins are matched in memory: all resident, and the LIMIT would otherwise drop one.
         let ordinary =
             pinnedItems.filter { $0.matches(q) }
-            + ForkSearch.rankAccurate(runSearch(q).filter { !$0.isPinned }, query: q) { $0.text }  // FORK: search
+            + ForkSearch.rankClipboard(runSearch(q).filter { !$0.isPinned }, query: q) { $0.text }  // FORK: search
         guard !textSearchMatches.isEmpty else { return ordinary }
         let ordinaryIDs = Set(ordinary.map(\.id))
         let additional = textSearchMatches.filter { !ordinaryIDs.contains($0.id) }
@@ -603,7 +603,10 @@ final class ClipboardStore {
         }
         sqlite3_reset(stmt)
         sqlite3_clear_bindings(stmt)
-        return status == SQLITE_DONE ? results : fallbackSearch(q)
+        return ForkSearch.clipboardUnion(
+            status == SQLITE_DONE ? results : fallbackSearch(q),
+            resident: ForkSearch.isEnabled ? fallbackSearch(q) : [], id: { $0.id },
+            createdAt: { $0.createdAt })  // FORK: search
     }
 
     private func invalidateSearch(preservingMatches: Bool = false) {
@@ -719,7 +722,7 @@ final class ClipboardStore {
             guard let item = row(stmt) else { continue }
             if let residentIDs, !residentIDs.contains(item.id) { continue }
             if isShort || item.isPinned,  // FORK: search
-                ForkSearch.contains(query, in: columnString(stmt, 7), profile: .accurate) != true
+                ForkSearch.clipboardScore(query, columnString(stmt, 7)) == nil
             {
                 continue
             }

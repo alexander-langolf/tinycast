@@ -47,7 +47,9 @@ enum ForkSearch {
         if term.prefix || term.suffix {
             let folded = FuzzyMatch.normalized(field)
             let word = String(term.text)
-            guard term.prefix ? folded.hasPrefix(word) : folded.hasSuffix(word) else { return nil }
+            if term.prefix && term.suffix, folded != word { return nil }
+            guard (!term.prefix || folded.hasPrefix(word)) && (!term.suffix || folded.hasSuffix(word))
+            else { return nil }
         }
         if term.prefix {
             guard let h = ForkFzf.match(term.text, in: String(field.prefix(term.text.count)), exact: true)
@@ -96,7 +98,7 @@ enum ForkSearch {
         return match(query, fields: [text], profile: profile) != nil
     }
 
-    /// Short positive words keep upstream's phrase so the FTS limit cannot discard real matches.
+    /// FTS retrieves literal long words; the resident window supplies skipped-letter matches.
     static func clipboardFTS(_ query: String) -> String? {
         let quote = { (s: Substring) in "\"" + s.replacingOccurrences(of: "\"", with: "\"\"") + "\"" }
         guard isEnabled else { return query.count >= 3 ? quote(Substring(query)) : nil }
@@ -121,14 +123,78 @@ enum ForkSearch {
         return positive.joined(separator: " AND ") + negative.map { " NOT " + $0 }.joined()
     }
 
+    static func clipboardScore(_ query: String, _ text: String?) -> Int? {
+        guard let text else { return nil }
+        guard isEnabled else { return text.localizedCaseInsensitiveContains(query) ? 0 : nil }
+        let words = terms(query, profile: .fuzzy)
+        guard words.contains(where: { !$0.negated }) else { return nil }
+        var score = 0
+        for word in words {
+            let result = hit(word, in: text)
+            if word.negated {
+                if result != nil { return nil }
+                continue
+            }
+            guard let result, accepts(score: result.score, letters: word.text.count, level: "medium")
+            else { return nil }
+            score += result.score
+        }
+        return score
+    }
+
+    static func clipboardUnion<T, ID: Hashable>(
+        _ hits: [T], resident: [T], id: (T) -> ID, createdAt: (T) -> Date
+    ) -> [T] {
+        guard isEnabled else { return hits }
+        var seen = Set<ID>()
+        return (hits + resident).enumerated().filter { seen.insert(id($0.element)).inserted }
+            .sorted {
+                let left = createdAt($0.element), right = createdAt($1.element)
+                return left != right ? left > right : $0.offset < $1.offset
+            }.map(\.element)
+    }
+
+    static func mergePaths<T, ID: Hashable>(_ first: [T], _ additional: [T], id: (T) -> ID) -> [T] {
+        var seen = Set<ID>()
+        return (first + additional).filter { seen.insert(id($0)).inserted }
+    }
+
+    static func fileNeedsGlob(_ query: String) -> Bool {
+        terms(query, profile: .fuzzy).filter { !$0.negated }.reduce(0) { $0 + $1.text.count } >= 3
+    }
+
+    static func spotlightNameClause(_ token: String) -> String {
+        let term = terms(token, profile: .fuzzy)[0]
+        let escaped = term.text.map { "*?\\\"".contains($0) ? "\\" + String($0) : String($0) }
+        let body = escaped.joined(separator: term.exact ? "" : "*")
+        let pattern = (term.prefix ? "" : "*") + body + (term.suffix ? "" : "*")
+        return "kMDItemFSName \(term.negated ? "!=" : "==") \"\(pattern)\"cd"
+    }
+
+    static func rankPaths(_ items: [(name: String, folder: String)], query: String) -> [Int] {
+        let scored = items.enumerated().compactMap { index, item -> (score: Int, length: Int, index: Int)? in
+            guard
+                let result = match(
+                    query, fields: [item.name, item.folder], weights: [1, 0.6], profile: .fuzzy)
+            else { return nil }
+            return (result.score, item.name.count, index)
+        }
+        guard !isShort(query) else { return scored.map(\.index) }
+        return scored.sorted {
+            if $0.score != $1.score { return $0.score > $1.score }
+            if $0.length != $1.length { return $0.length < $1.length }
+            return $0.index < $1.index
+        }.map(\.index)
+    }
+
     /// Clipboard order: input arrives newest first; ties keep it. Off: unchanged.
-    static func rankAccurate<T>(_ items: [T], query: String, text: (T) -> String?) -> [T] {
+    static func rankClipboard<T>(_ items: [T], query: String, text: (T) -> String?) -> [T] {
         guard isEnabled else { return items }
         let scored = items.enumerated().compactMap { offset, item -> (score: Int, offset: Int, item: T)? in
-            guard let s = text(item), let r = match(query, fields: [s], profile: .accurate) else {
+            guard let s = text(item), let score = clipboardScore(query, s) else {
                 return nil
             }
-            return (r.score, offset, item)
+            return (score, offset, item)
         }
         guard !isShort(query) else { return scored.map(\.item) }
         return scored.sorted { $0.score != $1.score ? $0.score > $1.score : $0.offset < $1.offset }.map(

@@ -23,6 +23,7 @@ final class FileSearchSession {
     @ObservationIgnored private let homeDirectory: URL
     @ObservationIgnored private var policy: FileSearchPolicy
     @ObservationIgnored private let debounce: Duration
+    @ObservationIgnored private var forkDefaultOperation = false  // FORK: search
     @ObservationIgnored private let searchOperation: SearchOperation
 
     private struct Request: Equatable {
@@ -42,6 +43,7 @@ final class FileSearchSession {
         policy = FileSearchPolicy(
             scopes: FileSearchScope.defaultScopes, ignorePatterns: [],
             homeDirectory: homeDirectory)
+        forkDefaultOperation = true  // FORK: search
         debounce = .milliseconds(120)
         searchOperation = { query, filter, policy in
             try await Task.detached(priority: .userInitiated) {
@@ -110,6 +112,16 @@ final class FileSearchSession {
             pendingSearch = nil
             let request = pending.request
             do {
+                if forkDefaultOperation && ForkSearch.isEnabled && ForkSearch.fileNeedsGlob(request.query) {
+                    let candidates = try await ForkFileSearchService.search(
+                        query: request.query, policy: policy, filter: request.filter
+                    ) { [weak self] candidates in
+                        guard let self, self.revision == pending.revision, self.request == request else {
+                            return
+                        }; self.results = candidates; self.state = .ready
+                    }; guard revision == pending.revision, self.request == request else { continue };
+                    results = candidates; state = .ready; continue
+                }  // FORK: search
                 let candidates = try await searchOperation(request.query, request.filter, policy)
                 guard revision == pending.revision, self.request == request else { continue }
                 results = candidates

@@ -468,6 +468,7 @@
 		9179B78CC9DAF65132E6AB0F /* FontCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5F51A2F29338DE5ECCD3534 /* FontCatalog.swift */; };
 		91B814D71B7B377C90C28A32 /* SettingsFileValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC9CF39D803AEFC987B8317 /* SettingsFileValue.swift */; };
 		92EDFE4591BE41718ECE1C82 /* ChatGPTSubscriptionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 943495E91C0D09B633746515 /* ChatGPTSubscriptionManager.swift */; };
+		92F8C52265F34018643ED3C5 /* ForkFileSearchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65DCEE8FB730BADE84E1AEF5 /* ForkFileSearchService.swift */; };
 		93047FD2948279FAD69C4E1C /* RoomRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FF6DBC407666868DCE27C22 /* RoomRunner.swift */; };
 		93364B5BCC0933108AADA0B6 /* NoteMarkdown.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FC1FDF99BFB0FB10FECEDAF /* NoteMarkdown.swift */; };
 		935F7433BB0C0ECDE6FA3BF3 /* ClipboardScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 548C83C4086CD9FB8E85B222 /* ClipboardScreen.swift */; };
@@ -1190,6 +1191,7 @@
 		64EC07E163CE4F3D11FE7225 /* SymbolImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SymbolImage.swift; sourceTree = "<group>"; };
 		65BCE97EB19D934F786DFAA0 /* DictionaryEntryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictionaryEntryView.swift; sourceTree = "<group>"; };
 		65D4EEE2968877B45565C85F /* WindowTarget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowTarget.swift; sourceTree = "<group>"; };
+		65DCEE8FB730BADE84E1AEF5 /* ForkFileSearchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForkFileSearchService.swift; sourceTree = "<group>"; };
 		65F1010FAC9C0EC4DBDE58A8 /* AIRequestBody.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIRequestBody.swift; sourceTree = "<group>"; };
 		6621A88681E993D49EEF07A3 /* tinycast.icon */ = {isa = PBXFileReference; lastKnownFileType = wrapper.icon; path = tinycast.icon; sourceTree = "<group>"; };
 		666E0A469BE1984BEF1A9A50 /* CalcDimension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalcDimension.swift; sourceTree = "<group>"; };
@@ -2393,6 +2395,7 @@
 		60D90F376599CD3358AD671A /* Search */ = {
 			isa = PBXGroup;
 			children = (
+				65DCEE8FB730BADE84E1AEF5 /* ForkFileSearchService.swift */,
 				534FFE621F7328D7AE11CEA8 /* ForkFzf.swift */,
 				9FD9A908BA8F7073400EF4C3 /* ForkSearch.swift */,
 			);
@@ -4272,6 +4275,7 @@
 				5BF773277810AC519D7F4A17 /* ForkAppearanceScope.swift in Sources */,
 				9CCB74DAB331D3320693744F /* ForkAssets.swift in Sources */,
 				B014B7EC0A6229ABFDA4052E /* ForkColors.swift in Sources */,
+				92F8C52265F34018643ED3C5 /* ForkFileSearchService.swift in Sources */,
 				679B7CA2FC714DE26D5B8B03 /* ForkFontRow.swift in Sources */,
 				EC53CC0BFC1F5801BE0518D7 /* ForkFontSnapshot.swift in Sources */,
 				C4A938B9B06FA332244CF822 /* ForkFzf.swift in Sources */,

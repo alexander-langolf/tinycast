@@ -105,6 +105,10 @@ run() {
             case " $* " in *"/SearchRelevance.swift "*) ;; *) set -- "$@" Tinycast/Features/Launcher/Model/SearchRelevance.swift ;; esac
             ;;
     esac
+    # // FORK: harness-sources includes the two-query runner only for file-search sessions.
+    case " $* " in
+        *"/FileSearchSession.swift "*) set -- "$@" Tinycast/Fork/Search/ForkFileSearchService.swift ;;
+    esac
     if [ -n "$only" ] && [ "$name" != "$only" ]; then return 0; fi
     if [ "$index_only" -eq 1 ] && [ "$emit_db" -eq 0 ]; then return 0; fi
     ran=$((ran + 1))
@@ -138,7 +142,9 @@ run fork-layer-test Tinycast/Platform/Appearance.swift Tinycast/DesignSystem/The
     Tinycast/DesignSystem/InterfaceMetrics.swift
 
 # // FORK: fork-search pins the fork's fzf matcher, syntax, profiles and hook adapters.
-run fork-search-test Tinycast/Features/Launcher/Model/SearchRelevance.swift Tinycast/Fork/Search/*.swift
+run fork-search-test Tinycast/Features/Launcher/Model/SearchRelevance.swift \
+    Tinycast/Fork/Search/ForkFzf.swift Tinycast/Fork/Search/ForkSearch.swift \
+    Tinycast/Features/FileSearch/Model/*.swift
 
 L=Tinycast/Features/Launcher/Model
 run slow -O fuzz-test      $L/SearchRelevance.swift $L/ScriptRomanization.swift \
