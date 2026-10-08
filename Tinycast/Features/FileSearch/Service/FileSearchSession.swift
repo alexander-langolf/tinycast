@@ -104,6 +104,7 @@ final class FileSearchSession {
 
     /// A trashed row names a file that is gone, so it leaves the published results with it.
     func remove(_ result: FileSearchResult) {
+        forkSearch.remove(result.id)  // FORK: search
         results.removeAll { $0.id == result.id }
     }
 

@@ -4,11 +4,16 @@ import Foundation
 final class ForkFileSearchService {
     private var supplement: Task<Void, Never>?
     private var revision = 0
+    /// Rows trashed after the first batch published; the merged batch must not bring them back.
+    private var removed = Set<String>()
 
     isolated deinit { supplement?.cancel() }
 
+    func remove(_ id: String) { removed.insert(id) }
+
     func cancel() {
         revision &+= 1
+        removed = []
         supplement?.cancel()
         supplement = nil
     }
@@ -29,9 +34,10 @@ final class ForkFileSearchService {
                 let additional = try? await Self.candidates(
                     query: query, policy: policy, filter: filter, fuzzy: true), !Task.isCancelled
             else { return }
+            let merged = ForkSearch.mergePaths(initial, additional, id: { $0.id })
             publish(
                 FileSearchQuery.rank(
-                    ForkSearch.mergePaths(initial, additional, id: { $0.id }),
+                    merged.filter { !self.removed.contains($0.id) },
                     for: query, ignoring: policy.ignore))
         }
     }

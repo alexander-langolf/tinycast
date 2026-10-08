@@ -49,7 +49,8 @@ enum ForkFzf {
     static func match(_ term: [Character], in raw: String, exact: Bool, humps: [Int] = []) -> Hit? {
         guard !term.isEmpty else { return nil }
         let bytes = Array(raw.utf8)
-        if bytes.allSatisfy({ $0 < 128 }), term.allSatisfy({ $0.asciiValue != nil }) {
+        // Byte offsets equal Character offsets only for ASCII without CR: Swift folds "\r\n" into one Character.
+        if bytes.allSatisfy({ $0 < 128 && $0 != 13 }), term.allSatisfy({ $0.asciiValue != nil }) {
             let needle = term.map { $0.asciiValue! }
             let text = bytes.map { (65...90).contains($0) ? $0 + 32 : $0 }
             guard containsSubsequence(needle, in: text) else { return nil }

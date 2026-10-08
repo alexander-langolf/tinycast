@@ -334,9 +334,12 @@ struct ForkSearchTest {
         let beyondFuzzy = String(repeating: "x", count: 4096) + " alpha beta charlie"
         check("clipboard includes the 4096th character", ForkSearch.clipboardScore("abc", boundary) != nil)
         check("clipboard ignores fuzzy text beyond cap", ForkSearch.clipboardScore("abc", beyondFuzzy) == nil)
-        check(
-            "clipboard ignores literal text beyond cap in memory",
-            ForkSearch.clipboardScore("abc", beyond) == nil)
+        check("literal word beyond the cap still matches", ForkSearch.clipboardScore("abc", beyond) != nil)
+        let long = "invoice header " + String(repeating: "x", count: 5400) + " march footer gh"
+        check("exclusion beyond the cap rejects", ForkSearch.clipboardScore("invoice !march", long) == nil)
+        check("short word beyond the cap matches", ForkSearch.clipboardScore("gh", long) != nil)
+        check("suffix beyond the cap matches", ForkSearch.clipboardScore("gh$", long) != nil)
+        check("CRLF text does not crash the tiered matcher", ForkSearch.tiered("b", "a\r\nb")?.offset == 2)
         let graphemes = String(repeating: "👩‍💻", count: 4092) + " abc"
         check("clipboard cap counts characters", ForkSearch.clipboardScore("abc", graphemes) != nil)
         let rows = [(id: 1, text: beyond), (id: 2, text: boundary), (id: 3, text: beyondFuzzy)]

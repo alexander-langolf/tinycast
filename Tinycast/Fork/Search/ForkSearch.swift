@@ -131,23 +131,27 @@ enum ForkSearch {
         score(terms(query, profile: profile), in: text)
     }
 
+    /// `literalText` is the whole text when `text` is a capped head: a word the head misses still counts if it
+    /// appears literally in the whole text, and an excluded word anywhere in it rejects the item.
     private static func score(_ words: [Term], in text: String, literalText: String? = nil) -> Int? {
         guard words.contains(where: { !$0.negated }) else { return nil }
+        func literal(_ word: Term) -> ForkFzf.Hit? {
+            guard let literalText, !word.prefix else { return nil }
+            if word.suffix { return hit(word, in: literalText) }
+            guard containsLiteral(word.text, in: literalText) else { return nil }
+            return hit(word, in: String(word.text))
+        }
         var total = 0
         for word in words {
             let result = hit(word, in: text)
             if word.negated {
-                if result != nil { return nil }
+                if result != nil || literal(word) != nil { return nil }
                 continue
             }
             if let result, accepts(score: result.score, letters: word.text.count, level: "medium") {
                 total += result.score
-            } else if let literalText, word.text.count >= 3, !word.prefix, !word.suffix,
-                literalText.range(of: String(word.text), options: [.caseInsensitive, .diacriticInsensitive])
-                    != nil,
-                let literal = hit(word, in: String(word.text))
-            {
-                total += literal.score
+            } else if let found = literal(word) {
+                total += found.score
             } else {
                 return nil
             }
@@ -155,10 +159,30 @@ enum ForkSearch {
         return total
     }
 
+    /// Case- and diacritic-insensitive containment; ASCII words scan bytes, since texts here can be 100 KB+.
+    static func containsLiteral(_ word: [Character], in text: String) -> Bool {
+        guard word.allSatisfy({ $0.asciiValue != nil }) else {
+            return text.range(of: String(word), options: [.caseInsensitive, .diacriticInsensitive]) != nil
+        }
+        let needle = word.map { $0.asciiValue! }
+        let lower = { (b: UInt8) in (65...90).contains(b) ? b + 32 : b }
+        return text.utf8.withContiguousStorageIfAvailable { bytes -> Bool in
+            guard bytes.count >= needle.count else { return false }
+            outer: for start in 0...(bytes.count - needle.count) where lower(bytes[start]) == needle[0] {
+                for k in 1..<needle.count where lower(bytes[start + k]) != needle[k] { continue outer }
+                return true
+            }
+            return false
+        } ?? (text.range(of: String(word), options: [.caseInsensitive, .diacriticInsensitive]) != nil)
+    }
+
     static func clipboardScore(_ query: String, _ text: String?) -> Int? {
         guard let text else { return nil }
         guard isEnabled else { return text.localizedCaseInsensitiveContains(query) ? 0 : nil }
-        return score(query, String(text.prefix(clipboardScanLimit)), profile: .fuzzy)
+        let capped = text.utf8.count > clipboardScanLimit
+        return score(
+            terms(query, profile: .fuzzy), in: capped ? String(text.prefix(clipboardScanLimit)) : text,
+            literalText: capped ? text : nil)
     }
 
     static func clipboardResults<T, ID: Hashable>(
@@ -172,7 +196,8 @@ enum ForkSearch {
             guard let raw = text(item),
                 let value = score(
                     words, in: String(raw.prefix(clipboardScanLimit)),
-                    literalText: literalIDs.contains(id(item)) ? raw : nil)
+                    literalText: literalIDs.contains(id(item)) || raw.utf8.count > clipboardScanLimit
+                        ? raw : nil)
             else { return nil }
             return (item, value, offset)
         }
