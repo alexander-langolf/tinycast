@@ -199,6 +199,13 @@ run launcher-settings-file-test \
 run apple-shortcut-test    Tinycast/Features/AppleShortcuts/Model/*.swift
 # // FORK: agent-runs
 run agent-runs-test        Tinycast/Features/AgentRuns/Model/*.swift
+# // FORK: terminal-instances pins the shell marks, `$` queries, the stack, and a real zsh session.
+run terminal-instances-test Tinycast/Features/TerminalInstances/Model/*.swift
+run terminal-process-test  Tinycast/Features/TerminalInstances/Model/*.swift \
+                           Tinycast/Features/TerminalInstances/Service/TerminalProcess.swift \
+                           Tinycast/Features/TerminalInstances/Service/TerminalShellShim.swift
+# // FORK: palette-chips pins the Tab chip states and the pill geometry.
+run palette-chips-test     Tinycast/Features/PaletteChips/Model/*.swift
 run calc-test              Tinycast/Features/Calculator/Model/*.swift
 run index calc-performance Tinycast/Features/Calculator/Model/*.swift
 run calendar-test          Tinycast/Features/Calendar/Model/*.swift

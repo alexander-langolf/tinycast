@@ -138,6 +138,33 @@ follow the owner's revised fuzzy-search decision:
 - Plain substring filters in Uninstall, calculator history, AI chat lists, window layouts and settings
   lists are unchanged.
 
+## Terminal instances
+
+The [terminal instances feature](features/terminal-instances.md) is fork-owned under
+`Tinycast/Features/TerminalInstances/` and `Tinycast/Windows/TerminalInstances/`, with
+`Tests/terminal-instances-test.swift` and `Tests/terminal-process-test.swift`. `AppCore` lazily
+owns the coordinator and presenter and asks every shell to hang up at termination. One
+`RootPaletteView.screen` branch routes a `$ command` launcher query to `TerminalCommandScreen`;
+a bare `$` shows an instruction. Opening a command replaces the palette with an independent,
+initially pinned panel running the feature's own persistent `forkpty` zsh session. The upstream
+`Platform/PseudoTerminal.swift` and `TerminalLogView` remain unchanged.
+
+## Palette chips
+
+Tab in the collapsed compact launcher toggles a pill with Applications, Files, Shortcuts and
+Clipboard chips in a separate non-key child panel. The feature is fork-owned under
+`Tinycast/Features/PaletteChips/` and `Tinycast/Windows/PaletteChips/`, with
+`Tests/palette-chips-test.swift`; `AppCore` lazily owns its coordinator and presenter.
+Clipboard is disabled when clipboard history is off. Applications and Shortcuts scope launcher
+results by kind; Files and Clipboard open their existing screens carrying the query.
+
+`RootPaletteView` hooks cover Tab, Escape, pill radius, the `⌘1–4` hint and hidden compact
+favourites. `PaletteWindowController` hooks adjust the collapsed width and route number-row
+favourite slots to chips, consuming unused slots while chip mode is active. `LauncherScreen`
+scopes ordinary results to Applications or Shortcuts, preserving pinned command results.
+With chip mode off, these hooks retain upstream behaviour. The
+[feature doc](features/terminal-instances.md#tab-chips) describes navigation and placement.
+
 ## Merge playbook
 
 1. Work from `main` and run `git merge upstream/main`. Never rebase.
@@ -242,6 +269,14 @@ unless they have an explicit symbol-only allowance. The audit is a static guard,
 | `Tinycast/Windows/HUD/HUDPresenter.swift` | `// FORK: accent-scope` | Apply the optional accent at a hosting boundary. |
 | `Tinycast/Windows/HUD/VolumeHUDView.swift` | `// FORK: typography` | Route non-Settings token reads through metrics; symbols stay system. |
 | `project.yml` | `// FORK: project-include` | Include fork build configuration. |
+| `Scripts/run-tests.sh` | `// FORK: terminal-instances` | Register the terminal model and real-zsh process harnesses. |
+| `Scripts/run-tests.sh` | `// FORK: palette-chips` | Register the chip state-machine and layout harness. |
+| `Tinycast/App/AppCore.swift` | `// FORK: terminal-instances` | Lazily own the coordinator and presenter; hang up every session at termination. |
+| `Tinycast/App/AppCore.swift` | `// FORK: palette-chips` | Lazily own the chips coordinator and presenter. |
+| `Tinycast/Palette/RootPaletteView.swift` | `// FORK: terminal-instances` | Route standalone `$` launcher queries to the terminal command screen. |
+| `Tinycast/Palette/RootPaletteView.swift` | `// FORK: palette-chips` | Toggle chips with Tab in the collapsed bar; handle empty-query Escape; set pill radius, show the `⌘1–4` hint and hide compact favourites. |
+| `Tinycast/Palette/PaletteWindowController.swift` | `// FORK: palette-chips` | Route number-row favourite slots to active chips and consume unused slots; set collapsed pill width. |
+| `Tinycast/Features/Launcher/UI/LauncherScreen.swift` | `// FORK: palette-chips` | Scope ordinary launcher results to Applications or Shortcuts while preserving pinned command results. |
 
 ## Refactor inventory
 
