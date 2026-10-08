@@ -158,6 +158,10 @@ panel, the shortcut-recorder callout and the Notes switcher, and `menuRow` is de
 `dialogIcon 32` · `hudWidth 200` ·
 `hudHeight 100` · `volumeTrackHeight 6` · `volumeReadout 38`
 
+The background-agent footer adds `agentRunCardHeight 96` and `agentRunStatusDot 6`, both scaled
+through `InterfaceMetrics`. At most three cards share one horizontal row below the launcher list;
+the transparent safe-area inset keeps the list's existing dissolve and adds no divider.
+
 Notes adds `noteWindow 520×420` (opening size on a first run only), `noteWindowMinimum 320×220`,
 `noteTitlebar 44`, `noteTitleInset 120`, `noteEditorInset 16`, `noteSearchHeight 34`,
 `noteFooterHeight 28`, `noteGlyph 16`, `noteEmptyGlyph 28`, and `noteHeadingMenu 220×159`.
@@ -215,6 +219,8 @@ shipped. Light is the same stop with the ink inverted, and is the only column op
 | `textPrimary`     | white 1.00     | black 1.00     | search text and caret, volume fill and knob      |
 | `textSecondary`   | white 0.60     | black 0.60     | secondary labels                                 |
 | `textTertiary`    | white 0.40     | black 0.42     | placeholders, trailing kind labels               |
+| `accent`         | system accent | system accent | working background-agent state dot |
+| `warning`        | system orange | system orange | blocked background-agent state dot |
 | `menuSymbol`      | white 0.70     | black 0.70     | native popover-menu symbols                      |
 | `iconPlaceholder` | white 0.06     | black 0.06     | the empty tile a row paints while an icon decodes |
 | `sheen`           | white 0.04     | black 0.04     | the wash behind the Onboarding header            |

@@ -65,6 +65,8 @@ struct InterfaceMetrics: Equatable, Sendable {
 
         var panelWidth: CGFloat { scaledPoints(Theme.Size.panelWidth, scale) }
         var panelHeight: CGFloat { scaledPoints(Theme.Size.panelHeight, scale) }
+        var agentRunCardHeight: CGFloat { scaledPoints(Theme.Size.agentRunCardHeight, scale) }
+        var agentRunStatusDot: CGFloat { scaledPoints(Theme.Size.agentRunStatusDot, scale) }
         var headerHeight: CGFloat { scaledPoints(Theme.Size.headerHeight, scale) }
         var headerIconSlot: CGFloat { scaledPoints(Theme.Size.headerIconSlot, scale) }
         var headerPadding: CGFloat { scaledPoints(Theme.Size.headerPadding, scale) }

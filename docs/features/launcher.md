@@ -699,6 +699,12 @@ Application and System Settings results expose **Show in Finder** in their ⌘K 
 shortcut is available for them. `AppEntry.canRevealInFinder` is the one rule both the menu row and
 the key handler read, so the advertised chord can't drift from the behavior.
 
+## Background agent runs
+
+The expanded launcher adds a [background agents footer](agent-runs.md) below its list and above the
+action bar. It is a separate safe-area inset with at most three cards, not a launcher section:
+search, row ordering, keyboard selection and `PaletteRowIndex` do not include these runs.
+
 ## Quitting and restarting apps
 
 `RunningAppsMonitor` (live from `NSWorkspace` launch/terminate notifications) drives both the row's

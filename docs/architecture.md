@@ -106,6 +106,10 @@ fine too; deciding something with one is what the rule forbids. `showNotice`, `c
 
 New long-lived state belongs on `AppCore`, wired in `start()`. Do not create a competing singleton: this is a singleton, not a container.
 
+`AppCore` also owns `AgentRunsMonitor` and `AgentRunsCoordinator`. Its `start()` wires the palette
+window's visibility callback to start and stop polling. The launcher footer reads its coordinator
+through the palette environment; its cards never enter the launcher selection model.
+
 Clipboard text recognition is the one feature that leaves the process. `AppCore` owns the indexer;
 the stateless `ClipboardTextWorker` runs one bundled `ClipboardTextHelper` per item, from
 `Contents/Helpers`, and reaps it before returning. Vision's and PDFKit's allocations therefore belong
@@ -220,7 +224,7 @@ Tinycast/
     Launcher/ Clipboard/ Calculator/ Calendar/ Emoji/ FileSearch/ MenuSearch/ Notes/
     Quicklinks/ Snippets/ Uninstall/ SystemActions/ CustomCommands/ HotKeys/ Backup/
     WindowManagement/ Onboarding/ Updates/ Support/ AI/ Settings/
-    Extensions/
+    AgentRuns/ Extensions/
         Model/      pure — the harness inputs
         Service/    effects — stores, monitors, runners, AppKit glue
         UI/         screens, views, and the feature's coordinator

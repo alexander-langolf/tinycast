@@ -32,6 +32,7 @@ extension View {
             .environment(core.menuSearch)
             .environment(core.windowSwitch)
             .environment(core.runningApps)
+            .environment(core.agentRunsCoordinator)
             .environment(core.hotKeys)
             .environment(core.uninstall)
             .environment(core.quicklinks)

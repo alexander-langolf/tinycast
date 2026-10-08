@@ -185,6 +185,9 @@ struct LauncherList: View {
                 }
             }
         }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            AgentRunsFooter()
+        }
     }
 }
 
