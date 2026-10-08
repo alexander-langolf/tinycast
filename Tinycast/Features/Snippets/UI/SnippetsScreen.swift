@@ -15,8 +15,8 @@ struct SnippetsScreen: PaletteScreen {
         let query = vm.query.trimmingCharacters(in: .whitespaces)
         guard !query.isEmpty else { return enabled }
         return enabled.filter { record in
-            record.snippet.name.localizedCaseInsensitiveContains(query)
-                || record.snippet.keyword?.localizedCaseInsensitiveContains(query) == true
+            ForkSearch.contains(query, in: record.snippet.name)  // FORK: search
+                || ForkSearch.contains(query, in: record.snippet.keyword)  // FORK: search
         }
     }
 

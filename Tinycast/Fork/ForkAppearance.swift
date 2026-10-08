@@ -32,6 +32,7 @@ final class ForkAppearance {
         ForkTypography.shared.family = fontFamily
         colors.publish()
         assets.publish()
+        ForkSearch.setEnabled(true)
         Self.current = self
     }
 }

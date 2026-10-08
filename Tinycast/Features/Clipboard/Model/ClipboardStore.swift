@@ -78,7 +78,7 @@ struct ClipboardItem: Identifiable, Hashable, Sendable {
 
     /// Case-insensitive substring match: how the store filters without FTS.
     func matches(_ query: String) -> Bool {
-        text?.localizedCaseInsensitiveContains(query) ?? false
+        ForkSearch.contains(query, in: text, profile: .accurate)  // FORK: search
     }
 }
 
@@ -573,7 +573,9 @@ final class ClipboardStore {
     private func unfiltered(_ q: String, filter: ClipboardFilter) -> [ClipboardItem] {
         guard !q.isEmpty else { return orderedItems }
         // Pins are matched in memory: all resident, and the LIMIT would otherwise drop one.
-        let ordinary = pinnedItems.filter { $0.matches(q) } + runSearch(q).filter { !$0.isPinned }
+        let ordinary =
+            pinnedItems.filter { $0.matches(q) }
+            + ForkSearch.rankAccurate(runSearch(q).filter { !$0.isPinned }, query: q) { $0.text }  // FORK: search
         guard !textSearchMatches.isEmpty else { return ordinary }
         let ordinaryIDs = Set(ordinary.map(\.id))
         let additional = textSearchMatches.filter { !ordinaryIDs.contains($0.id) }
@@ -589,8 +591,9 @@ final class ClipboardStore {
 
     private func runSearch(_ q: String) -> [ClipboardItem] {
         // Trigram FTS needs ≥3 characters; shorter queries filter the in-memory window.
-        guard let stmt = searchStmt, q.count >= 3 else { return fallbackSearch(q) }
-        let match = "\"" + q.replacingOccurrences(of: "\"", with: "\"\"") + "\""
+        guard let stmt = searchStmt, q.count >= 3, let match = ForkSearch.clipboardFTS(q) else {  // FORK: search
+            return fallbackSearch(q)
+        }
         sqlite3_bind_text(stmt, 1, match, -1, SQLITE_TRANSIENT)
         var results: [ClipboardItem] = []
         var status = sqlite3_step(stmt)
@@ -705,7 +708,9 @@ final class ClipboardStore {
         guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return [] }
         defer { sqlite3_finalize(stmt) }
         if !isShort {
-            let match = "\"" + query.replacingOccurrences(of: "\"", with: "\"\"") + "\""
+            let match =  // FORK: search
+                ForkSearch.clipboardFTS(query) ?? "\"" + query.replacingOccurrences(of: "\"", with: "\"\"")
+                + "\""
             sqlite3_bind_text(stmt, 1, match, -1, SQLITE_TRANSIENT)
         }
         var matches: [ClipboardItem] = []
@@ -713,8 +718,8 @@ final class ClipboardStore {
         while !Task.isCancelled, sqlite3_step(stmt) == SQLITE_ROW {
             guard let item = row(stmt) else { continue }
             if let residentIDs, !residentIDs.contains(item.id) { continue }
-            if isShort || item.isPinned,
-                columnString(stmt, 7)?.localizedCaseInsensitiveContains(query) != true
+            if isShort || item.isPinned,  // FORK: search
+                ForkSearch.contains(query, in: columnString(stmt, 7), profile: .accurate) != true
             {
                 continue
             }

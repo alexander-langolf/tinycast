@@ -75,6 +75,11 @@ enum LauncherMatch {
     private static let precheckThreshold = 2
 
     static func match(_ query: SearchText, in target: SearchText) -> Outcome? {
+        if ForkSearch.isEnabled {  // FORK: search
+            return ForkSearch.launcherScore(query.string, in: target.string, humps: target.humps).map {
+                $0 == .max ? .exact : .scored(score: $0, skipped: 0)
+            }
+        }
         let q = query.units
         let t = target.units
         guard !q.isEmpty else { return nil }
@@ -194,6 +199,7 @@ enum SearchSensitivity: String, CaseIterable, Identifiable, Sendable {
     func accepts(_ outcome: LauncherMatch.Outcome, queryLength: Int) -> Bool {
         guard case .scored(let score, let skipped) = outcome else { return true }
         let length = queryLength - skipped
+        if ForkSearch.isEnabled { return ForkSearch.accepts(score: score, letters: length, level: rawValue) }  // FORK: search
         switch self {
         case .low: return true
         case .medium: return Double(score) >= 1.5 * Double(length - 2) + 4

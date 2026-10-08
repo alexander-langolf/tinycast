@@ -98,6 +98,13 @@ run() {
     case " $* " in
         *"/NoteBlockDecoration.swift "*) set -- "$@" Tinycast/Fork/ForkFontSnapshot.swift ;;
     esac
+    case " $* " in
+        *"/ForkAppearance.swift "*|*"/SearchRelevance.swift "*|*"/LauncherMatch.swift "*|*"/ClipboardStore.swift "*|*"/FileSearchQuery.swift "*|*"/SnippetsScreen.swift "*|*"/QuicklinkListScreen.swift "*)
+            case " $* " in *"Fork/Search/"*) ;; *) set -- "$@" Tinycast/Fork/Search/ForkFzf.swift Tinycast/Fork/Search/ForkSearch.swift ;; esac
+            # // FORK: harness-sources folds through FuzzyMatch.normalized, so it needs SearchRelevance too.
+            case " $* " in *"/SearchRelevance.swift "*) ;; *) set -- "$@" Tinycast/Features/Launcher/Model/SearchRelevance.swift ;; esac
+            ;;
+    esac
     if [ -n "$only" ] && [ "$name" != "$only" ]; then return 0; fi
     if [ "$index_only" -eq 1 ] && [ "$emit_db" -eq 0 ]; then return 0; fi
     ran=$((ran + 1))
@@ -129,6 +136,9 @@ run() {
 # // FORK: fork-harness pins typography, fallback, caching and untouched colours.
 run fork-layer-test Tinycast/Platform/Appearance.swift Tinycast/DesignSystem/Theme.swift \
     Tinycast/DesignSystem/InterfaceMetrics.swift
+
+# // FORK: fork-search pins the fork's fzf matcher, syntax, profiles and hook adapters.
+run fork-search-test Tinycast/Features/Launcher/Model/SearchRelevance.swift Tinycast/Fork/Search/*.swift
 
 L=Tinycast/Features/Launcher/Model
 run slow -O fuzz-test      $L/SearchRelevance.swift $L/ScriptRomanization.swift \
