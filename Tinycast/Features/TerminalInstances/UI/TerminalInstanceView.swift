@@ -62,6 +62,11 @@ struct TerminalInstanceView: View {
     @ViewBuilder
     private var commandArea: some View {
         switch session.phase {
+        case .starting where session.startupNotice != nil:
+            Text(session.startupNotice ?? "")
+                .font(metrics.typography.rowTrailing)
+                .foregroundStyle(Theme.Colors.warning)
+                .fixedSize(horizontal: false, vertical: true)
         case .starting, .running:
             Text(instance.lastCommand)
                 .font(metrics.typography.searchField.monospaced())

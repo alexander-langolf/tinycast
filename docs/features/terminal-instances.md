@@ -12,7 +12,9 @@
 - **Shell marks drive state and output.** The ZDOTDIR shim adds OSC 133 A/C/D and OSC 7 after loading
   the user's startup files. The parser captures output between C and D, accepts BEL and ST
   terminators across reads, retains CSI for log rendering and holds incomplete UTF-8 scalars.
-  Unknown OSC and charset designations are dropped; incomplete escape sequences have a 4 KiB bound.
+  Unknown OSC, APC/DCS/PM/SOS payloads and charset designations are dropped. A new ESC aborts an
+  unfinished escape unless it completes ST. Incomplete escape buffers have a 4 KiB bound; oversized
+  string payloads remain hidden through their terminator.
 - **`$` must stand alone.** `$ cmd` and a bare `$` select the terminal screen; `$100 in eur`
   remains a calculator query. A bare `$` shows an instruction rather than a runnable row.
 - **Each submitted command replaces the displayed run.** `TerminalSession` creates a new
@@ -38,10 +40,11 @@ and presents the new instance there. Each new shell starts in the user's home di
 Spawning runs in a detached task; the initial command waits for the first OSC 133 A prompt mark.
 
 `TerminalShellShim` rewrites four files in the temporary directory's `<bundle id>-zdotdir` folder
-on every spawn. Its `.zshenv` sources the user's `$HOME/.zshenv`, then remembers that file's
-`ZDOTDIR` choice for `.zprofile`, `.zshrc` and `.zlogin`. After login, `ZDOTDIR` points at the user's
-directory again. The shim does not write startup files in the home directory; the user's own
-shell configuration still runs normally. It removes inherited `KITTY_` and `TERM_PROGRAM`
+on every spawn. Its `.zshenv` restores the inherited `ZDOTDIR`, or unsets it when absent, before
+sourcing the user's `.zshenv` from that directory or `$HOME`. It remembers the resulting `ZDOTDIR`
+choice for `.zprofile`, `.zshrc` and `.zlogin`. Each user startup file sees that choice; after login,
+`ZDOTDIR` stays unset if the user did not set it. The shim does not write startup files in the home
+directory; the user's own shell configuration still runs normally. It removes inherited `KITTY_` and `TERM_PROGRAM`
 variables, sets `TERM=xterm-256color`, and exports `TINYCAST=1` and `TINYCAST_TERMINAL=1`.
 
 The phase is `starting → idle → running → idle …`, ending at `ended` when the shell exits or
@@ -50,11 +53,17 @@ the exit status (defaulting to zero if absent or invalid), and A marks a ready p
 while running without D returns to idle with no status, as after interrupting a continuation
 prompt. The shim emits D only after a command ran; its `precmd` hook runs first to preserve `$?`.
 OSC 7 updates the instance's directory, including percent-decoded spaces. Output-only reads
-coalesce for 30 ms; marks flush the pending batch immediately.
+coalesce for 30 ms; marks flush the pending batch immediately. Input writes stop at backpressure;
+a write dispatch source flushes the remaining bytes while the read source continues draining.
 
-Closing sends SIGHUP to the shell's process group and to a distinct foreground group, then
-cancels pty reads and closes the descriptor. After two seconds, SIGKILL targets both groups only
-if the shell has not yet been reaped. A process dispatch source and `waitpid` reap the shell
+After ten seconds without the first prompt, the card shows “Shell hasn't reached a prompt: Ctrl-C
+to interrupt, Cmd-O to open in kitty, Cmd-W to close”. The notice clears at the first prompt, exit
+or close. ⌃C also reaches the shell while it is starting.
+
+Closing captures the foreground and shell process groups, then sends SIGHUP immediately on the
+caller's thread. Queue cleanup cancels both pty sources and closes the descriptor after both
+cancel handlers run. After two seconds, SIGKILL targets both captured groups even if the shell
+has already been reaped. A process dispatch source and `waitpid` reap the shell
 independently of pty EOF, including when a background job retains the terminal descriptor.
 
 ## Presentation and keys
@@ -74,7 +83,7 @@ keep these in step if the upstream view changes.
 | Key | In an instance |
 | --- | --- |
 | ↵ | Submit the next command while idle, in the same shell; a leading `$ ` is accepted |
-| ⌃C | Interrupt the running command |
+| ⌃C | Interrupt shell startup or the running command |
 | ⎋ | Toggle output expansion |
 | ⌘P | Toggle pinning between floating and normal window order |
 | ⌘O | Open a separate kitty shell in the instance's current directory |
@@ -128,11 +137,13 @@ owned by the selected chip resets chip state.
 
 The registered [terminal model harness](../../Tests/terminal-instances-test.swift) covers command
 marks, byte-by-byte splits, BEL/ST and split ST, retained SGR, alternate screen, split UTF-8,
-missing status, runaway OSC, dropped titles and charsets, phase transitions, `$` parsing,
+missing status, interrupted escapes, dropped APC/DCS/PM/SOS payloads with every split boundary,
+oversized control strings, runaway OSC, dropped titles and charsets, phase transitions, `$` parsing,
 stack placement, card height and row counting.
 The [process harness](../../Tests/terminal-process-test.swift) spawns a real `zsh -il` with a
-scratch HOME and checks `.zshenv`, `.zprofile` and `.zshrc` loading, restored `ZDOTDIR`, exit
-statuses, OSC 7 with spaces, foreground-job interruption, alternate-screen marks and hang-up.
+scratch HOME and checks `.zshenv`, `.zprofile` and `.zshrc` loading, unset and inherited `ZDOTDIR`,
+exit statuses, OSC 7 with spaces, foreground-job interruption, alternate-screen marks, a 30,000-byte
+command and hang-up of a HUP-ignoring foreground job.
 It does not create or assert a user `.zlogin` file.
 The [chips harness](../../Tests/palette-chips-test.swift) covers reducer transitions, unavailable
 chips, consumed slots, Escape/back/reset behaviour and pill/side placement geometry.

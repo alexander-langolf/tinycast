@@ -41,32 +41,34 @@ struct TerminalProcessTest {
             try? contents.write(to: home.appendingPathComponent(name), atomically: true, encoding: .utf8)
         }
         setenv("HOME", home.path, 1)
+        unsetenv("ZDOTDIR")
 
         guard let process = TerminalProcess.spawn(directory: home.path, columns: 80, shimRoot: root) else {
             print("FAIL  spawn")
             exit(1)
         }
-        let recorder = Recorder()
-        let reader = Task.detached {
-            for await event in process.events {
-                switch event {
-                case .marks(let marks): recorder.marks.withLock { $0 += marks }
-                case .exited: recorder.exited.withLock { $0 = true }
-                }
-            }
-        }
+        let (recorder, reader) = record(process)
 
         check("the first prompt arrives", await waitFor(recorder) { $0.contains(.promptReady) })
 
         let env = await run(
-            process, recorder, "echo $TC_FROM_ZSHENV $TC_FROM_ZPROFILE $TC_FROM_ZSHRC; echo $ZDOTDIR")
+            process, recorder,
+            "echo $TC_FROM_ZSHENV $TC_FROM_ZPROFILE $TC_FROM_ZSHRC; echo ZDOTDIR_SET=${+ZDOTDIR}")
         check(
             "all user startup files load through the shim", env.output.contains("env profile rc"),
             env.output.debugDescription)
         check(
-            "ZDOTDIR is the user's again after login", env.output.contains(home.path),
+            "ZDOTDIR stays unset when the user did not set it", env.output.contains("ZDOTDIR_SET=0"),
             env.output.debugDescription)
         check("a clean command reports 0", env.status == 0, String(describing: env.status))
+
+        let long = await run(
+            process, recorder, "echo -n " + String(repeating: "a", count: 30000) + " | wc -c")
+        check(
+            "a 30000-character command finishes without blocking pty reads",
+            long.status == 0 && long.marks.contains(.promptReady)
+                && long.output.trimmingCharacters(in: .whitespacesAndNewlines) == "30000",
+            long.output.debugDescription)
 
         let failed = await run(process, recorder, "(exit 3)")
         check("a failing command reports its status", failed.status == 3, String(describing: failed.status))
@@ -96,13 +98,76 @@ struct TerminalProcessTest {
             tui.marks.contains(.alternateScreen(true)) && tui.marks.contains(.alternateScreen(false)),
             "\(tui.marks)")
 
+        let pidFile = root.appendingPathComponent("foreground.pid")
+        let foregroundStart = count(recorder)
+        process.send("/bin/sh -c 'trap \"\" HUP; echo $$ > \"\(pidFile.path)\"; exec sleep 321'\r")
+        check(
+            "the HUP-ignoring foreground job starts",
+            await waitFor(recorder, after: foregroundStart) { $0.contains(.commandStarted) })
+        let hasPID = await waitUntil(5) {
+            guard let text = try? String(contentsOf: pidFile, encoding: .utf8) else { return false }
+            return Int32(text.trimmingCharacters(in: .whitespacesAndNewlines)) != nil
+        }
+        let foregroundPID = (try? String(contentsOf: pidFile, encoding: .utf8))
+            .flatMap { Int32($0.trimmingCharacters(in: .whitespacesAndNewlines)) }
+        check("the foreground job records its own PID", hasPID && foregroundPID != nil)
+
         process.terminate()
-        check("hang-up ends the shell", await waitUntil(5) { recorder.exited.withLock { $0 } })
+        let shellExited = await waitUntil(5) { recorder.exited.withLock { $0 } }
+        check("hang-up ends the shell", shellExited)
+        if !shellExited { kill(process.processID, SIGKILL) }
+
+        if let foregroundPID {
+            let killed = await waitUntil(5) { kill(foregroundPID, 0) == -1 && errno == ESRCH }
+            check("hang-up kills the HUP-ignoring foreground job after the shell exits", killed)
+            if !killed { kill(foregroundPID, SIGKILL) }
+        }
+
+        let custom = root.appendingPathComponent("custom-zdotdir", isDirectory: true)
+        try? FileManager.default.createDirectory(at: custom, withIntermediateDirectories: true)
+        for (name, contents) in files {
+            try? contents.write(to: custom.appendingPathComponent(name), atomically: true, encoding: .utf8)
+        }
+        setenv("ZDOTDIR", custom.path, 1)
+        if let restored = TerminalProcess.spawn(directory: home.path, columns: 80, shimRoot: root) {
+            let (restoredRecorder, restoredReader) = record(restored)
+            check(
+                "the custom ZDOTDIR shell reaches its prompt",
+                await waitFor(restoredRecorder) { $0.contains(.promptReady) })
+            let restoredEnv = await run(
+                restored, restoredRecorder,
+                "echo $ZDOTDIR; echo $TC_FROM_ZSHENV $TC_FROM_ZPROFILE $TC_FROM_ZSHRC")
+            check(
+                "an inherited ZDOTDIR is restored and its startup files load",
+                restoredEnv.output.contains(custom.path) && restoredEnv.output.contains("env profile rc"),
+                restoredEnv.output.debugDescription)
+            restored.terminate()
+            check(
+                "the custom ZDOTDIR shell exits",
+                await waitUntil(5) { restoredRecorder.exited.withLock { $0 } })
+            restoredReader.cancel()
+        } else {
+            check("spawn with a custom ZDOTDIR", false)
+        }
+        unsetenv("ZDOTDIR")
 
         reader.cancel()
         try? FileManager.default.removeItem(at: root)
         print(failures == 0 ? "\nALL PASSED" : "\n\(failures) FAILED")
         exit(failures == 0 ? 0 : 1)
+    }
+
+    static func record(_ process: TerminalProcess) -> (Recorder, Task<Void, Never>) {
+        let recorder = Recorder()
+        let reader = Task.detached {
+            for await event in process.events {
+                switch event {
+                case .marks(let marks): recorder.marks.withLock { $0 += marks }
+                case .exited: recorder.exited.withLock { $0 = true }
+                }
+            }
+        }
+        return (recorder, reader)
     }
 
     static func count(_ recorder: Recorder) -> Int { recorder.marks.withLock { $0.count } }

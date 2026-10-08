@@ -7,9 +7,22 @@ enum TerminalShellShim {
             ".zshenv",
             #"""
             _tc_shim=$ZDOTDIR
-            ZDOTDIR=$HOME
-            [[ -r $HOME/.zshenv ]] && source $HOME/.zshenv
-            _tc_user=${ZDOTDIR:-$HOME}
+            if (( ${+_TC_ZDOTDIR} )); then
+              ZDOTDIR=$_TC_ZDOTDIR
+            else
+              unset ZDOTDIR
+            fi
+            unset _TC_ZDOTDIR
+            [[ -r ${ZDOTDIR-$HOME}/.zshenv ]] && source ${ZDOTDIR-$HOME}/.zshenv
+            _tc_user_set=${+ZDOTDIR}
+            _tc_user=${ZDOTDIR-$HOME}
+            _tc_restore_zdotdir() {
+              if (( _tc_user_set )); then
+                ZDOTDIR=$_tc_user
+              else
+                unset ZDOTDIR
+              fi
+            }
             ZDOTDIR=$_tc_shim
 
             """#
@@ -17,7 +30,7 @@ enum TerminalShellShim {
         (
             ".zprofile",
             #"""
-            ZDOTDIR=$_tc_user
+            _tc_restore_zdotdir
             [[ -r $_tc_user/.zprofile ]] && source $_tc_user/.zprofile
             ZDOTDIR=$_tc_shim
 
@@ -26,7 +39,7 @@ enum TerminalShellShim {
         (
             ".zshrc",
             #"""
-            ZDOTDIR=$_tc_user
+            _tc_restore_zdotdir
             [[ $HISTFILE == $_tc_shim/* ]] && HISTFILE=$_tc_user/.zsh_history
             [[ -r $_tc_user/.zshrc ]] && source $_tc_user/.zshrc
             ZDOTDIR=$_tc_shim
@@ -48,9 +61,10 @@ enum TerminalShellShim {
         (
             ".zlogin",
             #"""
-            ZDOTDIR=$_tc_user
+            _tc_restore_zdotdir
             [[ -r $_tc_user/.zlogin ]] && source $_tc_user/.zlogin
-            unset _tc_shim _tc_user
+            unset _tc_shim _tc_user _tc_user_set
+            unfunction _tc_restore_zdotdir
 
             """#
         )
@@ -75,6 +89,7 @@ enum TerminalShellShim {
     /// kitty's variables would load its own shell integration and duplicate the marks.
     static func environment(base: [String: String], shim: URL) -> [String: String] {
         var environment = base.filter { !$0.key.hasPrefix("KITTY_") && !$0.key.hasPrefix("TERM_PROGRAM") }
+        environment["_TC_ZDOTDIR"] = base["ZDOTDIR"]
         environment["ZDOTDIR"] = shim.path
         environment["TERM"] = "xterm-256color"
         environment["TINYCAST"] = "1"

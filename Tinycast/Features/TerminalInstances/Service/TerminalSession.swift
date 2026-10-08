@@ -13,6 +13,7 @@ final class TerminalSession {
     private(set) var isFullScreen = false
     /// Display rows of `run`, capped at what the card can show.
     private(set) var rows = 0
+    private(set) var startupNotice: String?
 
     @ObservationIgnored private let columns: Int
     @ObservationIgnored private let rowCap: Int
@@ -20,6 +21,7 @@ final class TerminalSession {
     @ObservationIgnored private var process: TerminalProcess?
     @ObservationIgnored private var queued: String?
     @ObservationIgnored private var reader: Task<Void, Never>?
+    @ObservationIgnored private var startupTimeout: Task<Void, Never>?
     @ObservationIgnored private var isTerminated = false
 
     /// Past this the head is dropped, as the Command Output window does.
@@ -34,6 +36,16 @@ final class TerminalSession {
 
     func start() {
         guard reader == nil else { return }
+        startupTimeout = Task { [weak self] in
+            do {
+                try await Task.sleep(for: .seconds(10))
+            } catch {
+                return
+            }
+            guard let self, self.phase == .starting, !self.isTerminated else { return }
+            self.startupNotice =
+                "Shell hasn't reached a prompt: Ctrl-C to interrupt, Cmd-O to open in kitty, Cmd-W to close"
+        }
         let directory = directory
         let columns = columns
         reader = Task { [weak self] in
@@ -42,6 +54,7 @@ final class TerminalSession {
             }.value
             guard let process = spawned else {
                 self?.phase = .ended
+                self?.clearStartupNotice()
                 return
             }
             guard let self, !self.isTerminated else {
@@ -66,12 +79,13 @@ final class TerminalSession {
     }
 
     func interrupt() {
-        guard phase == .running else { return }
+        guard !isTerminated, phase == .starting || phase == .running else { return }
         process?.send("\u{03}")
     }
 
     func terminate() {
         isTerminated = true
+        clearStartupNotice()
         queued = nil
         process?.terminate()
     }
@@ -91,6 +105,7 @@ final class TerminalSession {
         switch event {
         case .exited:
             phase = .ended
+            clearStartupNotice()
             process = nil
         case .marks(let marks):
             for mark in marks { apply(mark) }
@@ -101,6 +116,7 @@ final class TerminalSession {
         phase = phase.applying(mark)
         switch mark {
         case .promptReady:
+            clearStartupNotice()
             if let command = queued, let process {
                 queued = nil
                 send(command, to: process)
@@ -117,6 +133,12 @@ final class TerminalSession {
         case .commandStarted:
             break
         }
+    }
+
+    private func clearStartupNotice() {
+        startupTimeout?.cancel()
+        startupTimeout = nil
+        startupNotice = nil
     }
 
     private func append(_ text: String) {

@@ -101,10 +101,74 @@ struct TerminalInstancesTest {
             "an unterminated OSC past the limit cannot stall the marks",
             runaway.feed(bytes("\u{1B}]133;A\u{07}")) == [.promptReady])
 
+        for aborted in ["\u{1B}[3", "\u{1B}", "\u{1B}]133;D;99", "\u{1B}("] {
+            checkSplits(
+                "ESC aborts \(aborted.debugDescription)",
+                "\u{1B}]133;C\u{07}abc" + aborted
+                    + "\u{1B}]133;D;130\u{07}\u{1B}]133;A\u{07}",
+                [.commandStarted, .output("abc"), .commandFinished(status: 130), .promptReady])
+        }
+        for introducer in ["_", "P", "^", "X"] {
+            for terminator in ["\u{07}", "\u{1B}\\"] {
+                checkSplits(
+                    "control string \(introducer) ends at \(terminator.debugDescription)",
+                    "\u{1B}]133;C\u{07}a\u{1B}" + introducer + "hidden" + terminator
+                        + "bc\u{1B}]133;D;0\u{07}\u{1B}]133;A\u{07}",
+                    [.commandStarted, .output("abc"), .commandFinished(status: 0), .promptReady])
+            }
+            checkSplits(
+                "ESC aborts control string \(introducer)",
+                "\u{1B}]133;C\u{07}abc\u{1B}" + introducer + "hidden"
+                    + "\u{1B}]133;D;130\u{07}\u{1B}]133;A\u{07}",
+                [.commandStarted, .output("abc"), .commandFinished(status: 130), .promptReady])
+        }
+
+        for introducer in ["]", "_", "P", "^", "X"] {
+            var oversized = TerminalMarkParser()
+            _ = oversized.feed(bytes("\u{1B}]133;C\u{07}"))
+            let hidden = oversized.feed(
+                bytes(
+                    "\u{1B}" + introducer
+                        + String(repeating: "x", count: TerminalMarkParser.pendingLimit + 10)))
+            let more = oversized.feed(bytes("still hidden\u{1B}"))
+            let after = oversized.feed(bytes("\\visible\u{1B}]133;D;0\u{07}"))
+            check(
+                "oversized control string \(introducer) stays hidden through split ST",
+                hidden.isEmpty && more.isEmpty
+                    && after == [.output("visible"), .commandFinished(status: 0)],
+                "\(hidden) \(more) \(after)")
+        }
+
         var other = TerminalMarkParser()
         _ = other.feed(bytes("\u{1B}]133;C\u{07}"))
         check("charset designations are dropped", other.feed(bytes("a\u{1B}(Bb")) == [.output("ab")])
         check("window titles are dropped", other.feed(bytes("\u{1B}]2;title\u{07}c")) == [.output("c")])
+    }
+
+    static func checkSplits(
+        _ description: String, _ input: String, _ expected: [TerminalMarkParser.Event]
+    ) {
+        let data = bytes(input)
+        func parse(_ chunks: [[UInt8]]) -> [TerminalMarkParser.Event] {
+            var parser = TerminalMarkParser()
+            var result: [TerminalMarkParser.Event] = []
+            for chunk in chunks {
+                for event in parser.feed(chunk) {
+                    if case .output(let text) = event, case .output(let previous)? = result.last {
+                        result[result.count - 1] = .output(previous + text)
+                    } else {
+                        result.append(event)
+                    }
+                }
+            }
+            return result
+        }
+        for boundary in 0...data.count {
+            let actual = parse([Array(data[..<boundary]), Array(data[boundary...])])
+            check("\(description), split \(boundary)", actual == expected, "\(actual)")
+        }
+        let bytewise = parse(data.map { [$0] })
+        check("\(description), bytewise", bytewise == expected, "\(bytewise)")
     }
 
     static func phase() {

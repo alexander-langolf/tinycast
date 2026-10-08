@@ -22,6 +22,7 @@ struct TerminalMarkParser: Sendable {
 
     private(set) var isInCommand = false
     private var pending: [UInt8] = []
+    private var discardingString = false
 
     private static let escape: UInt8 = 0x1B
     private static let bell: UInt8 = 0x07
@@ -46,6 +47,22 @@ struct TerminalMarkParser: Sendable {
         var text: [UInt8] = []
         var index = 0
         while index < data.count {
+            if discardingString {
+                if data[index] == Self.bell {
+                    discardingString = false
+                    index += 1
+                } else if data[index] == Self.escape {
+                    guard index + 1 < data.count else {
+                        pending = [Self.escape]
+                        break
+                    }
+                    discardingString = false
+                    if data[index + 1] == UInt8(ascii: "\\") { index += 2 }
+                } else {
+                    index += 1
+                }
+                continue
+            }
             guard data[index] == Self.escape else {
                 if isInCommand { text.append(data[index]) }
                 index += 1
@@ -53,7 +70,8 @@ struct TerminalMarkParser: Sendable {
             }
             guard let sequence = Self.sequence(in: data, at: index) else {
                 if data.count - index > Self.pendingLimit {
-                    index += 1
+                    discardingString = Self.isStringIntroducer(data[index + 1])
+                    index += discardingString ? 2 : 1
                     continue
                 }
                 pending = Array(data[index...])
@@ -150,23 +168,32 @@ struct TerminalMarkParser: Sendable {
         String(decoding: bytes, as: UTF8.self)
     }
 
+    private static func isStringIntroducer(_ byte: UInt8) -> Bool {
+        [
+            UInt8(ascii: "]"), UInt8(ascii: "_"), UInt8(ascii: "P"),
+            UInt8(ascii: "^"), UInt8(ascii: "X")
+        ].contains(byte)
+    }
+
     /// Nil while the sequence at `start` has not all arrived.
     private static func sequence(in data: [UInt8], at start: Int) -> Sequence? {
         guard start + 1 < data.count else { return nil }
         switch data[start + 1] {
-        case UInt8(ascii: "]"):
+        case let introducer where isStringIntroducer(introducer):
+            let isOSC = introducer == UInt8(ascii: "]")
             var index = start + 2
             while index < data.count {
                 if data[index] == bell {
-                    return Sequence(kind: .osc(decode(data[(start + 2)..<index])), end: index + 1)
+                    return Sequence(
+                        kind: isOSC ? .osc(decode(data[(start + 2)..<index])) : .other, end: index + 1)
                 }
                 if data[index] == escape {
                     guard index + 1 < data.count else { return nil }
-                    let body = decode(data[(start + 2)..<index])
-                    // ESC \ is ST; any other ESC ends the OSC unterminated and starts the next one.
-                    return data[index + 1] == UInt8(ascii: "\\")
-                        ? Sequence(kind: .osc(body), end: index + 2)
-                        : Sequence(kind: .osc(body), end: index)
+                    guard data[index + 1] == UInt8(ascii: "\\") else {
+                        return Sequence(kind: .other, end: index)
+                    }
+                    return Sequence(
+                        kind: isOSC ? .osc(decode(data[(start + 2)..<index])) : .other, end: index + 2)
                 }
                 index += 1
             }
@@ -174,6 +201,7 @@ struct TerminalMarkParser: Sendable {
         case UInt8(ascii: "["):
             var index = start + 2
             while index < data.count {
+                if data[index] == escape { return Sequence(kind: .other, end: index) }
                 if (0x40...0x7E).contains(data[index]) {
                     return Sequence(kind: .csi(decode(data[(start + 2)...index])), end: index + 1)
                 }
@@ -181,7 +209,10 @@ struct TerminalMarkParser: Sendable {
             }
             return nil
         case UInt8(ascii: "("), UInt8(ascii: ")"), UInt8(ascii: "*"), UInt8(ascii: "+"):
-            return start + 2 < data.count ? Sequence(kind: .other, end: start + 3) : nil
+            guard start + 2 < data.count else { return nil }
+            return Sequence(kind: .other, end: data[start + 2] == escape ? start + 2 : start + 3)
+        case escape:
+            return Sequence(kind: .other, end: start + 1)
         default:
             return Sequence(kind: .other, end: start + 2)
         }

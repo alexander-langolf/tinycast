@@ -1,5 +1,6 @@
 import Darwin
 import Foundation
+import Synchronization
 
 /// A persistent interactive `zsh -il` on its own pseudo-terminal, with job control.
 final class TerminalProcess: @unchecked Sendable {
@@ -11,9 +12,17 @@ final class TerminalProcess: @unchecked Sendable {
     let processID: pid_t
     let events: AsyncStream<Event>
 
+    private struct DescriptorState: Sendable {
+        var descriptor: Int32
+        var sources = 2
+        var terminated = false
+        var reaped = false
+    }
+
+    private let descriptorState: Mutex<DescriptorState>
     private let parentEnd: Int32
     private let continuation: AsyncStream<Event>.Continuation
-    /// Every mutable member below is touched on this queue alone.
+    /// Source and buffer state below is touched on this queue alone.
     private let queue: DispatchQueue
     private var parser = TerminalMarkParser()
     private var readBuffer = [UInt8](repeating: 0, count: TerminalProcess.readSize)
@@ -21,6 +30,10 @@ final class TerminalProcess: @unchecked Sendable {
     private var flushScheduled = false
     private var readSource: DispatchSourceRead?
     private var exitSource: DispatchSourceProcess?
+    private var writeSource: DispatchSourceWrite?
+    private var writeResumed = false
+    private var pendingInput: [UInt8] = []
+    private var inputOffset = 0
     private var hasExited = false
 
     private static let shell = "/bin/zsh"
@@ -32,6 +45,7 @@ final class TerminalProcess: @unchecked Sendable {
 
     private init(parentEnd: Int32, processID: pid_t) {
         self.parentEnd = parentEnd
+        descriptorState = Mutex(DescriptorState(descriptor: parentEnd))
         self.processID = processID
         queue = DispatchQueue(label: "com.tinycast.terminal-instance", qos: .userInitiated)
         let stream = AsyncStream.makeStream(of: Event.self)
@@ -92,40 +106,78 @@ final class TerminalProcess: @unchecked Sendable {
         let bytes = Array(text.utf8)
         queue.async { [self] in
             guard readSource != nil else { return }
-            var offset = 0
-            while offset < bytes.count {
-                let written = bytes[offset...].withUnsafeBytes {
-                    Darwin.write(parentEnd, $0.baseAddress, $0.count)
-                }
-                if written > 0 {
-                    offset += written
-                } else if errno != EINTR, errno != EAGAIN {
-                    return
-                }
-            }
+            pendingInput.append(contentsOf: bytes)
+            flushInput()
         }
     }
 
-    /// Hang-up: zsh hangs up its own jobs; the foreground group is told too, then killed after a grace.
+    /// Hangs up captured job groups immediately, then kills both after grace even if zsh exited.
     func terminate() {
-        queue.async { [self] in
-            guard !hasExited else { return }
-            let foreground = readSource == nil ? 0 : tcgetpgrp(parentEnd)
-            if foreground > 0, foreground != processID { kill(-foreground, SIGHUP) }
-            kill(-processID, SIGHUP)
-            stopReading()
-            queue.asyncAfter(deadline: .now() + Self.hangupGrace) { [self] in
-                guard !hasExited else { return }
-                if foreground > 0 { kill(-foreground, SIGKILL) }
-                kill(-processID, SIGKILL)
+        let groups = descriptorState.withLock { state -> [pid_t] in
+            guard !state.terminated, !state.reaped else { return [] }
+            state.terminated = true
+            let foreground = state.descriptor >= 0 ? tcgetpgrp(state.descriptor) : -1
+            let shellGroup = getpgid(processID)
+            let groups = Array(Set([foreground, shellGroup].filter { $0 > 0 }))
+            for group in groups { killpg(group, SIGHUP) }
+            return groups
+        }
+        queue.async { [self] in stopReading() }
+        guard !groups.isEmpty else { return }
+        DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + Self.hangupGrace) {
+            for group in groups { killpg(group, SIGKILL) }
+        }
+    }
+
+    private func flushInput() {
+        guard let writeSource else { return }
+        while inputOffset < pendingInput.count {
+            let written = pendingInput.withUnsafeBytes { bytes in
+                Darwin.write(
+                    parentEnd, bytes.baseAddress?.advanced(by: inputOffset), bytes.count - inputOffset)
             }
+            if written > 0 {
+                inputOffset += written
+            } else if written < 0, errno == EINTR {
+                continue
+            } else if written < 0, errno == EAGAIN {
+                break
+            } else {
+                pendingInput.removeAll(keepingCapacity: true)
+                inputOffset = 0
+                break
+            }
+        }
+        if inputOffset == pendingInput.count {
+            pendingInput.removeAll(keepingCapacity: true)
+            inputOffset = 0
+        }
+        if pendingInput.isEmpty, writeResumed {
+            writeSource.suspend()
+            writeResumed = false
+        } else if !pendingInput.isEmpty, !writeResumed {
+            writeSource.resume()
+            writeResumed = true
+        }
+    }
+
+    private func releaseDescriptor() {
+        descriptorState.withLock { state in
+            state.sources -= 1
+            guard state.sources == 0 else { return }
+            _ = Darwin.close(state.descriptor)
+            state.descriptor = -1
         }
     }
 
     private func begin() {
         let read = DispatchSource.makeReadSource(fileDescriptor: parentEnd, queue: queue)
         read.setEventHandler { [self] in drain() }
-        read.setCancelHandler { [parentEnd] in _ = Darwin.close(parentEnd) }
+        read.setCancelHandler { [self] in releaseDescriptor() }
+        let write = DispatchSource.makeWriteSource(fileDescriptor: parentEnd, queue: queue)
+        write.setEventHandler { [self] in flushInput() }
+        write.setCancelHandler { [self] in releaseDescriptor() }
+        writeSource = write
         readSource = read
         let exit = DispatchSource.makeProcessSource(identifier: processID, eventMask: .exit, queue: queue)
         exit.setEventHandler { [self] in
@@ -180,7 +232,12 @@ final class TerminalProcess: @unchecked Sendable {
     private func collectExit() -> Bool {
         guard !hasExited else { return false }
         var status: Int32 = 0
-        guard waitpid(processID, &status, WNOHANG) == processID else { return false }
+        let reaped = descriptorState.withLock { state in
+            guard waitpid(processID, &status, WNOHANG) == processID else { return false }
+            state.reaped = true
+            return true
+        }
+        guard reaped else { return false }
         hasExited = true
         return true
     }
@@ -204,6 +261,14 @@ final class TerminalProcess: @unchecked Sendable {
     }
 
     private func stopReading() {
+        if let writeSource {
+            if !writeResumed { writeSource.resume() }
+            writeSource.cancel()
+            self.writeSource = nil
+            writeResumed = false
+        }
+        pendingInput.removeAll()
+        inputOffset = 0
         readSource?.cancel()
         readSource = nil
     }

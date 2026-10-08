@@ -737,7 +737,6 @@ struct RootPaletteView: View {
                 KeyCapChip(text: PaletteChipsCoordinator.slotHint, style: .outline, prefix: "⌘")
             }
             // Compact pins favorites beside the field; expanded shows them as rows.
-
             // FORK: palette-chips
             if isCollapsed, settings.showFavoritesInCompactMode, !core.paletteChips.isActive,
                 let launcher = screen as? LauncherScreen
