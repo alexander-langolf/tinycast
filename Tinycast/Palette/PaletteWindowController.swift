@@ -1,11 +1,13 @@
 import AppKit
 import Carbon.HIToolbox
+import Observation
 import SwiftUI
 
 @MainActor
 final class PaletteWindowController: NSObject, NSWindowDelegate {
     private unowned let core: AppCore
     private var panel: PalettePanel?
+    private var agentRunsPanel: AgentRunsPanel?
     var onVisibilityChanged: ((Bool) -> Void)?
     private(set) var previousApp: NSRunningApplication?
     /// Our key window at summon time, so hiding hands focus back to Settings, not a stale app.
@@ -84,6 +86,7 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
             panel.makeKeyAndOrderFront(nil)
             panel.orderFrontRegardless()
             onVisibilityChanged?(true)
+            updateAgentRunsPanel()
             // A never-activated login item can drop the first key request, so re-assert.
             DispatchQueue.main.async { [weak panel] in
                 guard let panel, panel.isVisible, !panel.isKeyWindow else { return }
@@ -141,6 +144,7 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
     }
 
     func hide(restoreFocus: Bool) {
+        hideAgentRunsPanel()
         panel?.orderOut(nil)
         commandEscapeTap.disable()
         core.inputSourceSwitcher.endSession()
@@ -251,8 +255,17 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
         guard let panel else { return }
         let moved = CGPoint(x: panel.frame.minX, y: panel.frame.maxY)
         anchor = moved
+        updateAgentRunsPanel()
         guard drag != nil else { return }
         trackDrag(to: moved)
+    }
+
+    func windowDidResize(_ notification: Notification) {
+        updateAgentRunsPanel()
+    }
+
+    func windowDidChangeScreen(_ notification: Notification) {
+        updateAgentRunsPanel()
     }
 
     // MARK: - Dragging
@@ -373,7 +386,76 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
             }
         }
         self.panel = panel
+        trackAgentRuns()
         return panel
+    }
+
+    private func trackAgentRuns() {
+        withObservationTracking {
+            _ = core.agentRunsCoordinator.runs.count
+        } onChange: { [weak self] in
+            Task { @MainActor in
+                guard let self else { return }
+                self.trackAgentRuns()
+                self.updateAgentRunsPanel()
+            }
+        }
+    }
+
+    private func hideAgentRunsPanel() {
+        guard let agentRunsPanel else { return }
+        panel?.removeChildWindow(agentRunsPanel)
+        agentRunsPanel.orderOut(nil)
+    }
+
+    private func updateAgentRunsPanel() {
+        let count = core.agentRunsCoordinator.runs.count
+        guard let panel, panel.isVisible, count > 0, let screen = panel.screen else {
+            hideAgentRunsPanel()
+            return
+        }
+        let child: AgentRunsPanel
+        if let agentRunsPanel {
+            child = agentRunsPanel
+        } else {
+            child = AgentRunsPanel(rootView: AgentRunsStack().paletteEnvironment(core))
+            child.paletteState = core.palette
+            agentRunsPanel = child
+        }
+        let cards = min(count, AgentRunsStack.cardLimit)
+        let rowHeight = metrics.size.rowIcon + metrics.spacing.sm * 2
+        var height = CGFloat(cards) * rowHeight + CGFloat(cards - 1) * metrics.spacing.md
+        if count > cards { height += metrics.spacing.md + metrics.size.barButtonHeight }
+        let gap = metrics.spacing.xl
+        let below = NSRect(
+            x: panel.frame.minX, y: panel.frame.minY - gap - height,
+            width: panel.frame.width, height: height)
+        let frame: NSRect
+        if screen.visibleFrame.contains(below) {
+            frame = below
+        } else {
+            let width = metrics.size.agentRunsSideWidth
+            let right = NSRect(
+                x: panel.frame.maxX + gap, y: panel.frame.maxY - height,
+                width: width, height: height)
+            frame =
+                screen.visibleFrame.contains(right)
+                ? right
+                : NSRect(
+                    x: panel.frame.minX - gap - width, y: panel.frame.maxY - height,
+                    width: width, height: height)
+        }
+        // Neither side fits: keep the stack on screen rather than half off it.
+        let visible = screen.visibleFrame
+        let clamped = NSRect(
+            x: min(max(frame.minX, visible.minX), visible.maxX - frame.width),
+            y: min(max(frame.minY, visible.minY), visible.maxY - frame.height),
+            width: frame.width, height: frame.height)
+        child.setFrame(clamped, display: true)
+        child.contentView?.layoutSubtreeIfNeeded()
+        child.invalidateShadow()
+        if child.parent !== panel { panel.addChildWindow(child, ordered: .above) }
+        child.orderFront(nil)
     }
 
     /// Resize to the given state, top edge anchored; applied even while hidden.
@@ -397,6 +479,7 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
         let frame = NSRect(
             x: anchor.x, y: anchor.y - height, width: size.panelWidth, height: height)
         panel.setFrame(frame, display: true)
+        updateAgentRunsPanel()
     }
 
     /// The display to anchor to; never `NSScreen.main`, which follows the focused window.

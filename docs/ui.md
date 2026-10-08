@@ -158,10 +158,6 @@ panel, the shortcut-recorder callout and the Notes switcher, and `menuRow` is de
 `dialogIcon 32` · `hudWidth 200` ·
 `hudHeight 100` · `volumeTrackHeight 6` · `volumeReadout 38`
 
-The background-agent footer adds `agentRunCardHeight 96` and `agentRunStatusDot 6`, both scaled
-through `InterfaceMetrics`. At most three cards share one horizontal row below the launcher list;
-the transparent safe-area inset keeps the list's existing dissolve and adds no divider.
-
 Notes adds `noteWindow 520×420` (opening size on a first run only), `noteWindowMinimum 320×220`,
 `noteTitlebar 44`, `noteTitleInset 120`, `noteEditorInset 16`, `noteSearchHeight 34`,
 `noteFooterHeight 28`, `noteGlyph 16`, `noteEmptyGlyph 28`, and `noteHeadingMenu 220×159`.

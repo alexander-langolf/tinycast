@@ -62,7 +62,7 @@ enum Theme {
     enum Size {
         static let panelWidth: CGFloat = 750
         static let panelHeight: CGFloat = 475
-        static let agentRunCardHeight: CGFloat = 96
+        static let agentRunsSideWidth: CGFloat = 360
         static let agentRunStatusDot: CGFloat = 6
         /// Opening size on a first run and the floor: below it the title bar's own parts collide.
         static let noteWindow = CGSize(width: 440, height: 180)

@@ -40,42 +40,38 @@ struct AgentRunCard: View {
     }
 
     private var content: some View {
-        VStack(alignment: .leading, spacing: metrics.spacing.xs) {
-            HStack(spacing: metrics.spacing.sm) {
-                Circle()
-                    .fill(stateColor)
-                    .frame(width: metrics.size.agentRunStatusDot, height: metrics.size.agentRunStatusDot)
-                    .accessibilityLabel(run.state)
+        HStack(spacing: metrics.spacing.lg) {
+            Circle()
+                .fill(stateColor)
+                .frame(width: metrics.size.agentRunStatusDot, height: metrics.size.agentRunStatusDot)
+                .frame(width: metrics.size.rowIcon)
+                .accessibilityLabel(run.state)
+            VStack(alignment: .leading, spacing: 0) {
                 Text(run.name)
-                    .font(metrics.typography.sectionHeader)
+                    .font(metrics.typography.rowTitle)
                     .foregroundStyle(Theme.Colors.textPrimary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                Text(run.last ?? " ")
+                    .font(metrics.typography.keyCap)
             }
-            HStack(spacing: metrics.spacing.sm) {
+            .frame(maxWidth: .infinity, alignment: .leading)
+            VStack(alignment: .trailing, spacing: 0) {
                 Text(kindLabel)
-                Spacer(minLength: metrics.spacing.xs)
                 Text(Date(timeIntervalSince1970: Double(run.startedAt) / 1_000), style: .timer)
                     .monospacedDigit()
-                    .fixedSize()
             }
-            Text(run.last ?? " ")
-                .foregroundStyle(Theme.Colors.textSecondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            Text(run.cwd)
-                .truncationMode(.middle)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            .fixedSize()
         }
         .font(metrics.typography.rowTrailing)
-        .foregroundStyle(Theme.Colors.textTertiary)
+        .foregroundStyle(Theme.Colors.textSecondary)
         .lineLimit(1)
-        .padding(metrics.spacing.md)
+        .truncationMode(.tail)
+        .padding(.horizontal, metrics.spacing.xl)
         .frame(maxWidth: .infinity)
-        .frame(height: metrics.size.agentRunCardHeight)
-        .background(
-            RoundedRectangle(cornerRadius: metrics.radius.card, style: .continuous)
-                .fill(hovered && canAttach ? Theme.Colors.rowHover : Theme.Colors.cardFill)
-        )
-        .contentShape(RoundedRectangle(cornerRadius: metrics.radius.card, style: .continuous))
+        .frame(height: metrics.size.rowIcon + metrics.spacing.sm * 2)
+        .background(hovered && canAttach ? Theme.Colors.rowHover : .clear)
+        .background(PaletteBackground(window: nil))
+        .clipShape(RoundedRectangle(cornerRadius: metrics.radius.panel, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: metrics.radius.panel, style: .continuous))
         .accessibilityElement(children: .combine)
     }
 }
