@@ -101,7 +101,7 @@ libghostty-vt and the app has only menu-bar scenes), so the fork has a small `Ti
 that compiles just the AgentRuns UI and the shared files it reads. In Xcode:
 
 1. Open `Tinycast.xcodeproj` and choose the **TinycastPreviews** scheme.
-2. Open `Features/AgentRuns/UI/AgentRunCard.swift` (or `AgentRunsPreviewData.swift`).
+2. Open `Features/AgentRuns/UI/AgentRunsPreviewData.swift` (the canvas shows the open file's previews; pin one to keep it while editing `AgentRunCard.swift`).
 3. Open the canvas with ⌥⌘↩. Edit sizes in `AgentRunsMetrics` or the card and watch it update.
 
 ⌘R on the same scheme opens a plain window with the four-card stack. The `#Preview`s live in
