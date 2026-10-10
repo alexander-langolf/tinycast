@@ -3,6 +3,13 @@
 targets:
   Tinycast:
     settings:
+      base:
+        # libghostty-vt prototype: built by Scripts/fork-build-libghostty.sh into .tools/libghostty (gitignored).
+        # The XCFramework's own module map exposes `import GhosttyVt`; the static archive is linked directly.
+        HEADER_SEARCH_PATHS: "$(inherited) $(SRCROOT)/.tools/libghostty/ghostty-vt.xcframework/macos-arm64_x86_64/Headers"
+        SWIFT_INCLUDE_PATHS: "$(inherited) $(SRCROOT)/.tools/libghostty/ghostty-vt.xcframework/macos-arm64_x86_64/Headers"
+        LIBRARY_SEARCH_PATHS: "$(inherited) $(SRCROOT)/.tools/libghostty/ghostty-vt.xcframework/macos-arm64_x86_64"
+        OTHER_LDFLAGS: "$(inherited) -lghostty-vt"
       configs:
         Debug:
           ASSETCATALOG_COMPILER_APPICON_NAME: ForkAppIcon
