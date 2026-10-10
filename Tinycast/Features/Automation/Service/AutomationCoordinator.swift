@@ -67,6 +67,7 @@ final class AutomationCoordinator {
         observationGeneration += 1
         server?.stop()
         server = nil
+        clients.stopWatchingExpiry()
         approvals.stop()
         hub.endAll()
         questions.stop()
@@ -119,6 +120,7 @@ final class AutomationCoordinator {
         Task { [weak self] in
             await self?.clients.loadDigests()
             guard let self, self.server === server else { return }
+            self.clients.watchExpiry()
             server.start()
         }
         questionPresenter.start()

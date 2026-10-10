@@ -24,6 +24,7 @@ final class AutomationClientStore {
     @ObservationIgnored private var isMetadataLoaded = false
     @ObservationIgnored private var digests: [UUID: SHA256.Digest] = [:]
     @ObservationIgnored var onChange: ((_ revoked: UUID?) -> Void)?
+    @ObservationIgnored private var expiryWatch: Task<Void, Never>?
     private nonisolated static let logger = Logger(subsystem: "com.tinycast", category: "Automation")
 
     init(
@@ -69,6 +70,38 @@ final class AutomationClientStore {
         }.value
         let live = Set(clients.map(\.id))
         digests = found.filter { live.contains($0.key) }.merging(digests) { _, current in current }
+    }
+
+    /// Expiry is enforced like a revoke, not only when the next request arrives: a lapsed client's
+    /// streams, questions and approvals end at its expiry.
+    func watchExpiry() {
+        expiryWatch?.cancel()
+        expiryWatch = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let delay = self?.endExpired() else { return }
+                try? await Task.sleep(for: .seconds(delay))
+            }
+        }
+    }
+
+    func stopWatchingExpiry() {
+        expiryWatch?.cancel()
+        expiryWatch = nil
+    }
+
+    /// Ends each newly lapsed client; returns the wait until the next lapses, re-checked hourly.
+    private func endExpired() -> TimeInterval {
+        let current = now()
+        var next: TimeInterval = 3_600
+        for client in clients {
+            guard let expiresAt = client.expiresAt else { continue }
+            if client.isExpired(at: current) {
+                if digests.removeValue(forKey: client.id) != nil { onChange?(client.id) }
+            } else {
+                next = min(next, expiresAt.timeIntervalSince(current))
+            }
+        }
+        return max(1, next)
     }
 
     /// The caller identity for this bearer, or nil: unknown, revoked, expired or not a token.
