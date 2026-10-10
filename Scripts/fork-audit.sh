@@ -32,8 +32,8 @@ for filename in upstream_files:
 
 search = Path("Tinycast/Fork/ForkSettingsSearch.swift").read_text()
 row = Path("Tinycast/Fork/ForkFontRow.swift").read_text()
-if not (re.search(r'\.generalAppearance,\s*"Interface font"', search)
-        and 'title: "Interface font"' in row and 'anchor: .generalAppearance' in row):
+if not all(re.search(r'\.generalAppearance,\s*"' + title + '"', search) and f'"{title}"' in row
+           for title in ("Interface font", "Monospaced font")) or 'anchor: .generalAppearance' not in row:
     problems.append("Fork font search entry and settings row no longer share a target")
 
 removed = re.compile(

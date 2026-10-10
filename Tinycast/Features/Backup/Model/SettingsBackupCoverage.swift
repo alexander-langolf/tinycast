@@ -107,6 +107,8 @@ enum SettingsBackupCoverage {
             "Names a browser installed on this Mac; another Mac may not have it.",
         AppSettingsKey.interfaceFont.rawValue:  // FORK: font-persistence
             "Names a font installed on this Mac; another Mac may not have it.",
+        AppSettingsKey.monoFont.rawValue:  // FORK: font-persistence
+            "Names a font installed on this Mac; another Mac may not have it.",
         AppSettingsKey.calendarEnabled.rawValue:
             "Doubles as consent to read your calendar; an import must not grant calendar access.",
         AppSettingsKey.autoJoinMeetings.rawValue:

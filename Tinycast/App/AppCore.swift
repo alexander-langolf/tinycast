@@ -287,7 +287,7 @@ final class AppCore {
     func start() {
         forkAppearance.start()  // FORK: appearance-start
         // FORK: appearance-observation
-        track(forkAppearance, { _ = $0.fontFamily }, reproject: { $0.windowController.applyInterfaceSize() })
+        track(forkAppearance, { _ = $0.fontFamily; _ = $0.monoFontFamily }, reproject: { $0.windowController.applyInterfaceSize() })
         Signposts.interval("AppCore.start") {
             // Shorten AppKit's ~2–3s tooltip delay; registration domain, so a user default wins.
             UserDefaults.standard.register(defaults: ["NSInitialToolTipDelay": 250])

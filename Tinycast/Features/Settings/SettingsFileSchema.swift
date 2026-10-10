@@ -40,6 +40,7 @@ enum SettingsFileSchema {
         case .interfaceSize: return bind(settings, \.interfaceSize)
         // FORK: font-mirror
         case .interfaceFont: return bind(ForkAppearance.current!, \.fontFamily)
+        case .monoFont: return bind(ForkAppearance.current!, \.monoFontFamily)
         case .compactMode: return bind(settings, \.compactMode)
         case .showFavoritesInCompactMode: return bind(settings, \.showFavoritesInCompactMode)
         case .openOnCursorScreen: return bind(settings, \.openOnCursorScreen)

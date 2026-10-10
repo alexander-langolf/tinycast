@@ -174,12 +174,19 @@ struct InterfaceMetrics: Equatable, Sendable {
         var markdownHeading2: Font { font(Theme.Typography.markdownHeading2, .title3, .semibold) }
         var markdownHeading3: Font { font(Theme.Typography.markdownHeading3, .headline) }
         var code: Font {
-            scale == 1
+            // FORK: code-font
+            if ForkTypography.shared.monoFamily != nil {
+                return Font(ForkTypography.resolveMono(.monospacedSystemFont(ofSize: nsFont(.callout).pointSize, weight: .regular)))
+            }
+            return scale == 1
                 ? Theme.Typography.code
                 : .system(size: nsFont(.callout).pointSize, design: .monospaced)
         }
         var inlineCode: Font {  // FORK: code-font
-            font(Theme.Typography.rowTitle, .body, symbol: true).monospaced()
+            if ForkTypography.shared.monoFamily != nil {
+                return Font(ForkTypography.resolveMono(.monospacedSystemFont(ofSize: nsFont(.body).pointSize, weight: .regular)))
+            }
+            return font(Theme.Typography.rowTitle, .body, symbol: true).monospaced()
         }
         var bar: Font { font(Theme.Typography.bar, .callout, .medium) }
         var barSymbol: Font {  // FORK: symbol-font
@@ -205,7 +212,10 @@ struct InterfaceMetrics: Equatable, Sendable {
             _ style: NSFont.TextStyle, weight: NSFont.Weight? = nil, monospaced: Bool = false
         ) -> NSFont {
             let base = nsFont(style)
-            if monospaced { return .monospacedSystemFont(ofSize: base.pointSize, weight: weight ?? .regular) }
+            if monospaced {  // FORK: code-font
+                return ForkTypography.resolveMono(
+                    .monospacedSystemFont(ofSize: base.pointSize, weight: weight ?? .regular))
+            }
             // FORK: typography-metrics
             guard let weight else { return ForkTypography.resolve(base) }
             return ForkTypography.resolve(.systemFont(ofSize: base.pointSize, weight: weight))

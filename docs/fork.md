@@ -8,16 +8,22 @@ Fork customisations live in `Tinycast/Fork/`. Upstream integration points are ma
 `AppCore` owns `ForkAppearance`; its `start()` wiring publishes `ForkAppearance.current`
 before any views are presented. Font, colour and asset choices live on that observable owner.
 The font uses the existing `interfaceFont` defaults key. Choosing System removes that value.
+`ForkAppearance.monoFontFamily` is the twin for code, under the `monoFont` defaults key and
+`appearance.monoFont` in settings.json; choosing System Mono removes it.
 Startup and subsequent changes publish the family to `ForkTypography.shared` and colour/asset
 lookup tables to their locks; nonisolated hooks never read the main-actor owner.
 
 With no overrides, typography and colours return upstream's original values. Code keeps its
-system monospaced face and symbols keep the system face. The fork app icon initially copies
+system monospaced face unless a monospaced font is chosen, and symbols keep the system face. The fork app icon initially copies
 upstream's icon; changing fork artwork does not require editing upstream assets.
 
 ## Customisation
 
-Choose a font in Settings → General → Appearance. `ForkTypography.shared` is a nonisolated,
+Choose an interface font and a monospaced font in Settings → General → Appearance. The monospaced
+picker is the same `ForkFontRow` with `kind: .monospaced`, listing only families with a fixed-pitch
+face (`FontCatalog.monospacedFamilies`); `ForkTypography.monoFace` resolves them from the system
+monospaced font so weight and italic carry over. Notes' editor code styles and `TerminalLogView`
+keep the system monospaced face. `ForkTypography.shared` is a nonisolated,
 Sendable resolver. Its current family, cached faces and font metadata share one
 `OSAllocatedUnfairLock`; lookups preserve font identity across threads. The lock's unchecked
 closure is needed because `Mutex.withLock` requires a sending result, which cannot return an
@@ -219,7 +225,7 @@ unless they have an explicit symbol-only allowance. The audit is a static guard,
 | `Tinycast/App/AppCore.swift` | `// FORK: appearance-start` | Publish the current appearance at startup. |
 | `Tinycast/App/MenuBarItem.swift` | `// FORK: status-icon` | Prefer the fork menu-bar image. |
 | `Tinycast/DesignSystem/BarButton.swift` | `// FORK: named-asset` | Prefer the namespaced fork image, then upstream. |
-| `Tinycast/DesignSystem/InterfaceMetrics.swift` | `// FORK: code-font` | Keep inline code on the system monospaced face. |
+| `Tinycast/DesignSystem/InterfaceMetrics.swift` | `// FORK: code-font` | Route code and inline code through the chosen monospaced family, else the system face. |
 | `Tinycast/DesignSystem/InterfaceMetrics.swift` | `// FORK: symbol-font` | Keep symbol sizing on the system face. |
 | `Tinycast/DesignSystem/InterfaceMetrics.swift` | `// FORK: typography-metrics` | Resolve standard and scaled prose through the fork typography cache. |
 | `Tinycast/DesignSystem/PopoverMenu.swift` | `// FORK: named-asset` | Prefer the namespaced fork image, then upstream. |
@@ -291,7 +297,7 @@ and removed lines, not net lines. New Fork-owned files are excluded from the ups
 | `Tinycast/App/AppCore.swift` | `appearance-observation`, `appearance-owner`, `appearance-start` | 4 | 0 |
 | `Tinycast/App/MenuBarItem.swift` | `status-icon` | 1 | 1 |
 | `Tinycast/DesignSystem/BarButton.swift` | `named-asset` | 1 | 1 |
-| `Tinycast/DesignSystem/InterfaceMetrics.swift` | `code-font`, `symbol-font`, `typography-metrics` | 39 | 15 |
+| `Tinycast/DesignSystem/InterfaceMetrics.swift` | `code-font`, `symbol-font`, `typography-metrics` | 48 | 16 |
 | `Tinycast/DesignSystem/PopoverMenu.swift` | `named-asset` | 1 | 1 |
 | `Tinycast/DesignSystem/SymbolImage.swift` | `named-asset` | 2 | 2 |
 | `Tinycast/DesignSystem/Theme.swift` | `color-tokens` | 1 | 1 |
@@ -299,7 +305,7 @@ and removed lines, not net lines. New Fork-owned files are excluded from the ups
 | `Tinycast/Features/AI/UI/AIChatDetailView.swift` | `named-asset` | 1 | 1 |
 | `Tinycast/Features/AI/UI/AIChatSplitViewController.swift` | `accent-scope` | 5 | 2 |
 | `Tinycast/Features/AI/UI/ChatComposerTextView.swift` | `prose-font` | 3 | 1 |
-| `Tinycast/Features/Backup/Model/SettingsBackupCoverage.swift` | `font-persistence` | 2 | 0 |
+| `Tinycast/Features/Backup/Model/SettingsBackupCoverage.swift` | `font-persistence` | 4 | 0 |
 | `Tinycast/Features/Calendar/UI/CameraPreviewController.swift` | `accent-scope` | 1 | 1 |
 | `Tinycast/Features/Calendar/UI/CameraPreviewView.swift` | `typography` | 3 | 2 |
 | `Tinycast/Features/Camera/UI/CameraCoordinator.swift` | `accent-scope` | 2 | 1 |
@@ -322,12 +328,12 @@ and removed lines, not net lines. New Fork-owned files are excluded from the ups
 | `Tinycast/Features/Notes/UI/NotesView.swift` | `typography` | 5 | 4 |
 | `Tinycast/Features/Notes/UI/NotesWindowController.swift` | `accent-scope` | 1 | 1 |
 | `Tinycast/Features/QuickActions/UI/QuickActionPanelController.swift` | `accent-scope` | 1 | 1 |
-| `Tinycast/Features/Settings/AppSettingsKey.swift` | `font-persistence` | 1 | 0 |
-| `Tinycast/Features/Settings/Model/SettingsFileKey.swift` | `font-persistence` | 1 | 0 |
-| `Tinycast/Features/Settings/Panes/GeneralSettingsView.swift` | `font-picker`, `named-asset` | 2 | 1 |
+| `Tinycast/Features/Settings/AppSettingsKey.swift` | `font-persistence` | 2 | 0 |
+| `Tinycast/Features/Settings/Model/SettingsFileKey.swift` | `font-persistence` | 2 | 0 |
+| `Tinycast/Features/Settings/Panes/GeneralSettingsView.swift` | `font-picker`, `named-asset` | 3 | 1 |
 | `Tinycast/Features/Settings/SettingsEditorPresenter.swift` | `accent-scope` | 2 | 1 |
-| `Tinycast/Features/Settings/SettingsFileSchema.swift` | `font-mirror` | 2 | 0 |
-| `Tinycast/Features/Settings/SettingsSearchCatalog.swift` | `font-search` | 1 | 0 |
+| `Tinycast/Features/Settings/SettingsFileSchema.swift` | `font-mirror` | 3 | 0 |
+| `Tinycast/Features/Settings/SettingsSearchCatalog.swift` | `font-search` | 2 | 0 |
 | `Tinycast/Features/WindowManagement/UI/RoomPreviewController.swift` | `accent-scope` | 2 | 1 |
 | `Tinycast/Palette/PaletteEnvironment.swift` | `accent-scope` | 1 | 0 |
 | `Tinycast/Platform/Images/IconCache.swift` | `named-asset` | 1 | 1 |

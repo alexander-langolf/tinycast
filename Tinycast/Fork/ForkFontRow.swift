@@ -1,21 +1,50 @@
 import SwiftUI
 
+/// Which preference a picker edits; the list, title and fallback row follow from it.
+enum ForkFontKind {
+    case interface, monospaced
+
+    var title: String { self == .interface ? "Interface font" : "Monospaced font" }
+    var systemTitle: String { self == .interface ? "System" : "System Mono" }
+    var subtitle: String {
+        self == .interface
+            ? "Applies to prose; code and symbols keep their system face."
+            : "Applies to code and other fixed-width text; symbols keep their system face."
+    }
+
+    @MainActor var families: [String] {
+        self == .interface ? FontCatalog.installedFamilies() : FontCatalog.monospacedFamilies()
+    }
+}
+
 /// Each family previews in its own face, so the list is the specimen sheet as well as the picker.
 struct ForkFontRow: View {
+    var kind: ForkFontKind = .interface
     private var appearance: ForkAppearance { ForkAppearance.current! }
     @State private var isPicking = false
 
+    private var family: String? {
+        get { kind == .interface ? appearance.fontFamily : appearance.monoFontFamily }
+        nonmutating set {
+            if kind == .interface {
+                appearance.fontFamily = newValue
+            } else {
+                appearance.monoFontFamily = newValue
+            }
+        }
+    }
+
     var body: some View {
         SettingsRow(
-            title: "Interface font",
-            subtitle: "Applies to prose; code and symbols keep their system face.",
+            title: kind.title,
+            subtitle: kind.subtitle,
             anchor: .generalAppearance
         ) {
             Button {
                 isPicking = true
             } label: {
                 HStack(spacing: Theme.Spacing.sm) {
-                    Text(appearance.fontFamily ?? Self.systemTitle)
+                    Text(family ?? kind.systemTitle)
                         .font(previewFont)
                         .lineLimit(1)
                     Image(systemName: "chevron.up.chevron.down")
@@ -27,20 +56,18 @@ struct ForkFontRow: View {
             }
             .buttonStyle(.bordered)
             .popover(isPresented: $isPicking, arrowEdge: .bottom) {
-                FontPickerPopover(selection: appearance.fontFamily) {
-                    appearance.fontFamily = $0
+                FontPickerPopover(kind: kind, selection: family) {
+                    family = $0
                     isPicking = false
                 }
             }
         }
     }
 
-    private static let systemTitle = "System"
-
     /// A family uninstalled since it was chosen must not draw the button in a missing face.
     private var previewFont: Font {
-        guard let family = appearance.fontFamily, FontCatalog.isInstalled(family) else {
-            return Theme.Typography.rowTrailing
+        guard let family, FontCatalog.isInstalled(family) else {
+            return kind == .interface ? Theme.Typography.rowTrailing : .system(.callout, design: .monospaced)
         }
         return .custom(family, size: ForkFontLayout.specimenSize)
     }
@@ -48,14 +75,20 @@ struct ForkFontRow: View {
 
 /// Its own popover rather than a `Picker`: a few hundred families need a filter to be usable.
 private struct FontPickerPopover: View {
+    let kind: ForkFontKind
     let selection: String?
     let onSelect: (String?) -> Void
 
     @State private var query = ""
     /// Read when the popover opens, not when the row appears: the row's `onAppear` was unreliable.
-    @State private var families = FontCatalog.installedFamilies()
+    @State private var families: [String]
 
-    private static let systemTitle = "System"
+    init(kind: ForkFontKind, selection: String?, onSelect: @escaping (String?) -> Void) {
+        self.kind = kind
+        self.selection = selection
+        self.onSelect = onSelect
+        _families = State(initialValue: kind.families)
+    }
 
     private var matches: [String] {
         guard !query.isEmpty else { return families }
@@ -64,7 +97,7 @@ private struct FontPickerPopover: View {
 
     /// The row back to the default, which a filter must never be able to hide.
     private var matchesSystem: Bool {
-        query.isEmpty || Self.systemTitle.localizedCaseInsensitiveContains(query)
+        query.isEmpty || kind.systemTitle.localizedCaseInsensitiveContains(query)
     }
 
     var body: some View {
@@ -76,7 +109,9 @@ private struct FontPickerPopover: View {
                 LazyVStack(spacing: 1) {
                     if matchesSystem {
                         row(
-                            title: Self.systemTitle, font: Theme.Typography.rowTitle,
+                            title: kind.systemTitle,
+                            font: kind == .interface
+                                ? Theme.Typography.rowTitle : .system(.body, design: .monospaced),
                             isSelected: selection == nil
                         ) {
                             onSelect(nil)

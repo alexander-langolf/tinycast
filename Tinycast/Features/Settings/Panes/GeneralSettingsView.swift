@@ -95,6 +95,7 @@ struct GeneralSettingsView: View {
                 }
                 InterfaceSizeRow()
                 ForkFontRow()  // FORK: font-picker
+                ForkFontRow(kind: .monospaced)  // FORK: font-picker
                 WindowModeRow()
                 Toggle(isOn: $settings.showFavoritesInCompactMode) {
                     SettingsRowTitle(.generalAppearance, "Show favorites in compact mode")

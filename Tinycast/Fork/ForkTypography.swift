@@ -14,10 +14,13 @@ nonisolated final class ForkTypography: Sendable {
 
     private struct State {
         var family: String?
+        var monoFamily: String?
         var cache: [Key: NSFont] = [:]
         var metadata: [NSFontDescriptor: (traits: NSFontTraitMask, weight: Int)] = [:]
 
-        mutating func face(_ base: NSFont) -> NSFont {
+        mutating func face(_ base: NSFont) -> NSFont { face(base, family: family) }
+
+        mutating func face(_ base: NSFont, family: String?) -> NSFont {
             guard let family else { return base }
             let points = base.pointSize
             let info = fontMetadata(base)
@@ -65,8 +68,22 @@ nonisolated final class ForkTypography: Sendable {
         set { state.withLock { $0.family = newValue } }
     }
 
+    var monoFamily: String? {
+        get { state.withLock { $0.monoFamily } }
+        set { state.withLock { $0.monoFamily = newValue } }
+    }
+
     func face(_ base: NSFont) -> NSFont {
         state.withLockUnchecked { $0.face(base) }
+    }
+
+    /// `base` is a system monospaced font, so its traits and weight carry over to the chosen family.
+    func monoFace(_ base: NSFont) -> NSFont {
+        state.withLockUnchecked { $0.face(base, family: $0.monoFamily) }
+    }
+
+    static func resolveMono(_ base: NSFont) -> NSFont {
+        shared.monoFace(base)
     }
 
     static func resolve(_ base: NSFont) -> NSFont {

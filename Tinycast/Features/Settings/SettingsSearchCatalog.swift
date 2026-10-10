@@ -140,6 +140,7 @@ enum SettingsSearchCatalog {
             .generalAppearance, "Theme",
             keywords: ["dark", "light", "mode", "appearance"]),
         ForkSettingsSearch.entry,  // FORK: font-search
+        ForkSettingsSearch.monoEntry,  // FORK: font-search
         .init(
             .generalAppearance, "Interface size",
             keywords: ["text size", "font size", "scale", "zoom", "bigger", "larger", "legible"]),
