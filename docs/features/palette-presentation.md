@@ -6,6 +6,9 @@ per-mode special cases.
 ## Invariants
 
 - `.standard` is today's behaviour: the full window at `panelHeight`, footer shown.
+- `.bar` is the search bar alone at the compact bar's height; the screen body is not rendered.
+  Return still calls the screen's `activate`, which must not depend on a visible row. ⌘K does
+  nothing when the screen has no actions, as before.
 - `.fitted(rows:)` is the bar plus exactly `rows` result rows (at least one, so a hint still fits),
   capped at `panelHeight`. A shown footer adds `bottomBarHeight`.
 - A hidden footer removes the bottom bar only; ↵ still runs the screen's primary action.
@@ -34,10 +37,10 @@ is the single lookup keyed on mode and query. A fitted screen's rows use
 
 ```swift
 // On the screen:
-static func presentation(for query: String) -> PalettePresentation { .fitted(rows: 1, footer: .hidden) }
+static let presentation = PalettePresentation.bar()   // or .fitted(rows: 1, footer: .hidden)
 // In PalettePresentationResolver.current: route the mode or query to it.
-case .myMode: return MyScreen.presentation(for: query)
+case .myMode: return MyScreen.presentation
 ```
 
-Add a new `Height` or `Footer` case (bar-only, say) in `PalettePresentation` and handle it in
-`windowHeight(metrics:)` and `showsFooter`.
+The `$` terminal command uses `.bar()`. Add a new `Height` or `Footer` case in `PalettePresentation` and handle it in
+`windowHeight(metrics:)`, `showsRows` and `showsFooter`.

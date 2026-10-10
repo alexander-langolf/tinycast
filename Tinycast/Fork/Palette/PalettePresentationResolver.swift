@@ -4,8 +4,8 @@ enum PalettePresentationResolver {
     static func current(mode: PaletteMode, query: String) -> PalettePresentation {
         switch mode {
         case .launcher:
-            if let command = TerminalCommandQuery.command(in: query) {
-                return TerminalCommandScreen.presentation(for: command)
+            if TerminalCommandQuery.command(in: query) != nil {
+                return TerminalCommandScreen.presentation
             }
             return .standard
         default:

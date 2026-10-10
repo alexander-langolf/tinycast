@@ -321,7 +321,8 @@ struct RootPaletteView: View {
         return keyHandlers(
             stateObservers(
                 Group {
-                    if isCollapsed {
+                    // FORK: palette-presentation
+                    if isCollapsed || !presentation.showsRows {
                         Color.clear
                     } else {
                         screen.body(selection: sel, scroll: scroll)

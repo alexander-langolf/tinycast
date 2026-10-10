@@ -12,9 +12,7 @@ struct TerminalCommandScreen: PaletteScreen {
 
     var rows: [Row] { command.isEmpty ? [] : [Row(command: command)] }
 
-    static func presentation(for command: String) -> PalettePresentation {
-        .fitted(rows: command.isEmpty ? 0 : 1, footer: .hidden)
-    }
+    static let presentation = PalettePresentation.bar()
 
     var primaryActionTitle: String { "Run in New Terminal" }
 

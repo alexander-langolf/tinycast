@@ -5,6 +5,8 @@ struct PalettePresentation: Equatable, Sendable {
     enum Height: Equatable, Sendable {
         /// The full window at its normal height.
         case standard
+        /// The search bar alone, at the compact bar's height; no rows.
+        case bar
         /// The bar plus exactly `rows` result rows, capped at the standard height.
         case fitted(rows: Int)
     }
@@ -20,6 +22,12 @@ struct PalettePresentation: Equatable, Sendable {
 
     static let standard = PalettePresentation()
 
+    static func bar(footer: Footer = .hidden) -> PalettePresentation {
+        PalettePresentation(height: .bar, footer: footer)
+    }
+
+    var showsRows: Bool { height != .bar }
+
     static func fitted(rows: Int, footer: Footer = .shown) -> PalettePresentation {
         PalettePresentation(height: .fitted(rows: rows), footer: footer)
     }
@@ -32,6 +40,8 @@ struct PalettePresentation: Equatable, Sendable {
         switch height {
         case .standard:
             return size.panelHeight
+        case .bar:
+            return size.compactHeight + (showsFooter ? size.bottomBarHeight : 0)
         case .fitted(let rows):
             let rowsHeight = CGFloat(max(rows, 1)) * Self.rowHeight(metrics: metrics)
             let content = size.compactHeight + metrics.spacing.xs * 2 + rowsHeight
