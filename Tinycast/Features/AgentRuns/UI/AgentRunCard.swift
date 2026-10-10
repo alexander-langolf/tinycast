@@ -18,10 +18,11 @@ struct AgentRunCard: View {
         }
     }
 
-    private var kindLabel: String {
+    /// Subagents carry no kind label: the model alone says what is working.
+    private var kindLabel: String? {
         switch run.agent {
         case .claude: "Claude"
-        case .subagent: "Subagent"
+        case .subagent: nil
         case .codex: "Codex"
         }
     }
@@ -58,9 +59,10 @@ struct AgentRunCard: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             VStack(alignment: .trailing, spacing: 0) {
                 HStack(spacing: metrics.spacing.xs) {
-                    Text(kindLabel)
+                    if let kindLabel { Text(kindLabel) }
                     if let model = run.model, !model.isEmpty {
-                        Text(model).foregroundStyle(Theme.Colors.textTertiary)
+                        Text(model).foregroundStyle(
+                            kindLabel == nil ? Theme.Colors.textSecondary : Theme.Colors.textTertiary)
                     }
                 }
                 elapsed(from: Date(timeIntervalSince1970: Double(run.startedAt) / 1_000))
