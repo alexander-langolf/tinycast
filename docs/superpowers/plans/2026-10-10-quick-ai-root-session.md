@@ -83,7 +83,7 @@ Results are in the spec's *Spike results*.
 
 Doesn't depend on the root. It's the most useful part, so it ships first.
 
-- [ ] **2.1** Create `Tinycast/Fork/QuickAIRoot/ForkQuickAIHandoff.swift`, containing pure
+- [x] **2.1** Create `Tinycast/Fork/QuickAIRoot/ForkQuickAIHandoff.swift`, containing pure
       functions:
       - `prompt(messages:pending:limit:) -> Handoff`, where `Handoff` holds `text` and an optional
         `overflow`:
@@ -93,21 +93,21 @@ Doesn't depend on the root. It's the most useful part, so it ships first.
         - then the spec's closing line;
         - when the text passes 32 KB, the turns go into `overflow` and the text points at the file
           path;
-      - `command(executable:prompt:) -> String`, which single-quotes every argument for zsh,
-        escaping `'` as `'\''`, with `--` before the prompt.
-- [ ] **2.2** Engine resolution: resolve the executable for `claude` and `codex` with
+      - `command(executable:prompt:) -> String`, which ANSI-C quotes every argument for zsh,
+        escaping quotes, backslashes and control characters into one line, with `--` before the prompt.
+- [x] **2.2** Engine resolution: resolve the executable for `claude` and `codex` with
       `ExecutableLocator.locate(kind.command, extraHomePaths: kind.extraExecutablePaths)`, cached
       per launch. A missing engine hides its action.
-- [ ] **2.3** Hook `AIScreen.actions(at:)` (`:22`) to add:
+- [x] **2.3** Hook `AIScreen.actions(at:)` (`:22`) to add:
       - "Start Work in Claude Code" or "…in Codex", for the default engine (⌘↵);
       - one item for the other engine (⌃⌘↵), shown only when it's installed.
 
       Use systemImage `hammer`. The items are shown when the chat has a user message or the
       composer has text, nothing is streaming, and the setting isn't Off.
-- [ ] **2.4** Hook `AIScreen.secondary(at:)` (default engine) and add `tertiary(at:)` (other
+- [x] **2.4** Hook `AIScreen.secondary(at:)` (default engine) and add `tertiary(at:)` (other
       engine). Each runs the action and returns `true` when it's available, otherwise `false`, as
       today. `PaletteShortcut` and `RootPaletteView` are untouched.
-- [ ] **2.5** The action:
+- [x] **2.5** The action:
       1. takes the messages, plus the composer text as the pending request;
       2. writes the overflow file if there is one;
       3. calls `TerminalInstancesCoordinator.open(command:directory:)` with the working folder, or
@@ -115,6 +115,10 @@ Doesn't depend on the root. It's the most useful part, so it ships first.
       4. logs `handedOff(engine:terminal:chat:)`;
       5. clears the composer;
       6. starts a new Quick AI chat, which retires the root once Group 3 exists.
+
+**Implementation note:** Group 2 source is implemented. Commands use single-line zsh ANSI-C
+quoting, as required by the implementation brief. Build, lint, formatting, project generation and
+manual acceptance remain with Claude; no tests were added or run.
 
 **Done when:** spec acceptance criteria 4 and 5 pass by hand. Criterion 4 matters most: typing
 `context> multiverse emails +stardust research create new tokens` and pressing ⌘↵ opens Claude

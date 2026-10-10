@@ -251,6 +251,8 @@ final class AppCore {
     @ObservationIgnored private(set) lazy var quickAICoordinator = QuickAICoordinator(
         chats: aiChats, settings: settings, palette: palette,
         paletteCoordinator: paletteCoordinator, core: self)
+    @ObservationIgnored private(set) lazy var forkQuickAIHandoff = ForkQuickAIHandoffCoordinator(
+        core: self)  // FORK: quick-ai-root
 
     @ObservationIgnored private lazy var windowController = PaletteWindowController(core: self)
     @ObservationIgnored private lazy var messageHUD = MessageHUDController(settings: settings)
@@ -577,6 +579,7 @@ final class AppCore {
     }
 
     func prepareForTermination() {
+        forkQuickAIHandoff.stop()  // FORK: quick-ai-root
         forkQuickAIRootLog.stop()  // FORK: quick-ai-root
         if settings.dictationEnabled { dictationCoordinator.prepareForTermination() }
         settingsFile?.flush()

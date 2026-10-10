@@ -22,6 +22,8 @@ final class QuickAICoordinator {
 
     private var chat: AIChatState { chats.quickAI }
     private var chatCoordinator: AIChatCoordinator { core.aiChatCoordinator }
+    // FORK: quick-ai-root
+    var forkHandoff: ForkQuickAIHandoffCoordinator { core.forkQuickAIHandoff }
 
     func show() {
         guard settings.aiEnabled else { return }
@@ -81,6 +83,7 @@ final class QuickAICoordinator {
             guard !hasTranscript, !hasStaging, let recent else { return }
             // The window may have it open, in which case this summon starts fresh instead.
             chats.openInQuickAI(id: recent.id)
+            forkHandoff.reopened(chatID: recent.id)  // FORK: quick-ai-root
         case .startNew:
             // An empty chat is already new; resetting it would only drop what is staged in it.
             guard hasTranscript else { return }
@@ -109,6 +112,7 @@ final class QuickAICoordinator {
             continueInChat(id: id)
             return
         }
+        forkHandoff.reopened(chatID: id)  // FORK: quick-ai-root
         // History is left behind rather than stacked under, so one back step leaves chat for good.
         _ = palette.pop()
         palette.replace(mode: .ai)

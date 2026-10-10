@@ -354,6 +354,7 @@
 		576BE005250F0F6F56C4F42D /* NoteEditAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34B6E769255C1AA37EDA28E2 /* NoteEditAction.swift */; };
 		576CE9CDD0E373C8FFEA5D1D /* WindowLayoutPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AB691265C48648210F1F6D7 /* WindowLayoutPreview.swift */; };
 		5770FB1A3FD29E27C25C944E /* SearchRelevance.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABB9DB77DCE25C41D86BB955 /* SearchRelevance.swift */; };
+		57721C18A311A9EA6DAF0431 /* ForkQuickAIHandoff.swift in Sources */ = {isa = PBXBuildFile; fileRef = 709A1B602DFE9DC0E8A37A77 /* ForkQuickAIHandoff.swift */; };
 		57784875AA132F7756399363 /* SnippetsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41E419A4DA5AB5B3A87B80F2 /* SnippetsListView.swift */; };
 		57B8D2628E23D0D9BD8815AD /* MCPStdioTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5958B66BC7FD9FE3F2B8F49 /* MCPStdioTransport.swift */; };
 		58D369977E702AD66F070913 /* SnippetMarkdownSerializer.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE3331A5E8F892CC257AD31B /* SnippetMarkdownSerializer.swift */; };
@@ -507,6 +508,7 @@
 		7EEC2391D9E341626A2661E2 /* AXScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 677036AB7EE67B050C2930D5 /* AXScreens.swift */; };
 		7F22BD030E1D2A5DC43BABE9 /* AIBrand.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB02E0EF46285235AD81C181 /* AIBrand.swift */; };
 		7F32BE62913B4EFC6F4534A7 /* MeetingDetailsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5FCA03B8293571793633133 /* MeetingDetailsScreen.swift */; };
+		7F6425CB002D10271A5C9114 /* ForkQuickAIHandoffCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04E8FCF39FF3D2C49686A16C /* ForkQuickAIHandoffCoordinator.swift */; };
 		7F7456BD80215A93D9AF2959 /* GhosttyGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44297197783B2D23B6C4196B /* GhosttyGridView.swift */; };
 		7FDE88F4E065FF80DCB92445 /* NotesStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC2B77DA46386E7E459406E4 /* NotesStore.swift */; };
 		7FF6A0A4702E1C1365F2D76A /* LauncherScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B97A8C3E88FEBCBBEADF415B /* LauncherScreen.swift */; };
@@ -1066,6 +1068,7 @@
 		03D29ADBBE565419B1E98281 /* SettingsSidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsSidebarView.swift; sourceTree = "<group>"; };
 		0437C802C1F3E33E8532A7E3 /* Fallback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Fallback.swift; sourceTree = "<group>"; };
 		045EC0C36F08176EE0304F49 /* ExtensionFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtensionFormView.swift; sourceTree = "<group>"; };
+		04E8FCF39FF3D2C49686A16C /* ForkQuickAIHandoffCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForkQuickAIHandoffCoordinator.swift; sourceTree = "<group>"; };
 		0548C62E98174F92E13437FB /* CameraPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraPreviewView.swift; sourceTree = "<group>"; };
 		059EE288BB5EF35F9FB60F43 /* WindowShortcutPreset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowShortcutPreset.swift; sourceTree = "<group>"; };
 		06B5C0B83C3645AC90639B85 /* AppleIntelligenceProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleIntelligenceProvider.swift; sourceTree = "<group>"; };
@@ -1466,6 +1469,7 @@
 		6F7D0725CF7068879F86F0AA /* NoteRevealPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteRevealPolicy.swift; sourceTree = "<group>"; };
 		6FC1FDF99BFB0FB10FECEDAF /* NoteMarkdown.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteMarkdown.swift; sourceTree = "<group>"; };
 		6FF6DBC407666868DCE27C22 /* RoomRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomRunner.swift; sourceTree = "<group>"; };
+		709A1B602DFE9DC0E8A37A77 /* ForkQuickAIHandoff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForkQuickAIHandoff.swift; sourceTree = "<group>"; };
 		709C3F8952A500267E1D8242 /* ModifierTapMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModifierTapMonitor.swift; sourceTree = "<group>"; };
 		70F987A185161E857B7A030B /* PaletteShortcut.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaletteShortcut.swift; sourceTree = "<group>"; };
 		71B96B69CB4E52319BB3EC7D /* FileSearchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileSearchService.swift; sourceTree = "<group>"; };
@@ -2458,6 +2462,8 @@
 		373B47804E6965B471FFC229 /* QuickAIRoot */ = {
 			isa = PBXGroup;
 			children = (
+				709A1B602DFE9DC0E8A37A77 /* ForkQuickAIHandoff.swift */,
+				04E8FCF39FF3D2C49686A16C /* ForkQuickAIHandoffCoordinator.swift */,
 				50D11381E87627885BB4E045 /* ForkQuickAIRootLog.swift */,
 				0FF5FF6EDB4B46609C1BF893 /* ForkQuickAIRootLogFiles.swift */,
 				894822DF77F9098EABDCE8DF /* ForkQuickAIRootSettings.swift */,
@@ -5026,6 +5032,8 @@
 				EC53CC0BFC1F5801BE0518D7 /* ForkFontSnapshot.swift in Sources */,
 				C4A938B9B06FA332244CF822 /* ForkFzf.swift in Sources */,
 				D4239DFF5B868BD4A366B838 /* ForkInk.swift in Sources */,
+				57721C18A311A9EA6DAF0431 /* ForkQuickAIHandoff.swift in Sources */,
+				7F6425CB002D10271A5C9114 /* ForkQuickAIHandoffCoordinator.swift in Sources */,
 				3ADCB4DFBC55A49BDD148672 /* ForkQuickAIRootLog.swift in Sources */,
 				A3D1FD042F3A3713F9AD8017 /* ForkQuickAIRootLogFiles.swift in Sources */,
 				7D16CC01F97CAA31BFB2272B /* ForkQuickAIRootSettings.swift in Sources */,

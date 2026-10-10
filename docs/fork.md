@@ -245,6 +245,22 @@ wiring file adds a computed `cwd` to `InstalledCLITurnRunner` and `CodexAppServe
 folder; the hooks read `cwd` only where a process starts or a directory flag is passed. Unset, `cwd`
 is `workspace` and every route is upstream.
 
+## Quick AI Start Work
+
+`Tinycast/Fork/QuickAIRoot/ForkQuickAIHandoff.swift` builds the handoff text and a single-line zsh
+command using ANSI-C quoting for every argument. The first user message stays verbatim at the
+front; later turns and attachment placeholders spill into the existing log owner's handoff file
+when the inline prompt exceeds 32 KB of UTF-8. The first message is never shortened.
+
+`AppCore` owns `ForkQuickAIHandoffCoordinator`. Quick AI resolves Claude Code and Codex lazily,
+caching executable lookup results for the current command-path override. A set path wins or fails.
+The action panel and ⌘↵ / ⌃⌘↵ use the same eligibility check; chats reopened from history are
+excluded. Start Work opens an interactive CLI in the working folder (home when unset or missing),
+logs only handoff metadata, clears the composer and calls `QuickAICoordinator.startNewChat()`.
+Overflow writes revalidate the source chat, draft, attachments, settings and directory before
+launching; a stale result leaves the current chat untouched. Root retirement remains for the
+warm-root lifecycle group.
+
 ## Merge playbook
 
 1. Work from `main` and run `git merge upstream/main`. Never rebase.
@@ -384,7 +400,9 @@ unless they have an explicit symbol-only allowance. The audit is a static guard,
 | `Tinycast/Features/Settings/SettingsFileSchema.swift` | `// FORK: ai-working-directory` | Bind the mirror with the folder rule. |
 | `Tinycast/Features/Backup/Model/SettingsBackupCoverage.swift` | `// FORK: ai-working-directory` | Keep the folder out of backups. |
 | `Tinycast/Features/Settings/SettingsSearchCatalog.swift` | `// FORK: ai-working-directory` | Make the row searchable. |
-| `Tinycast/App/AppCore.swift` | `// FORK: quick-ai-root` | Own the Quick AI root settings and log; start pruning at launch and stop it on termination. |
+| `Tinycast/App/AppCore.swift` | `// FORK: quick-ai-root` | Own the Quick AI root settings, log and handoff coordinator; start pruning at launch and stop pruning and pending handoffs on termination. |
+| `Tinycast/Features/AI/UI/AIScreen.swift` | `// FORK: quick-ai-root` | Add fork-owned Start Work menu items and secondary/tertiary actions; resolve engines in a view-owned task. |
+| `Tinycast/Features/AI/UI/QuickAICoordinator.swift` | `// FORK: quick-ai-root` | Expose the fork-owned handoff coordinator and mark chats reopened from history as ineligible for Start Work. |
 | `Tinycast/Features/AI/Settings/AISettingsView.swift` | `// FORK: quick-ai-root` | Show the fork-owned Quick AI settings section. |
 | `Tinycast/Features/Settings/AppSettingsKey.swift` | `// FORK: quick-ai-root` | Name the warm-root, Start Work engine and log-retention defaults keys. |
 | `Tinycast/Features/Settings/Model/SettingsFileKey.swift` | `// FORK: quick-ai-root` | Mirror the three preferences under `ai`. |
