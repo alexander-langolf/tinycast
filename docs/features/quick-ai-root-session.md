@@ -103,7 +103,8 @@ Quick AI a fast launcher for real work.
 
      The path is the executable Tinycast already resolves for that engine
      (`ExecutableLocator.locate` with the kind's extra paths), so the terminal's `PATH` can't pick a
-     different install. Each argument is single-quoted for zsh.
+     different install. Each argument is ANSI-C quoted (`$'…'`), so the command is a single
+     line: the terminal types it into zsh followed by Return.
   3. Writes `handedOff` to the log, retires the root if there is one, and Quick AI starts a new
      chat.
 - **Approvals, folder trust and hook review** happen inside the CLI in the terminal instance, as in
