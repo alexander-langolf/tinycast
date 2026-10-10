@@ -139,6 +139,23 @@ Files and Clipboard push their existing screens carrying the query. Their normal
 clears the selection while retaining chip mode. Hiding the palette or entering a screen not
 owned by the selected chip resets chip state.
 
+## Editing visually
+
+`TerminalInstanceCard` is the whole card with plain values in (phase, command, directory, pinned, an
+`input` binding, a `TerminalInstanceActions` bundle) and the output as a view builder. The live
+`TerminalInstanceView` is a thin adapter that fills it from a `TerminalInstance` and supplies
+`GhosttyGridView` (or `TerminalLogView`) below the divider; previews supply a monospaced placeholder. Xcode's
+canvas cannot preview the app target, so use the `TinycastPreviews` scheme:
+
+1. Open `Tinycast.xcodeproj` and choose the **TinycastPreviews** scheme.
+2. Open `Features/TerminalInstances/UI/TerminalInstancesPreviewData.swift` and show the canvas with ⌥⌘↩.
+3. Edit `TerminalInstanceCard.swift` or `TerminalInstanceMetrics.swift` and watch the previews update.
+
+The previews cover idle, running, finished OK, failed, a long command, unpinned, shell ended, the startup
+notice, a full-screen program and a stack. ⌘R on the same scheme opens the playground; its Terminal tab
+shows the stack. The placeholder is not the real grid, so check text rendering in the app itself. A file the
+card needs must be listed in `project.fork.yml` under `TinycastPreviews`.
+
 ## Verification
 
 The registered [terminal model harness](../../Tests/terminal-instances-test.swift) covers command

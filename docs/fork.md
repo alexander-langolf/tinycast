@@ -84,7 +84,7 @@ document. This adapts the requested catalog icon to upstream's modern layered ic
 flattening it into an `.appiconset` would change the default appearance. Fork build settings
 live in `project.fork.yml`; regenerate the Xcode project after changing them. The same file defines
 `TinycastPreviews`, a small app target (bundle id `com.tinycast.previews`) that compiles only the
-AgentRuns UI and the design-system, fork-typography and shell-runner files they read, so Xcode's canvas
+AgentRuns UI, the terminal-instance card (`TerminalInstanceCard` and its metrics) and the design-system, fork-typography and shell-runner files they read, so Xcode's canvas
 can preview without libghostty or AppCore. Its entry point is `PreviewsApp/`; run it for a card playground.
 Debug builds of all three targets sign "Sign to Run Locally" (`CODE_SIGN_IDENTITY: "-"`), so Xcode
 builds without the `Tinycast Self-Signed` identity; Release keeps upstream's identity.
