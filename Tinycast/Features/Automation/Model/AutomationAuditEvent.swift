@@ -16,6 +16,7 @@ struct AutomationAuditEvent: Codable, Sendable, Equatable {
     let at: Date
     let kind: Kind
     let transport: String
+    let callerRequestID: String?
     let caller: String
     let client: UUID?
     let operation: String

@@ -279,7 +279,7 @@ unless they have an explicit symbol-only allowance. The audit is a static guard,
 | `Scripts/run-tests.sh` | `// FORK: palette-chips` | Register the chip state-machine and layout harness. |
 | `Tinycast/App/AppCore.swift` | `// FORK: terminal-instances` | Lazily own the coordinator and presenter; hang up every session at termination. |
 | `Tinycast/App/AppCore.swift` | `// FORK: palette-chips` | Lazily own the chips coordinator and presenter. |
-| `Tinycast/App/AppCore.swift` | `// FORK: automation` | Lazily own the inbound automation coordinator. |
+| `Tinycast/App/AppCore.swift` | `// FORK: automation` | Lazily own the inbound automation coordinator; start it after MCP and stop it at termination. |
 | `Tinycast/Features/Settings/Panes/GeneralSettingsView.swift` | `// FORK: automation-settings` | Render the automation clients section. |
 | `Tinycast/Palette/RootPaletteView.swift` | `// FORK: terminal-instances` | Route standalone `$` launcher queries to the terminal command screen. |
 | `Tinycast/Palette/RootPaletteView.swift` | `// FORK: palette-chips` | Toggle chips with Tab in the collapsed bar; handle empty-query Escape; set pill radius, show the `⌘1–4` hint and hide compact favourites. |

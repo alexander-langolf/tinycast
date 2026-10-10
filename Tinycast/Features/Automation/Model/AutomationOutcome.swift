@@ -16,4 +16,6 @@ struct AutomationCall: Sendable {
     let operation: AutomationOperation
     let arguments: [String: JSONValue]
     let transport: String
+    /// The caller's own JSON-RPC id, kept only so the audit log can be matched to its logs.
+    var callerRequestID: String?
 }

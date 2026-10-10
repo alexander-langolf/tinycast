@@ -21,6 +21,7 @@ final class AutomationClientStore {
     @ObservationIgnored private let fileURL: URL
     @ObservationIgnored private let now: () -> Date
     /// SHA-256 of each token, so a request is checked without touching the Keychain.
+    @ObservationIgnored private var isMetadataLoaded = false
     @ObservationIgnored private var digests: [UUID: SHA256.Digest] = [:]
     @ObservationIgnored var onChange: ((_ revoked: UUID?) -> Void)?
     private nonisolated static let logger = Logger(subsystem: "com.tinycast", category: "Automation")
@@ -36,7 +37,10 @@ final class AutomationClientStore {
         self.now = now
     }
 
-    func load() {
+    /// Labels, scopes and expiry only: what Settings lists. No Keychain access.
+    func loadMetadata() {
+        guard !isMetadataLoaded else { return }
+        isMetadataLoaded = true
         guard let data = try? Data(contentsOf: fileURL) else { return }
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
@@ -45,8 +49,13 @@ final class AutomationClientStore {
             return
         }
         clients = stored
+    }
+
+    /// Reads every client's token once, so requests are checked without touching the Keychain.
+    func loadDigests() {
+        loadMetadata()
         digests = [:]
-        for client in stored {
+        for client in clients {
             guard let token = try? keychain.secret(for: client.id) else {
                 Self.logger.error("No Keychain token for client \(client.id, privacy: .public)")
                 continue
@@ -77,6 +86,7 @@ final class AutomationClientStore {
     ) throws
         -> AutomationClient
     {
+        loadMetadata()
         let created = now()
         let client = AutomationClient(
             id: UUID(), label: AutomationText.displaySafe(label, limit: 40), scopes: scopes,
@@ -90,12 +100,14 @@ final class AutomationClientStore {
 
     /// A new secret under the same identity; the old one stops working at once.
     func rotate(_ id: UUID) throws {
+        loadMetadata()
         guard clients.contains(where: { $0.id == id }) else { return }
         try store(token: Self.makeToken(for: id), for: id)
         onChange?(id)
     }
 
     func revoke(_ id: UUID) {
+        loadMetadata()
         try? keychain.removeSecret(for: id)
         digests[id] = nil
         clients.removeAll { $0.id == id }

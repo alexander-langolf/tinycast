@@ -36,6 +36,12 @@ struct AutomationSettingsSection: View {
 
     var body: some View {
         Section {
+            @Bindable var automation = automation
+            Toggle(isOn: $automation.isEnabled) {
+                Text("Allow automation")
+                Text(statusText).foregroundStyle(.secondary)
+            }
+            .task { automation.clients.loadMetadata() }
             ForEach(automation.clients.clients) { client in
                 clientRow(client)
             }
@@ -59,6 +65,15 @@ struct AutomationSettingsSection: View {
             Text(
                 "Each client has its own token, kept in your login Keychain and never in a file. "
                     + "Commands and agent launches always ask you first.")
+        }
+    }
+
+    private var statusText: String {
+        guard automation.isEnabled else { return "Off. Nothing is listening." }
+        switch automation.server?.status {
+        case .listening?: return "Listening on \(automation.endpointURL)"
+        case .failed(let message)?: return message
+        default: return "Starting…"
         }
     }
 

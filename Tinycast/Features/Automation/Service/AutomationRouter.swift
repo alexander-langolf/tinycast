@@ -142,7 +142,8 @@ final class AutomationRouter {
         try audit.append(
             AutomationAuditEvent(
                 id: UUID(), request: call.request, at: now(), kind: kind, transport: call.transport,
-                caller: call.caller.label, client: call.caller.clientID,
+                callerRequestID: call.callerRequestID, caller: call.caller.label,
+                client: call.caller.clientID,
                 operation: call.operation.name,
                 arguments: AutomationAuditEvent.summary(of: call.arguments), detail: detail))
     }

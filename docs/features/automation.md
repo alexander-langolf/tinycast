@@ -51,3 +51,32 @@ Code and Codex both carry both eras and fall back on a 4xx. Spec pages read on 2
   `completed`, `failed` or `cancelled` with the request id, caller, transport and redacted
   arguments. A privileged call is refused when its `received` event cannot be written. The log is not
   tamper-evident against the same user.
+
+## HTTP endpoint
+
+`AutomationHTTPServer` listens on `127.0.0.1` only (`NetworkListener`, no dependency): stable
+**43311**, Dev **43312**, Beta **43313**, path `/mcp`, POST only. Settings → General → Automation →
+Allow automation starts and stops it; it is off by default and the flag is not in backups.
+
+- **Before any body is read:** `Host` must be `127.0.0.1:<port>` or `localhost:<port>`; any `Origin`
+  header at all (including `null`) is a 403, so a browser can never talk to it; wrong path 404; any
+  method but POST 405 with `Allow: POST`; no CORS headers and no preflight answer.
+- **Then:** `Authorization: Bearer …` on every request (never a cookie or a URL parameter; 401, and
+  429 after ten failures in a burst), `Content-Type: application/json`, one JSON-RPC message per POST.
+- **Bounds:** 16 KiB of headers, 256 KiB of body, no `Transfer-Encoding`, 16 connections, 10 s to
+  read a request, 180 s for a handler, 4 listen streams per client.
+- **Era:** a body with `_meta["io.modelcontextprotocol/protocolVersion"]` must carry matching
+  `MCP-Protocol-Version`, `Mcp-Method` and (for `tools/call`, `resources/read`) `Mcp-Name` headers or
+  it is `-32020`; an unsupported version is `-32022` listing what is supported. Anything else is a
+  handshake-era request: `initialize` is answered with no session id, later requests need a legacy
+  `MCP-Protocol-Version` (absent means 2025-03-26).
+- **Errors.** Envelope and header faults are JSON-RPC errors with HTTP 400. Unknown tools and
+  resources are `-32602`. A tool that ran and failed, or was declined, is a result with
+  `isError: true`. The caller's JSON-RPC id is echoed untouched and recorded in the audit log.
+- **Cancellation.** Each POST has its own connection; when the client closes it the handler task is
+  cancelled, which withdraws a pending approval. The legacy `notifications/cancelled` is accepted
+  and ignored: closing the connection is the signal on this transport.
+- **Push.** `subscriptions/listen` (2026-07-28 only) is an SSE stream: acknowledgement first, then
+  `notifications/resources/updated` for the subscribed resource URIs the client's scopes allow, a
+  keep-alive comment every 15 s, and a graceful completion if the client is revoked. There is no GET
+  stream and no `Mcp-Session-Id`.

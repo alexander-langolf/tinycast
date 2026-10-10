@@ -6,14 +6,28 @@ import Observation
 @MainActor
 @Observable
 final class AutomationCoordinator {
+    private static let enabledKey = "automationEnabled"
+
     let clients: AutomationClientStore
+    private(set) var server: AutomationHTTPServer?
     @ObservationIgnored private unowned let core: AppCore
     @ObservationIgnored let audit = AutomationAuditLog.standard()
+    @ObservationIgnored let hub = AutomationEventHub()
     @ObservationIgnored private(set) var approvals: AutomationApprovalQueue
     @ObservationIgnored private(set) var router: AutomationRouter
+    @ObservationIgnored private var lastRefusalRecord: Date?
+
+    /// Off until the user turns it on, and never carried by a backup or settings.json.
+    var isEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(isEnabled, forKey: Self.enabledKey)
+            apply()
+        }
+    }
 
     init(core: AppCore) {
         self.core = core
+        isEnabled = UserDefaults.standard.bool(forKey: Self.enabledKey)
         let clients = AutomationClientStore()
         self.clients = clients
         let approvals = AutomationApprovalQueue(
@@ -26,10 +40,23 @@ final class AutomationCoordinator {
                 guard let id = caller.clientID else { return caller }
                 return clients.current(id).map(AutomationCaller.client)
             })
-        clients.load()
-        clients.onChange = { [approvals] revoked in
-            if let revoked { approvals.cancelAll(for: revoked) }
+        clients.onChange = { [approvals, hub] revoked in
+            guard let revoked else { return }
+            approvals.cancelAll(for: revoked)
+            hub.end(client: revoked)
         }
+    }
+
+    /// Called once from `AppCore.start()`; a disabled feature touches nothing.
+    func start() {
+        apply()
+    }
+
+    func stop() {
+        server?.stop()
+        server = nil
+        approvals.stop()
+        hub.endAll()
     }
 
     func createClient(
@@ -40,8 +67,39 @@ final class AutomationCoordinator {
         try clients.create(label: label, scopes: scopes, lifetime: lifetime)
     }
 
-    func stop() {
-        approvals.stop()
+    var endpointURL: String {
+        AutomationEndpoint.url(port: AutomationEndpoint.port(bundleIdentifier: Bundle.main.bundleIdentifier))
+    }
+
+    private func apply() {
+        guard isEnabled else {
+            stop()
+            return
+        }
+        guard server == nil else { return }
+        clients.loadDigests()
+        let handler = AutomationMCPHandler(
+            router: router, hub: hub,
+            serverVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0")
+        let server = AutomationHTTPServer(
+            port: AutomationEndpoint.port(bundleIdentifier: Bundle.main.bundleIdentifier),
+            handler: handler,
+            authenticate: { [clients] in clients.authenticate(bearer: $0) },
+            onRefused: { [weak self] in self?.recordRefusal($0) })
+        self.server = server
+        server.start()
+    }
+
+    /// One audit line per ten seconds: a client hammering a bad token must not fill the disk.
+    private func recordRefusal(_ reason: String) {
+        let now = Date()
+        if let last = lastRefusalRecord, now.timeIntervalSince(last) < 10 { return }
+        lastRefusalRecord = now
+        try? audit.append(
+            AutomationAuditEvent(
+                id: UUID(), request: UUID(), at: now, kind: .denied, transport: "mcp-http",
+                callerRequestID: nil, caller: "unauthenticated", client: nil,
+                operation: "authenticate", arguments: nil, detail: reason))
     }
 
     /// Tinycast's own dialog, defaulting to Deny so a stray return never approves.

@@ -317,6 +317,7 @@ final class AppCore {
             chatGPTSubscription.launchSettings = { [aiSettings] in aiSettings.launch(for: .codex) }
             aiChatCoordinator.applyEnabled()
             mcpCoordinator.applyEnabled()
+            automation.start()  // FORK: automation
             customQuickActions.onChange = { [weak self] _ in
                 self?.quickActionCoordinator.applyCustomQuickActionsPresence()
             }
@@ -577,6 +578,7 @@ final class AppCore {
         settingsFile?.flush()
         agentRunsCoordinator.stop()  // FORK: agent-runs
         terminalInstances.closeAll()  // FORK: terminal-instances
+        automation.stop()  // FORK: automation
         clipboardTextIndexer?.stop()
         // Caps Lock first: its remap is the one teardown that outlives the process.
         hyperKeyTap.prepareForTermination()
