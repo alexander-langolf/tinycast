@@ -83,6 +83,8 @@ The app icon uses `Tinycast/Fork/ForkAppIcon.icon`, copied from upstream's Icon 
 document. This adapts the requested catalog icon to upstream's modern layered icon format:
 flattening it into an `.appiconset` would change the default appearance. Fork build settings
 live in `project.fork.yml`; regenerate the Xcode project after changing them.
+Debug builds of all three targets sign "Sign to Run Locally" (`CODE_SIGN_IDENTITY: "-"`), so Xcode
+builds without the `Tinycast Self-Signed` identity; Release keeps upstream's identity.
 
 ## Background agent runs
 

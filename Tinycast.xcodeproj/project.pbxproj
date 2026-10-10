@@ -4966,6 +4966,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = ForkAppIcon;
 				CODE_SIGN_ENTITLEMENTS = Tinycast/Tinycast.entitlements;
+				CODE_SIGN_IDENTITY = "-";
 				COMBINE_HIDPI_IMAGES = YES;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
@@ -5011,6 +5012,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "-";
 				COMBINE_HIDPI_IMAGES = YES;
 				EXECUTABLE_NAME = "$(DICTATION_EXECUTABLE_NAME)";
 				INFOPLIST_FILE = Tinycast/Features/Dictation/Helper/Info.plist;
@@ -5211,6 +5213,7 @@
 		D8C6CAC15EBCF3A29913F5C8 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
 				COMBINE_HIDPI_IMAGES = YES;
 				EXECUTABLE_NAME = ClipboardTextHelper;
 				LD_RUNPATH_SEARCH_PATHS = (
