@@ -30,3 +30,24 @@ Code and Codex both carry both eras and fall back on a 4xx. Spec pages read on 2
 [versioning](https://modelcontextprotocol.io/specification/2026-07-28/basic/versioning),
 [tools](https://modelcontextprotocol.io/specification/2026-07-28/server/tools),
 [resources](https://modelcontextprotocol.io/specification/2026-07-28/server/resources).
+
+## Approval, credentials and audit
+
+- **Approvals are per request.** `AutomationApprovalQueue` keys each request by its own id and shows
+  one at a time through Tinycast's own dialog (default button: Deny), with the exact command and
+  folder. Requests expire after 60 seconds, a revoked client's requests are cancelled, and the
+  router rechecks the caller's authority after the wait. At most 8 are pending (3 per client) and a
+  client gets 6 prompts a minute. A command over 1,000 characters is refused rather than shown cut.
+  The dialog waits while another Tinycast dialog is open instead of being swallowed by it.
+- **Per-client tokens live only in the login Keychain.** Service
+  `<bundle id>.automation-clients`, account = the client's UUID, so Dev and stable never share a
+  token. `~/Library/Application Support/<bundle id>/Automation/clients.json` holds labels, scopes and
+  expiry (0600), never a token. Tokens look like `tcn_<client id>.<secret>`; the server keeps only a
+  SHA-256 digest in memory. Create, rotate and revoke are in Settings → General → Automation.
+  Bearer tokens are a deliberate departure from MCP's OAuth profile: this is a local, per-user
+  endpoint with manually provisioned clients.
+- **Audit.** `Automation/audit.jsonl` (0600, folder 0700) is append-only, serialized under a lock and
+  rotated at 5 MiB keeping three files. Each call writes `received`, then `denied`, `approved`,
+  `completed`, `failed` or `cancelled` with the request id, caller, transport and redacted
+  arguments. A privileged call is refused when its `received` event cannot be written. The log is not
+  tamper-evident against the same user.

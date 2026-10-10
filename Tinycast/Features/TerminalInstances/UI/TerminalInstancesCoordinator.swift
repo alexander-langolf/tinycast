@@ -15,21 +15,25 @@ final class TerminalInstancesCoordinator {
     }
 
     /// The palette closes and the instance takes its place; the command runs at the first prompt.
-    func open(command: String) {
+    @discardableResult
+    func open(
+        command: String, directory: String = FileManager.default.homeDirectoryForCurrentUser.path
+    ) -> TerminalInstance? {
         let command = command.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !command.isEmpty else { return }
+        guard !command.isEmpty else { return nil }
         let anchor = core.paletteCoordinator.panelFrame.map { CGPoint(x: $0.minX, y: $0.maxY) }
         core.paletteCoordinator.hidePalette(restoreFocus: false)
         core.paletteCoordinator.popToRootNow()
         let layout = TerminalInstanceMetrics(metrics: core.settings.interfaceSize.metrics)
         let instance = TerminalInstance(
-            command: command, directory: FileManager.default.homeDirectoryForCurrentUser.path,
+            command: command, directory: directory,
             columns: layout.columns,
             rowCap: GhosttyRenderer.isEnabled ? layout.gridRows : layout.rowCap)
         instances.insert(instance, at: 0)
         core.terminalInstancesPresenter.present(instance, anchor: anchor)
         instance.session.start()
         instance.begin(command)
+        return instance
     }
 
     /// ↵ in the card: the next command in the same session; a typed `$ ` prefix is forgiven.

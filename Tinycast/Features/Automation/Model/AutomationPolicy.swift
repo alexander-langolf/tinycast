@@ -20,4 +20,9 @@ enum AutomationPolicy {
         }
         return operation.needsApproval ? .requireApproval : .allow
     }
+
+    static func permits(caller: AutomationCaller, operation: AutomationOperation) -> Bool {
+        if case .deny = decide(caller: caller, operation: operation) { return false }
+        return true
+    }
 }
