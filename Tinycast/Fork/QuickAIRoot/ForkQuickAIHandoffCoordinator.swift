@@ -131,7 +131,9 @@ final class ForkQuickAIHandoffCoordinator {
         engine: ForkQuickAIRootSettings.Engine, executable: URL, prompt: String,
         directory: String, chatID: UUID
     ) {
-        let command = ForkQuickAIHandoff.command(executable: executable.path, prompt: prompt)
+        let command = ForkQuickAIHandoff.command(
+            executable: executable.path, flags: ForkQuickAIHandoff.bypassFlags(for: engine),
+            prompt: prompt)
         guard let terminal = core.terminalInstances.open(command: command, directory: directory) else {
             core.showMessage("Couldn’t open the work terminal.", tone: .danger)
             return

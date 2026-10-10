@@ -1,6 +1,7 @@
 # Claude session chat: specification
 
-**Status:** Group 1 (host, hooks, registry) built; Groups 2–5 to do.
+**Status:** Group 1 (host, hooks, registry) built; Group 2 (reader, writer, provider and chat hook)
+implemented, unverified; Groups 3–5 to do.
 It's an experiment, and it extends Quick AI's Start Work
 (`docs/features/quick-ai-root-session.md`). Evidence comes from the vault note *Tinycast Agent Hub —
 Design & Plan*, section "Spike results: background Claude (2026-10-11)".
@@ -29,8 +30,11 @@ through a Tinycast restart, and `claude attach <id>` opens it in any terminal.
 - **Interactive only.** The session is `claude --bg`, and input goes through `claude attach`. It
   never uses `claude -p`, `--print`, `--input-format`/`--output-format stream-json`, the Agent SDK
   or `--attach-serve`.
-- **Approvals are Sasha's.** Tinycast shows that an approval is waiting and offers Attach. It never
-  answers an approval, and it never sends keys other than the message Sasha sent.
+- **No approval prompts.** Sessions start (and resume) with `--dangerously-skip-permissions`
+  (Sasha's choice, 2026-10-11; verified: Bash ran in `bypassPermissions` mode with no
+  `PermissionRequest`). Anything that still asks (a `PermissionRequest` or an
+  `AskUserQuestion`-style prompt) is shown with Attach. Tinycast never answers it, and it never
+  sends keys other than the message Sasha sent.
 - **One writer.** Tinycast types into the session only between turns, with no approval waiting, and
   only when no Attach terminal is open for that session. Anything sent at another time waits in a
   queue that the chat shows.
@@ -52,7 +56,7 @@ through a Tinycast restart, and `claude attach <id>` opens it in any terminal.
 2. Runs, in the working folder and with the clean environment:
 
    ```sh
-   claude --bg --settings '<fork hooks file>' -- '<handoff prompt>'
+   claude --bg --dangerously-skip-permissions --settings '<fork hooks file>' -- '<handoff prompt>'
    ```
 
    It reads the short id from the output (`backgrounded · <id>`), then the session id and

@@ -34,6 +34,9 @@ final class ForkClaudeSessionHost {
         }
     }
 
+    /// Sessions skip approvals (Sasha's choice, 2026-10-11); folder trust still applies.
+    nonisolated static let bypassFlags = ["--dangerously-skip-permissions"]
+
     let hooks: ForkClaudeSessionHooks
     private let commandPath: @MainActor () -> String
     private var preparation: Task<Void, Never>?
@@ -67,7 +70,7 @@ final class ForkClaudeSessionHost {
         try await hooks.write()
         let output = try await Self.run(
             executable: executable,
-            arguments: ["--bg", "--settings", hooks.settingsURL.path, "--", prompt],
+            arguments: ["--bg"] + Self.bypassFlags + ["--settings", hooks.settingsURL.path, "--", prompt],
             directory: directory)
         let id = try Self.backgroundID(output)
         return try await resolveHandle(id: id, executable: executable)
@@ -92,7 +95,8 @@ final class ForkClaudeSessionHost {
         let existing = try await handles(executable: executable).first { $0.sessionID == sessionID }
         let output = try await Self.run(
             executable: executable,
-            arguments: ["--bg", "--resume", sessionID, "--settings", hooks.settingsURL.path],
+            arguments: ["--bg", "--resume", sessionID] + Self.bypassFlags
+                + ["--settings", hooks.settingsURL.path],
             directory: directory)
         let id = try existing?.id ?? Self.backgroundID(output)
         let handle = try await resolveHandle(id: id, executable: executable)
@@ -107,7 +111,7 @@ final class ForkClaudeSessionHost {
         _ = try await Self.run(executable: executable, arguments: ["rm", id])
     }
 
-    private func resolveExecutable() async throws -> URL {
+    func resolveExecutable() async throws -> URL {
         let path = commandPath()
         let executable = await ForkAIExecutableResolver.resolve(kind: .claude, commandPath: path)
         try Task.checkCancellation()

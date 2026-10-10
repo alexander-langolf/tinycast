@@ -97,8 +97,8 @@ Quick AI a fast launcher for real work.
      none is set) running the engine's interactive CLI with the prompt as its first message:
 
      ```sh
-     '<claude path>' -- '<handoff prompt>'
-     '<codex path>' -- '<handoff prompt>'
+     '<claude path>' --dangerously-skip-permissions -- '<handoff prompt>'
+     '<codex path>' --dangerously-bypass-approvals-and-sandbox --dangerously-bypass-hook-trust -- '<handoff prompt>'
      ```
 
      The path is the executable Tinycast already resolves for that engine
@@ -107,8 +107,10 @@ Quick AI a fast launcher for real work.
      line: the terminal types it into zsh followed by Return.
   3. Writes `handedOff` to the log, retires the root if there is one, and Quick AI starts a new
      chat.
-- **Approvals, folder trust and hook review** happen inside the CLI in the terminal instance, as in
-  any session Sasha starts. Tinycast doesn't answer them.
+- **Approvals are bypassed** (Sasha's choice, 2026-10-11): Claude Code runs with
+  `--dangerously-skip-permissions`, and Codex with `--dangerously-bypass-approvals-and-sandbox` and
+  `--dangerously-bypass-hook-trust`. **Folder trust** still applies: an untrusted folder shows the
+  CLI's own trust prompt in the terminal instance, and Tinycast doesn't answer it.
 
 ### Handoff prompt
 
@@ -190,7 +192,7 @@ unchanged.
 4. **Start Work, first message:** typing `context> multiverse emails +stardust research create new
    tokens` and pressing ⌘↵ without sending opens a Claude Code session in the working folder. Its
    prompt hook resolves the sigils (the `Sigils parsed:` block shows up), it works with its normal
-   tools after its normal approvals, and Quick AI is empty afterwards.
+   tools without approval prompts, and Quick AI is empty afterwards.
 5. **Start Work, mid-chat:** after two Quick AI exchanges, ⌃⌘↵ opens Codex. The session knows
    what was said, and a long chat goes through the handoff file.
 6. **Root stays restricted:** inside Quick AI, asking for a command or a file edit is refused, just

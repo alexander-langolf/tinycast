@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 
 final class ForkClaudeSessionRegistry: Sendable {
     struct Entry: Codable, Equatable, Sendable {
@@ -9,16 +10,26 @@ final class ForkClaudeSessionRegistry: Sendable {
         var readOffset: UInt64 = 0
     }
 
+    private let cache: Mutex<Result<[String: Entry], Error>>
     private let fileURL: URL
-    private let queue = DispatchQueue(label: "com.tinycast.claude-session-registry", qos: .utility)
+    private let queue: DispatchQueue
 
     init(directory: URL) {
-        fileURL = directory.appending(path: "registry.json")
+        let url = directory.appending(path: "registry.json")
+        let storageQueue = DispatchQueue(label: "com.tinycast.claude-session-registry", qos: .utility)
+        fileURL = url
+        queue = storageQueue
+        cache = Mutex(storageQueue.sync { Result { try Self.read(url) } })
+    }
+
+    func cachedEntry(chatID: UUID) throws -> Entry? {
+        try cache.withLock { try $0.get()[chatID.uuidString] }
     }
 
     func entries() async throws -> [UUID: Entry] {
         try await perform { fileURL in
             let saved = try Self.read(fileURL)
+            self.cache.withLock { $0 = .success(saved) }
             var entries: [UUID: Entry] = [:]
             for (key, entry) in saved {
                 guard let id = UUID(uuidString: key), entries[id] == nil else {
@@ -31,7 +42,7 @@ final class ForkClaudeSessionRegistry: Sendable {
     }
 
     func entry(chatID: UUID) async throws -> Entry? {
-        try await perform { try Self.read($0)[chatID.uuidString] }
+        try cachedEntry(chatID: chatID)
     }
 
     func register(chatID: UUID, entry: Entry) async throws {
@@ -65,12 +76,17 @@ final class ForkClaudeSessionRegistry: Sendable {
                 at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true,
                 attributes: [.posixPermissions: 0o700])
             try data.write(to: fileURL, options: .atomic)
+            self.cache.withLock { $0 = .success(entries) }
         }
     }
 
     private static func read(_ fileURL: URL) throws -> [String: Entry] {
         guard FileManager.default.fileExists(atPath: fileURL.path) else { return [:] }
-        return try JSONDecoder().decode([String: Entry].self, from: Data(contentsOf: fileURL))
+        let entries = try JSONDecoder().decode([String: Entry].self, from: Data(contentsOf: fileURL))
+        guard entries.keys.allSatisfy({ UUID(uuidString: $0)?.uuidString == $0 }) else {
+            throw CocoaError(.fileReadCorruptFile)
+        }
+        return entries
     }
 
     private func perform<Value: Sendable>(

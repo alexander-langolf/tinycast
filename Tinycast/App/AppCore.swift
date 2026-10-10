@@ -259,6 +259,8 @@ final class AppCore {
     @ObservationIgnored private(set) lazy var forkClaudeSessionHost = makeForkClaudeSessionHost()
     @ObservationIgnored private(set) lazy var forkClaudeSessionRegistry = ForkClaudeSessionRegistry(
         directory: forkClaudeSessionDirectory)  // FORK: claude-session-chat
+    @ObservationIgnored private(set) lazy var forkClaudeSessions = ForkClaudeSessionCoordinator(
+        core: self)  // FORK: claude-session-chat
 
     @ObservationIgnored private lazy var windowController = PaletteWindowController(core: self)
     @ObservationIgnored private lazy var messageHUD = MessageHUDController(settings: settings)
@@ -305,6 +307,7 @@ final class AppCore {
         startForkAIWorkingDirectory()  // FORK: ai-working-directory
         startForkQuickAIRoot()  // FORK: quick-ai-root
         forkClaudeSessionHost.prepare()  // FORK: claude-session-chat
+        _ = forkClaudeSessionRegistry  // FORK: claude-session-chat
         // FORK: appearance-observation
         track(
             forkAppearance, { _ = $0.fontFamily; _ = $0.monoFontFamily; _ = ForkTheme.current },
@@ -587,6 +590,7 @@ final class AppCore {
 
     func prepareForTermination() {
         forkClaudeSessionHost.cancelPreparation()  // FORK: claude-session-chat
+        forkClaudeSessions.stop()  // FORK: claude-session-chat
         forkQuickAIRoot.stop()  // FORK: quick-ai-root
         forkQuickAIHandoff.stop()  // FORK: quick-ai-root
         forkQuickAIRootLog.stop()  // FORK: quick-ai-root

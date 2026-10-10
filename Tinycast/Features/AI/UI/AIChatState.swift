@@ -123,6 +123,13 @@ final class AIChatState {
         }
     }
 
+    // FORK: claude-session-chat
+    func forkAppendClaudeTurn(user: String, assistant: String, waiting: Bool) {
+        session = ForkClaudeSessionCoordinator.appending(
+            user: user, assistant: assistant, to: session, waiting: waiting)
+        history.save(session)
+    }
+
     func report(_ message: String) {
         notice = message
     }

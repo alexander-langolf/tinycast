@@ -263,16 +263,36 @@ with reason `newChat` through `startNewChat`, which also prewarms the next root.
 
 ## Claude session chat
 
-Group 1 of [Claude session chat](features/claude-session-chat.md) lives entirely in
-`Tinycast/Fork/ClaudeSession/`: the Process-based background host, hook settings writer and atomic
-metadata registry. `AppCore` lazily owns the host and registry, prepares hooks at launch and cancels
-only preparation at termination; Claude's daemon keeps sessions alive. Quick AI's existing handoff
+Groups 1–2 of [Claude session chat](features/claude-session-chat.md) live in
+`Tinycast/Fork/ClaudeSession/`: the background host, hook settings writer, atomic metadata registry,
+transcript reader, hidden attach writer and chat provider. `AppCore` owns their coordinator,
+loads the registry cache and prepares hooks at launch. Termination cancels readers and closes attach
+clients without stopping daemon sessions. Group 2 is implemented, unverified. Quick AI's existing handoff
 uses the same fork-owned executable resolver, with its override and missing-path behaviour preserved.
 
 Storage is channel-specific under `AppPaths.applicationSupport()/ClaudeSessions/`. All seven hooks
 append stdin to one `events.jsonl`, whose payloads carry `session_id`; transcript paths come from the
 agents listing or hook payloads. `registry.json` maps chat UUIDs to session metadata and offsets,
-without message text. No chat provider or Start Work routing is changed in Group 1.
+without message text. A registered chat selects the session provider synchronously from the cache;
+other chats keep upstream routing. Readers are connected on first provider use and retained for
+foreign turns. Start Work routing and launch reconnection remain for Groups 3–4.
+
+The reader watches the shared events file, filters by session ID, and polls the transcript every
+0.5 seconds during a turn. It retains incomplete lines and waits for Stop plus a final assistant
+text block, with a two-second deadline. A foreign turn's persisted offset stays at its user record
+until its messages are appended, so reading part of a turn does not lose its user text on restart.
+Foreign turns that precede a queued send are inserted before that send; a turn after a delivered
+reply waits for its streaming bubble to finish before appending.
+
+The writer directly spawns `claude attach <shortID>` through `TerminalProcess`, with the host's
+clean environment and a PTY TERM value. Direct children expose raw output without shell marks;
+shell instances keep their existing parser. The writer waits for bracketed-paste mode, queues behind
+turns, approvals and an open Attach terminal, and checks the guard again before Return. Delivery
+requires a matching UserPromptSubmit within five seconds; failure uses the chat's existing Retry
+path and never resends automatically. The client drops after ten idle minutes. Group 3 can publish
+Attach state with `setAttachTerminalOpen(_:chatID:)` and read `queuedCount(chatID:)`.
+Registered chats skip upstream automatic title requests, which would otherwise start a separate
+noninteractive provider invocation.
 
 `ForkClaudeSessionDebug.swift` is a temporary `#if DEBUG` scratch hook, marked for removal before
 merge. Its callable entry point and the manual Group 1 verification steps are in the spec.
@@ -338,7 +358,10 @@ unless they have an explicit symbol-only allowance. The audit is a static guard,
 
 | File | Tag | Purpose |
 | --- | --- | --- |
-| `Tinycast/App/AppCore.swift` | `// FORK: claude-session-chat` | Lazily own the background Claude host and registry; write hooks at launch and cancel preparation at termination without stopping daemon sessions. |
+| `Tinycast/App/AppCore.swift` | `// FORK: claude-session-chat` | Own the Claude host, registry and session coordinator; load the registry cache and write hooks at launch; close readers and attach clients at termination without stopping daemon sessions. |
+| `Tinycast/Features/AI/UI/AIChatCoordinator.swift` | `// FORK: claude-session-chat` | Select the session provider for registered chat IDs and skip separate automatic title requests. |
+| `Tinycast/Features/AI/UI/AIChatState.swift` | `// FORK: claude-session-chat` | Append and save foreign turns, preserving a queued user message and its streaming reply. |
+| `Tinycast/Features/TerminalInstances/Service/TerminalProcess.swift` | `// FORK: claude-session-chat` | Spawn an executable directly with supplied arguments and environment; capture its raw output without shell marks while preserving shell instances. |
 | `Scripts/run-tests.sh` | `// FORK: agent-runs` | Register the AgentRuns decoding harness. |
 | `Tinycast/App/AppDelegate.swift` | `// FORK: previews` | Skip AppCore start and termination work when Xcode's canvas hosts the app. |
 | `Tinycast/App/AppCore.swift` | `// FORK: agent-runs` | Own the monitor, coordinator and presenter; stop work at termination. |

@@ -207,6 +207,8 @@ final class AIChatCoordinator {
 
     /// Asked on the first send, again after an answer if that failed, and never over a rename.
     private func nameIfNeeded(_ chat: AIChatState) {
+        // FORK: claude-session-chat
+        if (try? core.forkClaudeSessionRegistry.cachedEntry(chatID: chat.session.id)) != nil { return }
         let session = chat.session
         guard let conversation = core.chatHistory.conversation(id: session.id),
             conversation.customTitle == nil, conversation.generatedTitle == nil,
@@ -326,6 +328,8 @@ final class AIChatCoordinator {
 
     /// A turn's route and its tools: a CLI with its own client is handed servers, others the loop.
     private func provider(for chat: AIChatState, scopedTo slug: String?) throws -> any AIProvider {
+        // FORK: claude-session-chat
+        if let provider = try core.forkClaudeSessions.provider(chatID: chat.session.id) { return provider }
         guard model(for: chat)?.runsItsOwnTools == true else {
             return toolAware(try provider(for: chat), scopedTo: slug, in: chat)
         }

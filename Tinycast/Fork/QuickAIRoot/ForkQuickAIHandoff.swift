@@ -48,8 +48,19 @@ enum ForkQuickAIHandoff {
             .joined(separator: "\n")
     }
 
-    nonisolated static func command(executable: String, prompt: String) -> String {
-        [executable, "--", prompt].map(quote).joined(separator: " ")
+    nonisolated static func command(
+        executable: String, flags: [String] = [], prompt: String
+    ) -> String {
+        ([executable] + flags + ["--", prompt]).map(quote).joined(separator: " ")
+    }
+
+    /// Work sessions skip approvals (Sasha's choice, 2026-10-11). Folder trust still applies.
+    nonisolated static func bypassFlags(for engine: ForkQuickAIRootSettings.Engine) -> [String] {
+        switch engine {
+        case .claude: ["--dangerously-skip-permissions"]
+        case .codex: ["--dangerously-bypass-approvals-and-sandbox", "--dangerously-bypass-hook-trust"]
+        case .off: []
+        }
     }
 
     nonisolated static func quote(_ argument: String) -> String {

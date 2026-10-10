@@ -81,23 +81,30 @@ session, the events file fills in, and the registry holds the entry.
 
 ## Group 2: Reader, writer, provider
 
-- [ ] **2.1** `ForkClaudeSessionReader`:
+**Built 2026-10-11** (build, lint, fork audit green). A scratch PTY probe confirmed the writer's
+assumptions on a live session: `claude attach` turns on bracketed paste in 0.16 s, a 3-line paste
+with quotes, `$HOME`, `!!` and unicode arrives exactly (`UserPromptSubmit` 0.05 s after Return), and
+final assistant lines carry `stop_reason: end_turn`. Acceptance criteria 2, 3 and 6 run in the chat
+UI once Group 3's Start Work creates session chats. Sessions start and resume with
+`--dangerously-skip-permissions`.
+
+- [x] **2.1** `ForkClaudeSessionReader`:
       - watches the events file (`DispatchSource` on the file) and tails the transcript from the
         saved offset;
       - maps lines to `AIStreamEvent` per the spec;
       - ends the turn on `Stop` plus the final assistant message, waiting at most 2 s;
       - passes on turns it didn't send as `foreignTurn(user:assistant:)`, for 2.4.
-- [ ] **2.2** `ForkClaudeSessionWriter`:
+- [x] **2.2** `ForkClaudeSessionWriter`:
       - a hidden `TerminalProcess` running `claude attach <id>` (clean environment), started on
         demand and dropped after 10 minutes idle;
       - `send(text) async -> Delivery`: waits for the guard (between turns, no approval waiting, no
         Attach open), sends a bracketed paste then Return after 300 ms, and confirms on
         `UserPromptSubmit` within 5 s (ignoring the `<pasted_content>` form from 0.4);
       - never retypes on its own.
-- [ ] **2.3** `ForkClaudeSessionProvider: AIProvider`: `stream(request)` sends the request's last
+- [x] **2.3** `ForkClaudeSessionProvider: AIProvider`: `stream(request)` sends the request's last
       user message and yields the reader's events until the turn ends. "Not delivered" ends the reply
       with an error and Retry.
-- [ ] **2.4** Hook `AIChatCoordinator.provider(for:scopedTo:)` (`:328`): a registered chat returns
+- [x] **2.4** Hook `AIChatCoordinator.provider(for:scopedTo:)` (`:328`): a registered chat returns
       the session provider. Foreign turns (2.1) are appended to that chat as messages.
 
 **Done when:** acceptance criteria 2, 3 and 6 pass on a session started from the Group 1 Debug
