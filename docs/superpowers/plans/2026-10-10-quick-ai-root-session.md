@@ -1,191 +1,187 @@
-# Quick AI Root Session (Codex): implementation plan
+# Quick AI Root Session and Start Work: implementation plan
 
 > **For agentic workers:** work group by group. Codex implements each group from its brief and runs no
 > builds, tests, formatters or commits. Claude builds, runs `Scripts/lint.sh` and
 > `Scripts/fork-audit.sh`, relaunches Dev and commits between groups. Checkboxes (`- [ ]`) track
 > progress. This is a **fork** feature, so read `docs/fork.md` first. Fork code lives in
 > `Tinycast/Fork/QuickAIRoot/`. Upstream files get only `// FORK: quick-ai-root` hooks, each with a
-> `docs/fork.md` row. **No tests until Sasha has verified the behaviour (Group 7).** Work on branch
+> `docs/fork.md` row. **No tests until Sasha has verified the behaviour (Group 6).** Work on branch
 > `al/quick-ai-root` and merge into `main` after verification. No worktrees. Never send synthetic
 > input; visual checks use `screencapture -l` of Dev windows only.
 
 **Goal and behaviour:** see `docs/features/quick-ai-root-session.md`, which is the spec. That doc
 wins if this plan disagrees with it.
 
-**Architecture in one line:** a fork-owned `ForkQuickAIRoot` keeps one persistent, read-only root
-thread ready on the running Codex app-server. `CodexTurnRunner.prepareThread` claims it for Quick AI
-sends. Start Work opens a terminal instance running `codex fork -C <folder> <root>` and retires the root. A JSONL
-log and a retention prune clean up.
+**Architecture in one line:** Start Work opens a terminal instance running interactive `claude` or
+`codex`, whose first prompt is the Quick AI conversation as text, with the first message verbatim
+so its sigils resolve there. Separately, a fork-owned `ForkQuickAIRoot` keeps one ephemeral,
+read-only Codex thread ready, and `CodexTurnRunner.prepareThread` claims it for Quick AI sends.
+There's no engine fork, and nothing is deleted from Codex.
 
 **Verified anchors** (`main` @ `6161df5d`):
 
 | What | Where |
 |---|---|
-| Thread creation | `CodexTurnRunner.prepareThread`, `Tinycast/Features/AI/Service/CodexTurnRunner.swift:331` (`thread/start` with `ephemeral: true` at `:345-355`) |
+| Thread creation | `CodexTurnRunner.prepareThread`, `Tinycast/Features/AI/Service/CodexTurnRunner.swift:331` (`thread/start` at `:345-355`) |
 | Idle shutdown | `ChatGPTSubscriptionManager.scheduleIdleShutdown`, `…/ChatGPTSubscriptionManager.swift:136` (600 s, `:9`) |
-| Quick AI state | `AIChatSurfacesState.quickAI`, `…/AI/UI/AIChatSurfacesState.swift:9` |
-| Quick AI show / new chat | `QuickAICoordinator.show` `:26`, `startNewChat` `:96` |
-| Quick AI action menu | `AIScreen.actions(at:)`, `…/AI/UI/AIScreen.swift:22` |
-| Shortcut map | `PaletteShortcut.resolve`, `Tinycast/Palette/PaletteShortcut.swift:~58-82`. **⇧⌘↵ is already `copyCalculation`**, handled by the Return handler; check the AI-mode branch before taking it. |
+| Quick AI state | `AIChatSurfacesState.quickAI`, `…/AI/UI/AIChatSurfacesState.swift:9`; `holds(_:)` at `:55` |
+| Request identity | `AIChatState.startReply` sends `conversationID: session.id`, `…/AI/UI/AIChatState.swift:85` |
+| Quick AI show / new chat | `QuickAICoordinator.show` `:26`, `startNewChat` `:96`, `.startNew` policy `:84` |
+| Quick AI actions and keys | `AIScreen.actions(at:)` `:22`; `secondary(at:)` returns `false`; `tertiary(at:)` falls back to `PaletteScreen`'s default `false` (`Tinycast/Palette/PaletteScreen.swift:179`) |
+| Return routing | `RootPaletteView.swift:~573-581` and `:~1216-1222`: ⌃⌘↵ → `tertiary`, ⇧⌘↵ → `copyCalculation` then `secondary`, ⌘↵ → `secondary` |
+| Executable lookup | `ExecutableLocator.locate(kind.command, extraHomePaths: kind.extraExecutablePaths)`, as in `InstalledAIManager.swift:193` |
 | Terminal launch | `TerminalInstancesCoordinator.open(command:directory:)`, `…/TerminalInstances/UI/TerminalInstancesCoordinator.swift:45` |
 | Working folder | `ForkAIWorkingDirectory.url` (`docs/features/ai-working-directory.md`) |
 
 ---
 
-## Group 0: Spike (Claude, no product code)
+## Group 0: Spike (done, 2026-10-10)
 
-Answers the spec's four open questions. Scratch scripts only, in the session scratchpad. One trivial
-real prompt is allowed.
+- [x] Checked an engine fork (`codex fork` of an app-server thread). It works, but the root's
+      text-only instructions travel with the history, forked roots can't be deleted, and a fork
+      keeps the root's `cwd`. That's why the spec now moves the chat as text.
+- [x] Idle cost of a kept-alive server: negligible (0.08 s CPU in 15 min, about 100 MB).
+- [x] Shortcuts: ⌘↵ → `secondary`, ⌃⌘↵ → `tertiary`, both unused in the AI screen.
+- [x] Surface check: `chats.quickAI.holds(conversationID)`, with no change to `AIRequest`.
 
-- [x] **0.1 Fork from the CLI.** Start a real app-server with Quick AI's flags, run `thread/start`
-      with `ephemeral: false` and one trivial `turn/start`, then wait for `turn/completed`. Run
-      `codex fork <threadId> 'say ok'` in a PTY, and record whether the fork carries the history and
-      whether the rollout was on disk at `turn/completed`.
-- [x] **0.2 Instruction carry-over.** In that fork, ask "may you run shell commands here?" and record
-      whether Tinycast's text-only developer instructions came with it.
-- [x] **0.3 `thread/delete`.** List the `~/.codex/sessions` files for a test thread before and after
-      `thread/delete`.
-- [x] **0.4 Idle cost.** With Tinycast's MCP tool servers armed, leave the app-server idle for 15 min
-      and record its RSS, its child processes and any network traffic (`nettop -p`).
-- [x] **0.5 Decide and record.** Choose the handoff path:
-      - **A:** `codex fork <root> '<handoff>'` (spec default);
-      - **B:** app-server `thread/fork` with new `developerInstructions`, then `codex resume <fork>`.
-
-      Write the result into the spec ("Spike first" section → "Spike results"). Also settle the
-      shortcut: ⇧⌘↵ if the AI screen's Return handler doesn't route it to the calculator, otherwise
-      ⌥⌘↵.
-
-      **Result (2026-10-10):** neither A nor B as written. Both keep the root's text-only developer
-      message in the fork's history, and the fork refuses to work (3/3 for A; B's new instructions
-      never reached the history). **Path C** works 3/3: A's `codex fork <root> '<handoff>'`, with the
-      root's safety text worded as Quick AI's own limits that end on a move to a work session. The
-      shortcut is **⌘↵**, through `AIScreen.secondary(at:)`, which is unused today. Surface check:
-      `chats.quickAI.holds(conversationID)`, with no change to `AIRequest`. Details are in the spec's
-      *Spike results*.
-
-**Gate:** Group 4 doesn't start until 0.5 has picked a path. A fork that refuses or loses the history
-in both A and B stops the plan; report back to Sasha.
+Results are in the spec's *Spike results*.
 
 ## Group 1: Settings and the log
 
-- [ ] **1.1** Create `Tinycast/Fork/QuickAIRoot/ForkQuickAIRootSettings.swift`, holding `isEnabled`
-      (default false) and `retention` (`.hour`, `.day` = default, `.week`). It's stored through the
-      fork's settings pattern.
-- [ ] **1.2** Add hooks so both values reach `AppSettingsKey`, `SettingsFileKey`/schema,
+- [ ] **1.1** Create `Tinycast/Fork/QuickAIRoot/ForkQuickAIRootSettings.swift`, holding:
+      - `warmRoot: Bool`, default false;
+      - `startWorkEngine: off | claude | codex`, default `claude`;
+      - `retention: hour | day | week`, default `day`.
+
+      They're stored through the fork's settings pattern.
+- [ ] **1.2** Add hooks so all three reach `AppSettingsKey`, `SettingsFileKey`/schema,
       `SettingsBackup`/coverage and `ForkSettingsSearch`, mirroring how the appearance tokens were
       wired (`// FORK: quick-ai-root`).
-- [ ] **1.3** In the Quick AI section of `AISettingsView` (`Tinycast/Features/AI/Settings/AISettingsView.swift:~143`),
-      add a one-line hook to a fork-owned `ForkQuickAIRootSettingsRows` holding the toggle "Keep a
-      warm root session (Codex, experimental)" and the "Forget root sessions after" picker. When the
-      provider isn't Codex, the toggle is disabled with a note saying why.
-- [ ] **1.4** Create `Tinycast/Fork/QuickAIRoot/ForkQuickAIRootLog.swift`: an append-only JSONL at
-      `<Application Support>/QuickAIRoot/log.jsonl` with events `warmed | claimed | retired |
-      handedOff | deleted | fellBack`. Fields: `at`, `event`, `root`, optional `chat`, `terminal`,
-      `reason`. A pure `prune(lines:olderThan:)` returns what to keep and which root ids have expired.
-      It never writes message text.
+- [ ] **1.3** In the Quick AI section of `AISettingsView`
+      (`Tinycast/Features/AI/Settings/AISettingsView.swift:~143`), add a one-line hook to a
+      fork-owned `ForkQuickAIRootSettingsRows`:
+      - the toggle "Keep a warm root session (Codex)", disabled with a note when the provider isn't
+        Codex;
+      - the "Start Work in" picker, with engines that aren't installed disabled;
+      - the "Forget the Quick AI log after" picker.
+- [ ] **1.4** Create `Tinycast/Fork/QuickAIRoot/ForkQuickAIRootLog.swift`:
+      - an append-only JSONL at `<Application Support>/QuickAIRoot/log.jsonl`;
+      - events `warmed | claimed | retired | handedOff | fellBack`;
+      - fields `at`, `event`, and optional `root`, `chat`, `engine`, `terminal`, `reason`;
+      - `writeHandoff(chat:text:) -> URL` for `handoffs/<chat id>.md`;
+      - a pure `prune(lines:olderThan:)`, plus `pruneFiles(olderThan:)` for handoff files.
 
-**Done when:** the settings appear, round-trip through `settings.json` and backups, and search finds
-them. `log.jsonl` is written only while the toggle is on.
+      The log never holds message text.
+- [ ] **1.5** Prune at launch and once an hour (a timer owned by the fork), using the retention
+      setting.
 
-## Group 2: Root state and claiming
+**Done when:**
+- the settings appear, round-trip through `settings.json` and backups, and search finds them;
+- nothing is written to `QuickAIRoot/` while everything is off.
 
-- [ ] **2.1** Create `Tinycast/Fork/QuickAIRoot/ForkQuickAIRoot.swift`:
-      - an `@MainActor` state machine with states `off`, `warming`, `ready(Root)`, `inUse(Root, chat:)`
-        and `unavailable(reason)`;
-      - `Root` = `threadID`, `model`, `webSearch`, `instructions` and `startedAt`;
-      - a pure reducer plus effects: start a thread, retire, log. `CodexTurnRunner` owns the client,
-        so the effects run through a small closure it supplies (`startThread(params) async throws
-        -> String`).
-- [ ] **2.2** Hook `CodexTurnRunner.prepareThread` (`:331`) behind `// FORK: quick-ai-root`. When the
-      request is from Quick AI and the root is `ready` with matching model, web search and
-      instructions, use its `threadID` and skip `thread/start` and `inject_items`. Otherwise, today's
-      path runs unchanged. A mismatch retires the root and logs `retired(reason: mismatch)`.
-- [ ] **2.3** Identify the surface with the less invasive of two options, as decided in 0.5:
-      - an optional `surface` on `AIRequest`, set by `AIChatState` when it's `chats.quickAI`;
-      - a fork-owned registry that maps conversation ids to Quick AI.
+## Group 2: Start Work
 
-      Record the choice in `docs/fork.md`.
-- [ ] **2.4** The root is the only thread created with `ephemeral: false`. Every other thread keeps
-      `ephemeral: true`.
-- [ ] **2.5** Root safety wording. For a Quick AI request while the root is enabled,
-      `developerInstructions(for:hasTools:)` uses `ForkQuickAIRoot.safetyInstructions` (the spec's
-      scoped wording) in place of `safetyInstructions`. It's one `// FORK: quick-ai-root` line. The
-      mismatch check compares this text, so the root and its claiming send always agree.
+Doesn't depend on the root. It's the most useful part, so it ships first.
 
-**Done when:** with the toggle on, a Quick AI send after warming shows in the debug log as `claimed`
-and makes no `thread/start` request. With the toggle off, behaviour is byte-for-byte today's.
+- [ ] **2.1** Create `Tinycast/Fork/QuickAIRoot/ForkQuickAIHandoff.swift`, containing pure
+      functions:
+      - `prompt(messages:pending:limit:) -> Handoff`, where `Handoff` holds `text` and an optional
+        `overflow`:
+        - the first user message verbatim and first;
+        - then, if there's more, a separator and `Sasha:` / `Quick AI:` turns, with attachment
+          placeholders;
+        - then the spec's closing line;
+        - when the text passes 32 KB, the turns go into `overflow` and the text points at the file
+          path;
+      - `command(executable:prompt:) -> String`, which single-quotes every argument for zsh,
+        escaping `'` as `'\''`, with `--` before the prompt.
+- [ ] **2.2** Engine resolution: resolve the executable for `claude` and `codex` with
+      `ExecutableLocator.locate(kind.command, extraHomePaths: kind.extraExecutablePaths)`, cached
+      per launch. A missing engine hides its action.
+- [ ] **2.3** Hook `AIScreen.actions(at:)` (`:22`) to add:
+      - "Start Work in Claude Code" or "…in Codex", for the default engine (⌘↵);
+      - one item for the other engine (⌃⌘↵), shown only when it's installed.
 
-## Group 3: Keep-alive, prewarm, retire
-
-- [ ] **3.1** Hook `ChatGPTSubscriptionManager.scheduleIdleShutdown` (`:136`): while
-      `ForkQuickAIRoot.isEnabled`, don't schedule the shutdown. Turning the toggle off re-arms it.
-- [ ] **3.2** Hook `QuickAICoordinator.show` (`:26`): if the root is enabled and not `ready`/`inUse`,
-      start warming in the background so showing the palette is never blocked.
-- [ ] **3.3** Hook `QuickAICoordinator.startNewChat` (`:96`), and the open-policy `.startNew` path at
-      `:84`: retire the current root (`retired(reason: newChat)`) and warm the next one.
-- [ ] **3.4** App-server exit or relaunch (`CodexAppServerClient.onExit` / `onRelaunch`): the root
-      goes `unavailable` and the current chat falls back to ephemeral (`fellBack`). The next `show`
-      warms again.
-
-**Done when:** spec acceptance criteria 1, 2, 3, 7 and 8 pass by hand.
-
-## Group 4: Start Work
-
-- [ ] **4.1** Create `Tinycast/Fork/QuickAIRoot/ForkQuickAIHandoff.swift`. It builds
-      `codex fork -C '<folder>' '<root>' '<handoff>'` (path C; `-C` because a fork otherwise keeps the root's `cwd`), with every argument single-quoted for zsh and the
-      spec's fixed handoff prompt. A pure `command(rootID:)` returns the string.
-- [ ] **4.2** Hook `AIScreen.actions(at:)` (`:22`) to add "Start Work in Codex" (systemImage
-      `hammer`, shortcut label "⌘↵"). It's shown only when the root is `inUse`, the chat has at
-      least one completed assistant turn, and nothing is streaming.
-- [ ] **4.3** Hook `AIScreen.secondary(at:)`, which returns `false` today: when the action is
-      available, run it and return `true`. The palette's Return handler already sends ⌘↵ there, and
-      ⇧⌘↵ falls through to it too, so `PaletteShortcut` and `RootPaletteView` are untouched.
-- [ ] **4.4** The action:
-      1. calls `TerminalInstancesCoordinator.open(command:directory:)` with the working folder, or
+      Use systemImage `hammer`. The items are shown when the chat has a user message or the
+      composer has text, nothing is streaming, and the setting isn't Off.
+- [ ] **2.4** Hook `AIScreen.secondary(at:)` (default engine) and add `tertiary(at:)` (other
+      engine). Each runs the action and returns `true` when it's available, otherwise `false`, as
+      today. `PaletteShortcut` and `RootPaletteView` are untouched.
+- [ ] **2.5** The action:
+      1. takes the messages, plus the composer text as the pending request;
+      2. writes the overflow file if there is one;
+      3. calls `TerminalInstancesCoordinator.open(command:directory:)` with the working folder, or
          home when none is set;
-      2. logs `handedOff(terminal:)`;
-      3. retires the root;
-      4. starts a new Quick AI chat.
+      4. logs `handedOff(engine:terminal:chat:)`;
+      5. clears the composer;
+      6. starts a new Quick AI chat, which retires the root once Group 3 exists.
 
-**Done when:** spec acceptance criteria 4 and 5 pass by hand. The Codex TUI in the instance shows the
-conversation, asks before it runs a shell command, and Quick AI is empty afterwards.
+**Done when:** spec acceptance criteria 4 and 5 pass by hand. Criterion 4 matters most: typing
+`context> multiverse emails +stardust research create new tokens` and pressing ⌘↵ opens Claude
+Code, and its `Sigils parsed:` block shows the sigils resolved.
 
-## Group 5: Retention
+## Group 3: Root state and claiming
 
-- [ ] **5.1** When a root is retired and once an hour while the app-server runs, read the log and
-      `thread/delete` each retired root older than the retention. Skip any root that is `inUse`, and
-      any root with a `handedOff` line: Codex refuses to delete a thread a fork still reads
-      (`forked history still references it`). Log `deleted`, then rewrite the log without expired
-      lines (atomic replace), keeping a handed-off root's lines out of the prune list.
-- [ ] **5.2** A `thread/delete` failure is logged and retried on the next prune. It never surfaces in
-      the UI.
+- [ ] **3.1** Create `Tinycast/Fork/QuickAIRoot/ForkQuickAIRoot.swift`:
+      - an `@MainActor` state machine with states `off`, `warming`, `ready(Root)`,
+        `inUse(Root, chat:)` and `unavailable(reason)`;
+      - `Root` = `threadID`, `model`, `webSearch`, `instructions` and `startedAt`;
+      - a pure reducer plus effects (start a thread, retire, log). `CodexTurnRunner` owns the
+        client, so the effects run through a closure it supplies
+        (`startThread(params) async throws -> String`).
+- [ ] **3.2** Hook `CodexTurnRunner.prepareThread` (`:331`):
+      - When `ForkQuickAIRoot.isQuickAI(request.conversationID)` and the root is `ready` with
+        matching model, web search and instructions: use its `threadID`, skip `thread/start` and
+        `inject_items`, and log `claimed`.
+      - Otherwise, today's path runs unchanged. A mismatch retires the root and logs
+        `retired(reason: mismatch)`.
+- [ ] **3.3** The root's `thread/start` parameters are exactly today's (`ephemeral: true`, the same
+      instructions). The fork only changes when the call happens.
 
-**Done when:** spec acceptance criterion 6 passes with retention set to 1 h. The test can temporarily
-use a Debug-only override of 2 min, which is removed before the merge.
+**Done when:**
+- with the toggle on, a Quick AI send after warming logs `claimed` and makes no `thread/start`;
+- with the toggle off, behaviour is byte-for-byte today's.
 
-## Group 6: Docs
+## Group 4: Keep-alive, prewarm, retire
 
-- [ ] **6.1** Add a `docs/fork.md` row for every `// FORK: quick-ai-root` hook, and make
+- [ ] **4.1** Hook `ChatGPTSubscriptionManager.scheduleIdleShutdown` (`:136`): while the warm root
+      is on, don't schedule the shutdown. Turning it off re-arms it.
+- [ ] **4.2** Hook `QuickAICoordinator.show` (`:26`): when the root is on and isn't `ready` or
+      `inUse`, start warming in the background, so showing the palette is never blocked.
+- [ ] **4.3** Hook `QuickAICoordinator.startNewChat` (`:96`), and the `.startNew` path at `:84`:
+      retire the current root (`retired(reason: newChat)`) and warm the next one.
+- [ ] **4.4** App-server exit or relaunch (`CodexAppServerClient.onExit` / `onRelaunch`): the root
+      goes `unavailable`, and the current chat falls back to today's path (`fellBack`). The next
+      `show` warms again.
+
+**Done when:** spec acceptance criteria 1, 2, 3, 8 and 9 pass by hand.
+
+## Group 5: Docs
+
+- [ ] **5.1** Add a `docs/fork.md` row for every `// FORK: quick-ai-root` hook, and make
       `Scripts/fork-audit.sh` pass.
-- [ ] **6.2** In `docs/features/quick-ai-root-session.md`, set the status to "built, experimental",
-      add the spike results, and list each acceptance criterion with its result.
-- [ ] **6.3** Add a short cross-reference from `docs/features/ai.md` (Quick AI section) to the new doc.
-- [ ] **6.4** In the vault's `Tinycast.md` feature row, change "spec only" to its new state.
+- [ ] **5.2** In the spec, set the status to "built, experimental" and list each acceptance
+      criterion with its result.
+- [ ] **5.3** Add a short cross-reference from `docs/features/ai.md` (Quick AI section) to the spec.
+- [ ] **5.4** Update the feature row in the vault's `Tinycast.md`.
 
-## Group 7: Sasha verifies
+## Group 6: Sasha verifies
 
-- [ ] **7.1** Sasha runs acceptance criteria 1–8 on Dev, with the toggle on and then off.
-- [ ] **7.2** Measure the real time to first token, warm and cold, 5 runs each, and record it in the
+- [ ] **6.1** Sasha runs acceptance criteria 1–9 on Dev, with the settings on and then off.
+- [ ] **6.2** Measure the real time to first token, warm and cold, 5 runs each, and record it in the
       spec.
-- [ ] **7.3** Merge `al/quick-ai-root` into `main` (merge, never rebase). Pushing needs Sasha's go-ahead.
+- [ ] **6.3** Merge `al/quick-ai-root` into `main` (merge, never rebase). Pushing needs Sasha's
+      go-ahead.
 
-## Group 8: Tests (only after 7.1)
+## Group 7: Tests (only after 6.1)
 
-- [ ] **8.1** `Tests/quick-ai-root-test.swift`, covering:
-      - reducer transitions, including mismatch, crash fallback and retire-while-in-use;
-      - log pruning;
-      - handoff command quoting (single quotes, newlines, a non-ASCII prompt).
-- [ ] **8.2** Add the harness to `Scripts/run-tests.sh` with the fork sources it needs, and run the
+- [ ] **7.1** `Tests/quick-ai-root-test.swift`, covering:
+      - reducer transitions (mismatch, crash fallback, retire while in use);
+      - log and handoff-file pruning;
+      - handoff prompt building: first message verbatim and first, attachment placeholders,
+        overflow at 32 KB;
+      - command quoting (single quotes, newlines, non-ASCII, a prompt starting with `-`).
+- [ ] **7.2** Add the harness to `Scripts/run-tests.sh` with the fork sources it needs, and run the
       suite.
 
 ---
@@ -194,8 +190,9 @@ use a Debug-only override of 2 min, which is removed before the merge.
 
 | Risk | Handling |
 |---|---|
-| A fork keeps the text-only instructions and won't work | 0.2 detects it, and path B swaps the instructions |
-| One chat leaking into the next | A new root per chat. Claiming checks the root's state is `ready`, never `inUse` |
-| An always-on server costs something | 0.4 measures it. The toggle defaults to off |
-| Shortcut clash with ⇧⌘↵ | Settled in 0.5 |
-| Upstream merge conflicts | Small hooks, fork-owned folder, audit rows (Group 6) |
+| A prompt starting with `-` read as a CLI flag | 2.1 puts `--` before the prompt argument, so the first message stays verbatim and first. 2.2 checks once, by hand, that both CLIs accept `--`. The tests in 7.1 cover it. |
+| A very long chat passing argv limits | Overflow file at 32 KB (2.1) |
+| The terminal's `PATH` picks another `claude` (Homebrew 2.1.287 vs `~/.local/bin` 2.1.296) | 2.2 passes the absolute path Tinycast resolves |
+| One chat leaking into the next | A new root for each chat. Claiming checks that the root is `ready`, never `inUse` |
+| An always-on server costs something | Measured as negligible. The toggle defaults to off |
+| Upstream merge conflicts | Small hooks, a fork-owned folder, audit rows (Group 5) |
