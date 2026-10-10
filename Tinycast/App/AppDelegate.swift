@@ -3,12 +3,17 @@ import AppKit
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var terminationRequestInFlight = false
 
+    // FORK: previews
+    static let isRunningForPreviews = ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
+
     /// Must land before the first scroll view exists, or the scroller switch shows as a flash.
     func applicationWillFinishLaunching(_ notification: Notification) {
         UserDefaults.standard.set("WhenScrolling", forKey: "AppleShowScrollBars")
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // FORK: previews — Xcode's canvas hosts the app; starting AppCore there (hotkeys, Hyper Key, listeners) crashes it.
+        guard !Self.isRunningForPreviews else { return }
         AppCore.shared.start()
     }
 
@@ -19,11 +24,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        guard !Self.isRunningForPreviews else { return }  // FORK: previews
         // The Hyper Key's HID-level caps remap outlives the process; give the key back.
         AppCore.shared.prepareForTermination()
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        if Self.isRunningForPreviews { return .terminateNow }  // FORK: previews
         // The Dock icon only stands for the open windows, so its Quit closes them, not the agent.
         let activation = AppCore.shared.activationPolicy
         if isQuitFromDock, activation.hasOpenWindows {

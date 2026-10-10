@@ -205,6 +205,7 @@ unless they have an explicit symbol-only allowance. The audit is a static guard,
 | File | Tag | Purpose |
 | --- | --- | --- |
 | `Scripts/run-tests.sh` | `// FORK: agent-runs` | Register the AgentRuns decoding harness. |
+| `Tinycast/App/AppDelegate.swift` | `// FORK: previews` | Skip AppCore start and termination work when Xcode's canvas hosts the app. |
 | `Tinycast/App/AppCore.swift` | `// FORK: agent-runs` | Own the monitor, coordinator and presenter; stop work at termination. |
 | `Tinycast/Features/CustomCommands/Service/ShellCommandRunner.swift` | `// FORK: agent-runs` | Allow a per-call stdout limit for complete status JSON, preserving the default. |
 | `Tinycast/Palette/PaletteEnvironment.swift` | `// FORK: agent-runs` | Inject the AgentRuns coordinator into the hosted stack. |
