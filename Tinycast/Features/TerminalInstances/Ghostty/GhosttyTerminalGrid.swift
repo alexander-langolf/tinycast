@@ -27,6 +27,8 @@ final class GhosttyTerminalGrid {
         var cursorVisible = false
         /// Rows from the top down to the last one holding text or the cursor.
         var contentRows = 0
+        /// Rows from the top down to the last one holding text; the cursor alone does not count.
+        var textRows = 0
     }
 
     private(set) var columns: Int
@@ -177,7 +179,10 @@ final class GhosttyTerminalGrid {
                 while ghostty_render_state_row_cells_next(rowCells) {
                     row.append(readCell(rowCells))
                 }
-                if row.contains(where: { !$0.text.isEmpty }) { next.contentRows = y + 1 }
+                if row.contains(where: { !$0.text.isEmpty }) {
+                    next.contentRows = y + 1
+                    next.textRows = y + 1
+                }
                 next.rows.append(row)
                 y += 1
             }

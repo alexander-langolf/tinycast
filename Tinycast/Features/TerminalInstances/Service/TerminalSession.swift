@@ -166,6 +166,7 @@ final class TerminalSession {
             }
         case .commandFinished:
             isFullScreen = false
+            syncRows()
         case .workingDirectory(let path):
             directory = path
         case .alternateScreen(let entered):
@@ -195,7 +196,9 @@ final class TerminalSession {
     private func syncRows() {
         guard let grid, run != nil else { return }
         let full = grid.isAlternateScreen || grid.scrollbar.total > grid.scrollbar.len
-        let next = full ? grid.rows : grid.snapshot.contentRows
+        // Once the command is done, a cursor on an empty row is not output: `cd` shows no strip.
+        let used = phase == .running ? grid.snapshot.contentRows : grid.snapshot.textRows
+        let next = full ? grid.rows : used
         if next != rows { rows = next }
     }
 
