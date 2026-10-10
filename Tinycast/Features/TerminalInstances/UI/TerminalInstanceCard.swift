@@ -120,6 +120,12 @@ struct TerminalInstanceCard<Output: View>: View {
         }
     }
 
+    /// Shells report a signal as 128 + its number; only these mean the program crashed or was killed.
+    /// Any other non-zero exit is often a normal answer (`brew outdated`, `grep` with no match, `diff`).
+    static func crashSignal(_ status: Int32) -> String? {
+        [132: "SIGILL", 134: "SIGABRT", 136: "SIGFPE", 137: "SIGKILL", 138: "SIGBUS", 139: "SIGSEGV"][status]
+    }
+
     /// The palette's magnifier slot; the phase shows in its symbol and colour instead of a border.
     @ViewBuilder
     private var statusGlyph: some View {
@@ -127,9 +133,10 @@ struct TerminalInstanceCard<Output: View>: View {
         case .starting, .running:
             ProgressView().controlSize(.small).tint(Color.accentColor)
         case .idle(let status?) where status != 0:
-            Text(String(status))
-                .font(metrics.typography.keyCap.monospacedDigit())
-                .foregroundStyle(Theme.Colors.destructive)
+            let crash = Self.crashSignal(status)
+            glyph(crash == nil ? "exclamationmark.circle" : "xmark.octagon")
+                .foregroundStyle(crash == nil ? Theme.Colors.textSecondary : Theme.Colors.destructive)
+                .help(crash.map { "Killed by \($0) (status \(status))" } ?? "Exited with status \(status)")
         case .ended:
             glyph("powersleep").foregroundStyle(Theme.Colors.textTertiary)
         case .idle:
