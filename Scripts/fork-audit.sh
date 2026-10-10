@@ -79,6 +79,10 @@ direct_tokens = {
         "composerStop", "composerSend", "disclosure", "composerSymbol", "composerSymbol"],
     "Tinycast/Features/HotKeys/UI/ShortcutRecorder.swift": ["keyCap", "keyCap"],
     "Tinycast/Features/HotKeys/UI/ShortcutRecorderPopover.swift": ["compactKeyCap"],
+    "Tinycast/Features/CustomCommands/UI/CustomCommandEditorView.swift": [
+        "menuSymbolSize", "menuSymbolSize"],
+    "Tinycast/Features/Quicklinks/UI/QuicklinkEditorView.swift": ["menuSymbolSize"],
+    "Tinycast/Palette/RootPaletteView.swift": ["menuSymbolSize"],
 }
 for path in sorted(Path("Tinycast").rglob("*.swift")):
     filename = path.as_posix()

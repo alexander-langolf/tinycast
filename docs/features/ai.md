@@ -170,8 +170,7 @@ bottom with the model picker. ⌘J hands a Quick AI conversation to the window.
   endpoints, request bodies, stream parsing, persistence repair, Codex protocol framing and both
   CLI routes' MCP launch encodings. Request
   bodies are `AIRequestBody`'s, in `Model/`, precisely so a wrong shape fails a harness rather than a
-  conversation. `installed-ai-test` runs the Claude, Grok, OpenCode and Cursor adapters against real
-  subprocess stubs and pins their safety boundaries.
+  conversation.
 - **Grok, OpenCode and Cursor are text transports, not agents, and so is Claude with no server to
   run.** Claude runs one turn with no tools, browser integration, slash commands or persisted
   session — but never `--bare`, which reads neither
@@ -398,8 +397,8 @@ again when it is already key, the way Escape does. It is built the way Settings 
 `AIChatSplitViewController` with a native sidebar item, here collapsible, and a unified toolbar whose title is the open chat's — so it takes the system's own sidebar, toolbar and
 menus rather than the palette's scrim. `AIChatWindowChrome` owns the toolbar — the sidebar toggle
 and New Chat as two round buttons at the sidebar's trailing edge, then Find in Chat and Actions
-alone at the window's — the title, and one key monitor for ⌘V, ⌘F, ⌘G / ⇧⌘G, ⌘K and the Actions
-menu's own chords, and dies with the window.
+alone at the window's — the title, and one key monitor for ⌘V, ⌘B, ⌃⇥ / ⌃⇧⇥, ⌘F, ⌘G / ⇧⌘G, ⌘K
+and the Actions menu's own chords, and dies with the window.
 
 - **Find in Chat** (⌘F): the system's `NSSearchToolbarItem`, as is. `ChatFindState` is one per
   window and steps match by match, not message by message:
@@ -448,9 +447,10 @@ menu's own chords, and dies with the window.
   and leaves a reply streaming.
 
 - **Sidebar** (`AIChatSidebarView`): a filter field over a `List` of every saved chat, Pinned
-  first and then bucketed by day like Clipboard. The open chat is the selected row. A new chat has
-  none until its first message saves it, so starting one or leaving an empty one never adds or
-  drops a row under the pointer. A row shows a spinner while its reply streams, else a pin when
+  first and then bucketed by day like Clipboard. The open chat is the selected row; ⌃⇥ / ⌃⇧⇥ open
+  the next or previous one, wrapping, over every saved chat whatever the filter shows. ⌘B shows or
+  hides the sidebar. A new chat has none until its first message saves it, so starting one or
+  leaving an empty one never adds or drops a row under the pointer. A row shows a spinner while its reply streams, else a pin when
   pinned. Its content fills the whole cell, so hover — a fainter fill in the selection's own
   shape — never blinks off crossing between rows.
   The context menu pins, renames in place, copies or exports the chat as Markdown
@@ -600,26 +600,22 @@ window, and every chat action either surface sends — is the nineteenth feature
   long equation shrinks to fit rather than running off the edge.
 - Return sends, ⇧↩ breaks the line, and a Japanese IME's Return confirms its text without sending.
 - Drop a PDF on the pane with a text-only model selected: the HUD refuses it, as a paste would.
-- Collapse the sidebar with the toolbar button; ⌘N and ⌘Q (Close Window) still work, and ⌘Q with
+- Collapse the sidebar with the toolbar button or ⌘B; ⌘N and ⌘Q (Close Window) still work, and ⌘Q with
   Settings in front closes Settings instead.
 - Escape closes AI Chat with the composer focused, preserving its draft and any streaming reply.
   Menus and rename fields cancel first; the sidebar clears a nonempty filter, then closes on the
   next Escape. Find in Chat cancels before a second Escape closes the window.
-- Harnesses: `ai-provider-test` (endpoints, request bodies, stream decoding including leading
+- Harnesses: `ai-provider-test` (instruction composition and its enable/disable setting, endpoints,
+  request bodies, stream decoding including leading
   think tags across content and SSE splits, persistence repair,
   Codex framing, on-device routing, the two MCP launch encodings and the two consent channels, the
   shown-model and switched-off-route rules, and a tool's override from settings to launch),
   `ai-chat-test` (`ChatSession`, `MarkdownBlock` with its math delimiters, LaTeX subset and
   mid-stream hold-back, `ChatHistoryStore` with renames and pins,
   `AIToolLoopProvider`, regenerate, and `AIChatSurfacesState`'s one-live-place rule),
-  `codex-turn-test` (the Stop path, driven against a stub app-server stalled where Stop races the
-  turn ID, plus the MCP launch boundary, one launch for concurrent starts, the elicitation, the
-  rows, the call cap and a custom provider's access without an account),
-  `installed-ai-test` (Claude/Grok/OpenCode/Cursor flags, prompt
-  framing, streaming and cleanup, and Claude's private MCP configuration, control channel, round
-  cap and managed-policy branch, a reader's variables against Tinycast's own, and a set command
-  path that runs or fails) and `apple-intelligence-test` (status copy, snapshot deltas,
-  transcript assembly, error mapping, plus one real generation when this Mac can run one), all in
+  and `apple-intelligence-test` (status copy, snapshot deltas,
+  transcript assembly and error mapping, plus an optional real generation enabled with
+  `TINYCAST_TEST_APPLE_INTELLIGENCE=1` when this Mac can run one), all in
   `run-tests.sh`.
 
 ## Installed commands
