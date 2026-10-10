@@ -11,6 +11,8 @@ final class TerminalProcess: @unchecked Sendable {
 
     let processID: pid_t
     let events: AsyncStream<Event>
+    /// FORK: libghostty prototype. Unfiltered command output (C to D marks), for a terminal emulator.
+    let rawOutput: AsyncStream<[UInt8]>
 
     private struct DescriptorState: Sendable {
         var descriptor: Int32
@@ -22,6 +24,7 @@ final class TerminalProcess: @unchecked Sendable {
     private let descriptorState: Mutex<DescriptorState>
     private let parentEnd: Int32
     private let continuation: AsyncStream<Event>.Continuation
+    private let rawContinuation: AsyncStream<[UInt8]>.Continuation
     /// Source and buffer state below is touched on this queue alone.
     private let queue: DispatchQueue
     private var parser = TerminalMarkParser()
@@ -38,7 +41,6 @@ final class TerminalProcess: @unchecked Sendable {
 
     private static let shell = "/bin/zsh"
     private static let readSize = 64 * 1024
-    private static let rows: UInt16 = 40
     /// Output-only reads coalesce for this long, so a flood is not a redraw per read.
     private static let flushDelay: DispatchTimeInterval = .milliseconds(30)
     private static let hangupGrace: DispatchTimeInterval = .seconds(2)
@@ -51,11 +53,15 @@ final class TerminalProcess: @unchecked Sendable {
         let stream = AsyncStream.makeStream(of: Event.self)
         events = stream.stream
         continuation = stream.continuation
+        let raw = AsyncStream.makeStream(of: [UInt8].self)
+        rawOutput = raw.stream
+        rawContinuation = raw.continuation
     }
 
     /// Forks briefly and writes the shim, so callers run it off the main actor.
     static func spawn(
-        directory: String, columns: Int, shimRoot: URL = FileManager.default.temporaryDirectory
+        directory: String, columns: Int, rows: Int = 40,
+        shimRoot: URL = FileManager.default.temporaryDirectory
     ) -> TerminalProcess? {
         guard let shim = TerminalShellShim.install(in: shimRoot) else { return nil }
         let environment = TerminalShellShim.environment(
@@ -70,7 +76,8 @@ final class TerminalProcess: @unchecked Sendable {
         let argvPointers = argv.pointers
         let envpPointers = envp.pointers
         let descriptorLimit = getdtablesize()
-        var size = winsize(ws_row: rows, ws_col: UInt16(clamping: columns), ws_xpixel: 0, ws_ypixel: 0)
+        var size = winsize(
+            ws_row: UInt16(clamping: rows), ws_col: UInt16(clamping: columns), ws_xpixel: 0, ws_ypixel: 0)
         var parentEnd: Int32 = -1
         let processID = forkpty(&parentEnd, nil, nil, &size)
         if processID == 0 {
@@ -99,6 +106,25 @@ final class TerminalProcess: @unchecked Sendable {
         let process = TerminalProcess(parentEnd: parentEnd, processID: processID)
         process.begin()
         return process
+    }
+
+    /// FORK: libghostty prototype. Raw bytes for the foreground program, such as keys or query replies.
+    func send(bytes: [UInt8]) {
+        queue.async { [self] in
+            guard readSource != nil else { return }
+            pendingInput.append(contentsOf: bytes)
+            flushInput()
+        }
+    }
+
+    /// FORK: libghostty prototype. Tells the kernel, and so the program, the new window size.
+    func resize(columns: Int, rows: Int) {
+        var size = winsize(
+            ws_row: UInt16(clamping: rows), ws_col: UInt16(clamping: columns), ws_xpixel: 0, ws_ypixel: 0)
+        descriptorState.withLock { state in
+            guard state.descriptor >= 0 else { return }
+            _ = ioctl(state.descriptor, TIOCSWINSZ, &size)
+        }
     }
 
     /// Bytes for the shell's line editor: a command plus `\r`, or `\u{03}` for ⌃C.
@@ -208,11 +234,18 @@ final class TerminalProcess: @unchecked Sendable {
     private func drain() {
         let count = readBuffer.withUnsafeMutableBytes { Darwin.read(parentEnd, $0.baseAddress, $0.count) }
         if count > 0 {
-            enqueue(parser.feed(readBuffer[0..<count]))
+            let events = parser.feed(readBuffer[0..<count])
+            emitRaw()
+            enqueue(events)
         } else if count == 0 || (errno != EAGAIN && errno != EINTR) {
             // EIO once every holder of the child end is gone; the exit source still reaps.
             stopReading()
         }
+    }
+
+    private func emitRaw() {
+        let raw = parser.takeRaw()
+        if !raw.isEmpty { rawContinuation.yield(raw) }
     }
 
     private func enqueue(_ events: [TerminalMarkParser.Event]) {
@@ -262,7 +295,9 @@ final class TerminalProcess: @unchecked Sendable {
                     Darwin.read(parentEnd, $0.baseAddress, $0.count)
                 }
                 guard count > 0 else { break }
-                enqueue(parser.feed(readBuffer[0..<count]))
+                let events = parser.feed(readBuffer[0..<count])
+                emitRaw()
+                enqueue(events)
             }
         }
         flush()
@@ -271,6 +306,7 @@ final class TerminalProcess: @unchecked Sendable {
         exitSource = nil
         continuation.yield(.exited)
         continuation.finish()
+        rawContinuation.finish()
     }
 
     private func stopReading() {

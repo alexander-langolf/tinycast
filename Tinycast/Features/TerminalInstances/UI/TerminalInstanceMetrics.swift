@@ -17,5 +17,7 @@ struct TerminalInstanceMetrics {
     var gap: CGFloat { metrics.spacing.md }
     var maxOutput: CGFloat { metrics.scaled(340) }
     var columns: Int { max(20, Int((width - Self.logInset.width * 2) / Self.characterWidth)) }
+    /// Viewport rows of the ghostty grid: whole rows that fit under `maxOutput` with the log's inset.
+    var gridRows: Int { Int((maxOutput - Self.logInset.height * 2) / Self.rowHeight) }
     var rowCap: Int { Int((maxOutput / Self.rowHeight).rounded(.up)) + 1 }
 }

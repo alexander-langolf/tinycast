@@ -23,6 +23,10 @@ struct TerminalMarkParser: Sendable {
     private(set) var isInCommand = false
     private var pending: [UInt8] = []
     private var discardingString = false
+    /// FORK: libghostty prototype. Every byte between C and D, unmodified, for a real terminal emulator.
+    private var rawOutput: [UInt8] = []
+    /// Bytes at the head of `pending` that `rawOutput` already holds, so a split scalar is not doubled.
+    private var rawSkip = 0
 
     private static let escape: UInt8 = 0x1B
     private static let bell: UInt8 = 0x07
@@ -37,6 +41,23 @@ struct TerminalMarkParser: Sendable {
     private struct Sequence {
         let kind: Kind
         let end: Int
+    }
+
+    /// The in-command bytes of the feeds since the last call, escapes and all.
+    mutating func takeRaw() -> [UInt8] {
+        defer { rawOutput.removeAll(keepingCapacity: true) }
+        return rawOutput
+    }
+
+    private mutating func appendRaw(_ bytes: some Collection<UInt8>) {
+        guard isInCommand else { return }
+        for byte in bytes {
+            if rawSkip > 0 {
+                rawSkip -= 1
+            } else {
+                rawOutput.append(byte)
+            }
+        }
     }
 
     mutating func feed(_ chunk: some Collection<UInt8>) -> [Event] {
@@ -65,6 +86,7 @@ struct TerminalMarkParser: Sendable {
             }
             guard data[index] == Self.escape else {
                 if isInCommand { text.append(data[index]) }
+                appendRaw(CollectionOfOne(data[index]))
                 index += 1
                 continue
             }
@@ -80,8 +102,10 @@ struct TerminalMarkParser: Sendable {
             switch sequence.kind {
             case .osc(let body):
                 Self.flush(&text, into: &events)
+                if !body.hasPrefix("133;") { appendRaw(data[index..<sequence.end]) }
                 apply(osc: body, into: &events)
             case .csi(let body):
+                appendRaw(data[index..<sequence.end])
                 if let entered = Self.alternateScreen(body) {
                     Self.flush(&text, into: &events)
                     events.append(.alternateScreen(entered))
@@ -89,13 +113,14 @@ struct TerminalMarkParser: Sendable {
                     text.append(contentsOf: data[index..<sequence.end])
                 }
             case .other:
-                break
+                appendRaw(data[index..<sequence.end])
             }
             index = sequence.end
         }
         if pending.isEmpty, !text.isEmpty {
             let whole = Self.wholeScalarLength(text)
             pending = Array(text[whole...])
+            rawSkip = pending.count
             text.removeSubrange(whole...)
         }
         Self.flush(&text, into: &events)

@@ -17,7 +17,11 @@ struct TerminalInstanceView: View {
                 Rectangle()
                     .fill(Theme.Colors.separator)
                     .frame(height: TerminalInstanceStack.dividerHeight)
-                TerminalLogView(run: run)
+                if session.grid != nil {
+                    GhosttyGridView(session: session)  // FORK: libghostty prototype
+                } else {
+                    TerminalLogView(run: run)
+                }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
