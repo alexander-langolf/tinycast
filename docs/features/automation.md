@@ -110,7 +110,8 @@ stdio MCP server that POSTs each line to the running app's endpoint:
   client; with exactly one client it is optional. The first read by this binary makes the Keychain
   ask for permission once. Nothing is read from a file or an environment token.
 - **Channel** (`--channel dev|stable|beta`, `TINYCAST_CHANNEL`; Debug builds default to dev) picks the
-  bundle id, Keychain service and port, so a Dev token never reaches the stable app.
+  bundle id, Keychain service and port, so a Dev token never reaches the stable app. There is no
+  port override: a token only ever goes to its own channel's fixed port.
 - **Bridging.** Modern requests get `MCP-Protocol-Version`, `Mcp-Method` and `Mcp-Name` (Base64
   sentinel when not plain ASCII) mirrored from the body. Handshake-era requests get the version the
   server returned from `initialize`. A JSON reply becomes one stdout line; an SSE reply becomes one

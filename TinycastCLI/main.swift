@@ -57,7 +57,6 @@ struct Options {
         Channel(rawValue: ProcessInfo.processInfo.environment["TINYCAST_CHANNEL"] ?? "")
         ?? Channel.defaultChannel
     var client = ProcessInfo.processInfo.environment["TINYCAST_CLIENT"]
-    var port: Int?
     var stdio = false
 }
 
@@ -65,7 +64,7 @@ func parse(_ arguments: [String]) -> Options {
     var options = Options()
     var iterator = arguments.makeIterator()
     guard iterator.next() == "mcp" else {
-        fail("usage: tinycast mcp --stdio [--client <id>] [--channel dev|stable|beta] [--port <n>]")
+        fail("usage: tinycast mcp --stdio [--client <id>] [--channel dev|stable|beta]")
     }
     while let argument = iterator.next() {
         switch argument {
@@ -78,11 +77,6 @@ func parse(_ arguments: [String]) -> Options {
                 fail("--channel must be dev, stable or beta")
             }
             options.channel = channel
-        case "--port":
-            guard let value = iterator.next(), let port = Int(value), (1...65535).contains(port) else {
-                fail("--port needs a port number")
-            }
-            options.port = port
         default: fail("unknown option \(argument)")
         }
     }
@@ -377,6 +371,6 @@ let options = parse(Array(CommandLine.arguments.dropFirst()))
 let token = Credentials.token(
     service: "\(options.channel.bundleIdentifier).automation-clients", client: options.client)
 let bridge = Bridge(
-    port: options.port ?? options.channel.port, token: token, appName: options.channel.appName)
-warn("bridging stdio to 127.0.0.1:\(options.port ?? options.channel.port) as \(options.channel.rawValue)")
+    port: options.channel.port, token: token, appName: options.channel.appName)
+warn("bridging stdio to 127.0.0.1:\(options.channel.port) as \(options.channel.rawValue)")
 await bridge.run()
