@@ -6,8 +6,20 @@ struct PaletteFrameClip: ViewModifier {
     @Environment(PaletteFrameAnimator.self) private var animator
 
     func body(content: Content) -> some View {
-        content.clipShape(
-            RoundedRectangle(cornerRadius: animator.cornerRadius ?? radius, style: .continuous))
+        let theme = ForkTheme.current
+        let shape = RoundedRectangle(cornerRadius: animator.cornerRadius ?? radius, style: .continuous)
+        content
+            .clipShape(shape)
+            .overlay {
+                if theme.flag(.paletteBorder) {
+                    shape
+                        .strokeBorder(
+                            theme.color(.paletteBorderColor) ?? Theme.Colors.border,
+                            lineWidth: theme.points(.paletteBorderWidth, .standard)
+                        )
+                        .allowsHitTesting(false)
+                }
+            }
     }
 }
 

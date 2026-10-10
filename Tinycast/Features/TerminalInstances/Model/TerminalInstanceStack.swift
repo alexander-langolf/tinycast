@@ -33,7 +33,8 @@ enum TerminalInstanceStack {
 
     /// The bar alone, or the bar, a divider and the log up to `maxOutput`.
     static func cardHeight(
-        barHeight: CGFloat, rows: Int, rowHeight: CGFloat, verticalInset: CGFloat, maxOutput: CGFloat
+        barHeight: CGFloat, rows: Int, rowHeight: CGFloat, verticalInset: CGFloat, maxOutput: CGFloat,
+        dividerHeight: CGFloat = dividerHeight
     ) -> CGFloat {
         guard rows > 0 else { return barHeight }
         return barHeight + dividerHeight + min(CGFloat(rows) * rowHeight + verticalInset * 2, maxOutput)

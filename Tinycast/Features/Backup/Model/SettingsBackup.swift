@@ -90,6 +90,7 @@ struct SettingsBackup: Codable {
         var hideCurrentEvent: Int?
         // Safe to carry: it silences a prompt rather than granting anything.
         var supportReminders: Bool?
+        var appearanceTokens: [String: ForkThemeValue]?  // FORK: appearance-theme
     }
 
     /// One entry per bindable action. docs/features/hotkeys.md#persistence
@@ -193,6 +194,7 @@ extension SettingsBackup {
             calendarMenuBarHidesWhenEmpty: s.calendarMenuBarHidesWhenEmpty,
             hideCurrentEvent: s.hideCurrentEvent.rawValue,
             supportReminders: s.supportRemindersEnabled)
+        backup.settings?.appearanceTokens = ForkThemeStore.current?.backup  // FORK: appearance-theme
 
         let hk = core.hotKeys
         var hotkeys = HotkeyBackup()
@@ -548,6 +550,10 @@ extension SettingsBackup {
         }
         if let flag = s.supportReminders {
             settings.supportRemindersEnabled = flag
+            count += 1
+        }
+        if let tokens = s.appearanceTokens, let theme = ForkThemeStore.current {  // FORK: appearance-theme
+            theme.restore(tokens)
             count += 1
         }
         return count

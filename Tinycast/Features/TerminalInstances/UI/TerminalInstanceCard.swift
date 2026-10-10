@@ -24,19 +24,24 @@ struct TerminalInstanceCard<Output: View>: View {
     @Environment(\.metrics) private var metrics
     @FocusState private var fieldFocused: Bool
 
+    private var layout: TerminalInstanceMetrics { TerminalInstanceMetrics(metrics: metrics) }
+
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: metrics.radius.panel, style: .continuous)
+        let layout = layout
+        let shape = RoundedRectangle(cornerRadius: layout.cornerRadius, style: .continuous)
         VStack(spacing: 0) {
-            bar
+            bar(layout)
             if showsOutput {
-                Rectangle()
-                    .fill(Theme.Colors.separator)
-                    .frame(height: TerminalInstanceStack.dividerHeight)
+                if layout.dividerHeight > 0 {
+                    Rectangle()
+                        .fill(Theme.Colors.separator)
+                        .frame(height: layout.dividerHeight)
+                }
                 output
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(Theme.Colors.panelScrim)
+        .background(layout.theme.paletteScrim)
         .background(GlassEffectView())
         .clipShape(shape)
         .onAppear { fieldFocused = true }
@@ -46,9 +51,9 @@ struct TerminalInstanceCard<Output: View>: View {
     }
 
     /// The palette header's row: its gutters, icon slot and trailing accessory spacing.
-    private var bar: some View {
+    private func bar(_ layout: TerminalInstanceMetrics) -> some View {
         HStack(spacing: 0) {
-            gutter(metrics.spacing.md * 2)
+            gutter(layout.gutter)
             statusGlyph
                 .frame(width: metrics.size.headerIconSlot)
             gutter(metrics.spacing.xl)
@@ -73,9 +78,9 @@ struct TerminalInstanceCard<Output: View>: View {
             ) { actions.togglePinned() }
             barButton("arrow.up.forward.app", help: "Open in kitty  ⌘O") { actions.openInKitty() }
             barButton("xmark", help: "Close  ⌘W") { actions.close() }
-            gutter(metrics.spacing.md * 2)
+            gutter(layout.gutter)
         }
-        .frame(height: metrics.size.compactHeight)
+        .frame(height: layout.barHeight)
     }
 
     private func gutter(_ width: CGFloat) -> some View {

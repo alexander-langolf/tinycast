@@ -100,7 +100,7 @@ private struct FileSearchRow: View {
             Spacer(minLength: 0)
         }
         .padding(.horizontal, metrics.spacing.md)
-        .padding(.vertical, metrics.spacing.sm)
+        .padding(.vertical, metrics.spacing.rowVertical)  // FORK: appearance-theme
         .background(
             RoundedRectangle(cornerRadius: metrics.radius.row, style: .continuous)
                 .fill(fill)

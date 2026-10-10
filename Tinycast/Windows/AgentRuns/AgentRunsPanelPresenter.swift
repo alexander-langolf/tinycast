@@ -20,6 +20,7 @@ final class AgentRunsPanelPresenter {
     private func trackAgentRuns() {
         withObservationTracking {
             _ = core.agentRunsCoordinator.runs.count
+            _ = ForkTheme.current
         } onChange: { [weak self] in
             Task { @MainActor in
                 guard let self else { return }
@@ -52,10 +53,10 @@ final class AgentRunsPanelPresenter {
             agentRunsPanel = child
         }
         let cards = min(count, AgentRunsStack.cardLimit)
-        let rowHeight = AgentRunsMetrics(metrics: metrics).cardHeight
-        var height = CGFloat(cards) * rowHeight + CGFloat(cards - 1) * metrics.spacing.md
-        if count > cards { height += metrics.spacing.md + metrics.size.barButtonHeight }
-        let gap = metrics.spacing.xl
+        let layout = AgentRunsMetrics(metrics: metrics)
+        var height = CGFloat(cards) * layout.cardHeight + CGFloat(cards - 1) * layout.gap
+        if count > cards { height += layout.gap + metrics.size.barButtonHeight }
+        let gap = layout.paletteMargin
         let below = NSRect(
             x: panel.frame.minX, y: panel.frame.minY - gap - height,
             width: panel.frame.width, height: height)
@@ -63,7 +64,7 @@ final class AgentRunsPanelPresenter {
         if screen.visibleFrame.contains(below) {
             frame = below
         } else {
-            let width = AgentRunsMetrics(metrics: metrics).sideWidth
+            let width = layout.sideWidth
             let right = NSRect(
                 x: panel.frame.maxX + gap, y: panel.frame.maxY - height,
                 width: width, height: height)

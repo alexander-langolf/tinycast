@@ -6,6 +6,7 @@ import AppKit
 final class AppCore {
     static let shared = AppCore()
     let forkAppearance = ForkAppearance()  // FORK: appearance-owner
+    let forkTheme = ForkThemeStore()  // FORK: appearance-theme
 
     let launcherRanking: LauncherRankingStore
     let appIndex: AppIndex
@@ -289,9 +290,12 @@ final class AppCore {
 
     func start() {
         forkAppearance.start()  // FORK: appearance-start
+        forkTheme.start()  // FORK: appearance-theme
         startForkAIWorkingDirectory()  // FORK: ai-working-directory
         // FORK: appearance-observation
-        track(forkAppearance, { _ = $0.fontFamily; _ = $0.monoFontFamily }, reproject: { $0.windowController.applyInterfaceSize() })
+        track(
+            forkAppearance, { _ = $0.fontFamily; _ = $0.monoFontFamily; _ = ForkTheme.current },
+            reproject: { $0.windowController.applyInterfaceSize() })
         Signposts.interval("AppCore.start") {
             // Shorten AppKit's ~2–3s tooltip delay; registration domain, so a user default wins.
             UserDefaults.standard.register(defaults: ["NSInitialToolTipDelay": 250])

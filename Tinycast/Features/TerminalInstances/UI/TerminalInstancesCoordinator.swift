@@ -16,10 +16,11 @@ final class TerminalInstancesCoordinator {
         self.core = core
     }
 
-    /// Settings → Monospaced font: every grid re-measures, tells its pty, and the stack re-heights.
+    /// The Monospaced font or the output tokens: every grid re-measures, tells its pty, re-heights.
     private func trackMonoFont() {
         withObservationTracking {
             _ = core.forkAppearance.monoFontFamily
+            _ = ForkTheme.current
         } onChange: { [weak self] in
             Task { @MainActor in
                 guard let self else { return }

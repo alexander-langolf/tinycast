@@ -92,11 +92,24 @@ run() {
                 Tinycast/Fork/ForkColors.swift Tinycast/Fork/ForkAssets.swift Tinycast/Fork/ForkAppearanceScope.swift
             ;;
     esac
+    # // FORK: harness-sources gives InterfaceMetrics its theme-token seam, which reads Theme itself.
     case " $* " in
-        *"/SettingsFileSchema.swift "*) set -- "$@" Tinycast/Fork/ForkAIWorkingDirectory.swift ;;
+        *"/InterfaceMetrics.swift "*)
+            set -- "$@" Tinycast/Fork/Theme/ForkTheme.swift Tinycast/Fork/Theme/ForkThemeToken.swift \
+                Tinycast/Fork/Theme/ForkThemeValue.swift Tinycast/Fork/Theme/ForkThemeState.swift
+            ;;
     esac
     case " $* " in
-        *"/SettingsSearchCatalog.swift "*) set -- "$@" Tinycast/Fork/ForkSettingsSearch.swift ;;
+        *"/SettingsFileSchema.swift "*)
+            set -- "$@" Tinycast/Fork/ForkAIWorkingDirectory.swift Tinycast/Fork/Theme/ForkThemeStore.swift \
+                Tinycast/Fork/Theme/ForkThemeSettingsFile.swift
+            ;;
+    esac
+    case " $* " in
+        *"/SettingsSearchCatalog.swift "*)
+            set -- "$@" Tinycast/Fork/ForkSettingsSearch.swift
+            case " $* " in *"/ForkThemeToken.swift "*) ;; *) set -- "$@" Tinycast/Fork/Theme/ForkThemeToken.swift ;; esac
+            ;;
     esac
     case " $* " in
         *"/NoteBlockDecoration.swift "*) set -- "$@" Tinycast/Fork/ForkFontSnapshot.swift ;;

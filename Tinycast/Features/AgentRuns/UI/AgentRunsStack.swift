@@ -7,18 +7,21 @@ struct AgentRunsStack: View {
     static let cardLimit = 4
 
     var body: some View {
-        VStack(spacing: metrics.spacing.md) {
+        let layout = AgentRunsMetrics(metrics: metrics)
+        return VStack(spacing: layout.gap) {
             ForEach(coordinator.runs.prefix(Self.cardLimit)) { run in
                 AgentRunCard(run: run) { coordinator.attach(run) }
             }
             if coordinator.runs.count > Self.cardLimit {
                 Text("+\(coordinator.runs.count - Self.cardLimit) more")
-                    .font(metrics.typography.rowTrailing)
+                    .font(layout.trailingFont)
                     .foregroundStyle(Theme.Colors.textSecondary)
                     .frame(maxWidth: .infinity)
                     .frame(height: metrics.size.barButtonHeight)
+                    .background(layout.scrim)
                     .background(GlassEffectView())
-                    .clipShape(RoundedRectangle(cornerRadius: metrics.radius.panel, style: .continuous))
+                    .clipShape(layout.shape)
+                    .overlay { AgentRunCardBorder(layout: layout) }
             }
         }
         .frame(maxHeight: .infinity, alignment: .top)

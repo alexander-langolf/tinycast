@@ -55,7 +55,8 @@ final class PaletteChipsCoordinator {
     }
 
     func paletteRadius(collapsed: Bool, metrics: InterfaceMetrics) -> CGFloat {
-        state.isActive && collapsed ? metrics.size.compactHeight / 2 : metrics.radius.panel
+        state.isActive && collapsed
+            ? metrics.size.compactHeight / 2 : ForkTheme.current.points(.paletteCornerRadius, metrics)
     }
 
     /// Root search narrowed to the chip's kind; empty, the kind's name lists the whole category.

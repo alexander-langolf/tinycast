@@ -22,6 +22,7 @@ enum AppSettingsKey: String, CaseIterable {
     case interfaceSize = "interfaceSize"
     case interfaceFont = "interfaceFont"  // FORK: font-persistence
     case monoFont = "monoFont"  // FORK: font-persistence
+    case forkTheme = "forkTheme"  // FORK: appearance-theme
     case compactMode = "compactMode"
     case showFavoritesInCompactMode = "showFavoritesInCompactMode"
     case searchScopes = "launcherSearchScopes"

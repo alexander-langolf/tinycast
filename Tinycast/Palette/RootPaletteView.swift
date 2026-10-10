@@ -352,7 +352,7 @@ struct RootPaletteView: View {
                 .paletteFrameLayout()  // FORK: palette-motion
                 // The window's frame is the size source, so the glass and clip stay matched.
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                .background(Theme.Colors.panelScrim)
+                .background(ForkTheme.current.paletteScrim)  // FORK: appearance-theme
                 .background(GlassEffectView())
                 .overlay {
                     Theme.Colors.dialogDimming

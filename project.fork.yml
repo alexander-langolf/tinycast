@@ -59,6 +59,10 @@ targets:
           - Features/CustomCommands/Service/ShellCommandRunner.swift
           - Fork/ForkColors.swift
           - Fork/ForkTypography.swift
+          - Fork/Theme/ForkTheme.swift
+          - Fork/Theme/ForkThemeToken.swift
+          - Fork/Theme/ForkThemeValue.swift
+          - Fork/Theme/ForkThemeState.swift
           - Platform/Appearance.swift
           - Features/CustomCommands/UI/CommandDuration.swift
           - Platform/ProcessExit.swift

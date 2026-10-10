@@ -51,6 +51,6 @@ struct PalettePresentation: Equatable, Sendable {
 
     /// One result row of a fitted screen, so the window maths and the row view share a number.
     static func rowHeight(metrics: InterfaceMetrics) -> CGFloat {
-        metrics.size.resultRowIcon + metrics.spacing.sm * 2
+        metrics.size.resultRowIcon + metrics.spacing.rowVertical * 2
     }
 }

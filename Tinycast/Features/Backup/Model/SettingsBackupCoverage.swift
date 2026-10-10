@@ -63,7 +63,8 @@ enum SettingsBackupCoverage {
         "menuBarLinkedEventsOnly": .menuBarLinkedEventsOnly,
         "calendarMenuBarHidesWhenEmpty": .calendarMenuBarHidesWhenEmpty,
         "hideCurrentEvent": .hideCurrentEvent,
-        "supportReminders": .supportReminders
+        "supportReminders": .supportReminders,
+        "appearanceTokens": .forkTheme  // FORK: appearance-theme
     ]
 
     /// The `SettingsData` fields no `AppSettings` key stands behind, and what they read instead.

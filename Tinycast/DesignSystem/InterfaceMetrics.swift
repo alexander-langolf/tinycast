@@ -20,6 +20,9 @@ struct InterfaceMetrics: Equatable, Sendable {
         var xxs: CGFloat { scaledPoints(Theme.Spacing.xxs, scale) }
         var xs: CGFloat { scaledPoints(Theme.Spacing.xs, scale) }
         var sm: CGFloat { scaledPoints(Theme.Spacing.sm, scale) }
+        var rowVertical: CGFloat {  // FORK: appearance-theme
+            scaledPoints(ForkTheme.override(.paletteRowPadding) ?? Theme.Spacing.sm, scale)
+        }
         var md: CGFloat { scaledPoints(Theme.Spacing.md, scale) }
         var lg: CGFloat { scaledPoints(Theme.Spacing.lg, scale) }
         var xl: CGFloat { scaledPoints(Theme.Spacing.xl, scale) }
@@ -38,7 +41,9 @@ struct InterfaceMetrics: Equatable, Sendable {
         let scale: CGFloat
 
         var panel: CGFloat { scaledPoints(Theme.Radius.panel, scale) }
-        var row: CGFloat { scaledPoints(Theme.Radius.row, scale) }
+        var row: CGFloat {  // FORK: appearance-theme
+            scaledPoints(ForkTheme.override(.paletteRowCornerRadius) ?? Theme.Radius.row, scale)
+        }
         var formField: CGFloat { scaledPoints(Theme.Radius.formField, scale) }
         var emojiCell: CGFloat { scaledPoints(Theme.Radius.emojiCell, scale) }
         var menu: CGFloat { scaledPoints(Theme.Radius.menu, scale) }
@@ -63,7 +68,9 @@ struct InterfaceMetrics: Equatable, Sendable {
         var headerHeight: CGFloat { scaledPoints(Theme.Size.headerHeight, scale) }
         var headerIconSlot: CGFloat { scaledPoints(Theme.Size.headerIconSlot, scale) }
         var searchFieldMinWidth: CGFloat { scaledPoints(Theme.Size.searchFieldMinWidth, scale) }
-        var headerPadding: CGFloat { scaledPoints(Theme.Size.headerPadding, scale) }
+        var headerPadding: CGFloat {  // FORK: appearance-theme
+            scaledPoints(ForkTheme.override(.paletteHeaderPadding) ?? Theme.Size.headerPadding, scale)
+        }
         /// Derived, not scaled: the compact bar must stay exactly the header in symmetric slack.
         var compactHeight: CGFloat { headerHeight + headerPadding * 2 }
         var bottomBarHeight: CGFloat { scaledPoints(Theme.Size.bottomBarHeight, scale) }
@@ -140,9 +147,13 @@ struct InterfaceMetrics: Equatable, Sendable {
     struct Typography: Sendable {
         let scale: CGFloat
 
-        var searchFieldSize: CGFloat { scaledPoints(Theme.Typography.searchFieldSize, scale) }
+        var searchFieldSize: CGFloat {  // FORK: appearance-theme
+            scaledPoints(
+                ForkTheme.override(.paletteSearchFieldSize) ?? Theme.Typography.searchFieldSize, scale)
+        }
         var searchField: Font {
-            scale == 1 && ForkTypography.shared.family == nil  // FORK: typography-metrics
+            // FORK: appearance-theme
+            searchFieldSize == Theme.Typography.searchFieldSize && ForkTypography.shared.family == nil  // FORK: typography-metrics
                 ? Theme.Typography.searchField
                 : ForkTypography.prose(
                     // FORK: typography-metrics
@@ -150,7 +161,8 @@ struct InterfaceMetrics: Equatable, Sendable {
         }
         /// Isolated because `Theme`'s twin is, not because resolving a font needs main.
         @MainActor var searchFieldNSFont: NSFont {
-            scale == 1 && ForkTypography.shared.family == nil  // FORK: typography-metrics
+            // FORK: appearance-theme
+            searchFieldSize == Theme.Typography.searchFieldSize && ForkTypography.shared.family == nil  // FORK: typography-metrics
                 ? Theme.Typography.searchFieldNSFont
                 // FORK: typography-metrics
                 : ForkTypography.resolve(.systemFont(ofSize: searchFieldSize, weight: .regular))
@@ -176,7 +188,9 @@ struct InterfaceMetrics: Equatable, Sendable {
         var code: Font {
             // FORK: code-font
             if ForkTypography.shared.monoFamily != nil {
-                return Font(ForkTypography.resolveMono(.monospacedSystemFont(ofSize: nsFont(.callout).pointSize, weight: .regular)))
+                return Font(
+                    ForkTypography.resolveMono(
+                        .monospacedSystemFont(ofSize: nsFont(.callout).pointSize, weight: .regular)))
             }
             return scale == 1
                 ? Theme.Typography.code
@@ -184,7 +198,9 @@ struct InterfaceMetrics: Equatable, Sendable {
         }
         var inlineCode: Font {  // FORK: code-font
             if ForkTypography.shared.monoFamily != nil {
-                return Font(ForkTypography.resolveMono(.monospacedSystemFont(ofSize: nsFont(.body).pointSize, weight: .regular)))
+                return Font(
+                    ForkTypography.resolveMono(
+                        .monospacedSystemFont(ofSize: nsFont(.body).pointSize, weight: .regular)))
             }
             return font(Theme.Typography.rowTitle, .body, symbol: true).monospaced()
         }

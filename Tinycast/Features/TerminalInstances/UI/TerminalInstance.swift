@@ -23,7 +23,8 @@ final class TerminalInstance: Identifiable {
         TerminalInstanceStack.cardHeight(
             barHeight: layout.barHeight, rows: showsOutput ? session.rows : 0,
             rowHeight: TerminalInstanceMetrics.rowHeight,
-            verticalInset: TerminalInstanceMetrics.logInset.height, maxOutput: layout.maxOutput)
+            verticalInset: TerminalInstanceMetrics.logInset.height, maxOutput: layout.maxOutput,
+            dividerHeight: layout.dividerHeight)
     }
 
     func begin(_ command: String) {
