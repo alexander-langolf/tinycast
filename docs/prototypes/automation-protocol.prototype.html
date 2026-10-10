@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROTOTYPE · Tinycast automation protocol</title>
+<style>
+  :root{--bg:#f6f7f9;--card:#fff;--ink:#17202c;--muted:#5d6878;--line:#dde2ea;--accent:#3355e0;--ok:#1d8a4c;--warn:#b26a00;--bad:#c23b3b;--code:#0f1724;--codeink:#dbe3f0;
+    font-family:-apple-system,"SF Pro Text",system-ui,sans-serif}
+  @media (prefers-color-scheme:dark){:root{--bg:#0e131b;--card:#161d28;--ink:#e6ecf5;--muted:#9aa7ba;--line:#283244;--accent:#8aa4ff;--ok:#5dd08f;--warn:#f0b04e;--bad:#f07c7c;--code:#0a0f17}}
+  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.5}
+  .wrap{max-width:1180px;margin:0 auto;padding:28px 18px 60px;display:grid;gap:18px}
+  h1{font-size:24px;margin:0} h2{font-size:15px;margin:0 0 10px} p{margin:0}
+  .lede{color:var(--muted);max-width:80ch}
+  .tag{display:inline-block;font:600 11px ui-monospace,Menlo,monospace;letter-spacing:.06em;color:var(--bad);border:1px solid var(--bad);border-radius:4px;padding:1px 6px;margin-bottom:8px}
+  .grid{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:18px;align-items:start}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;min-width:0}
+  .row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+  button{font:inherit;font-size:13px;padding:6px 10px;border-radius:7px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+  button:hover{border-color:var(--accent)} button:focus-visible{outline:2px solid var(--accent)}
+  button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  button:disabled{opacity:.4;cursor:default}
+  .label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:12px 0 6px}
+  .label:first-child{margin-top:0}
+  .fields{display:grid;grid-template-columns:max-content 1fr;gap:4px 12px;font-size:13px}
+  .fields dt{color:var(--muted)} .fields dd{margin:0;min-width:0;overflow-wrap:anywhere}
+  pre{background:var(--code);color:var(--codeink);font:12px/1.5 ui-monospace,Menlo,monospace;padding:10px 12px;border-radius:8px;overflow-x:auto;margin:0;white-space:pre-wrap;word-break:break-word}
+  .pill{font-size:11px;font-weight:600;padding:1px 8px;border-radius:99px;border:1px solid currentColor}
+  .ok{color:var(--ok)} .warn{color:var(--warn)} .bad{color:var(--bad)}
+  .changed{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+  table{border-collapse:collapse;width:100%;font-size:12.5px} td,th{text-align:left;padding:5px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--muted);font-weight:500}
+  .tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+  .tabs button[aria-selected=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+  ol.steps{margin:8px 0 0;padding-left:20px;display:grid;gap:6px}
+  ol.steps li.done{color:var(--muted)} ol.steps li.done button{opacity:.5}
+  .ui{border:1px dashed var(--line);border-radius:8px;padding:10px;display:grid;gap:8px}
+  .cardx{border-left:3px solid var(--warn);padding:4px 8px;background:var(--bg);border-radius:4px}
+  @media (max-width:900px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="tag">PROTOTYPE — throwaway, wipe me</span>
+    <h1>Tinycast automation protocol</h1>
+    <p class="lede"><strong>Question:</strong> can one Tinycast command set serve four callers at once, each with its own trust level? The callers are a <code>tinycast://</code> link opened by any app, an agent over MCP, a script Tinycast runs, and the <code>tinycast</code> CLI. It borrows Script Kit's resource namespace, scoped tokens, audit log and script prompts over JSON lines, and BTT's localhost server, fire-and-forget links, stdio bridge CLI and Allow/Deny prompt. Everything here is simulated in memory. Nothing talks to Tinycast.</p>
+  </header>
+
+  <div class="grid">
+    <section class="card" aria-label="Actions">
+      <h2>Try it</h2>
+      <div class="label">An agent (Claude via MCP, token “claude-worker”: read + ui)</div>
+      <div class="row">
+        <button data-a='{"t":"mcp","token":"claude-worker","op":"context.read"}'>Read desktop context</button>
+        <button data-a='{"t":"mcp","token":"claude-worker","op":"agents.read"}'>Read agent runs</button>
+        <button data-a='{"t":"mcp","token":"claude-worker","op":"card.needsYou","args":{"run":"checkout-retries","question":"Retry 3× or 5×?"}}'>Ask Sasha (needs-you card)</button>
+        <button data-a='{"t":"mcp","token":"claude-worker","op":"terminal.run","args":{"cmd":"bun test"}}'>Run a terminal command</button>
+      </div>
+      <div class="label">A trusted agent (token “sasha-cockpit”: read + ui + exec)</div>
+      <div class="row">
+        <button data-a='{"t":"mcp","token":"sasha-cockpit","op":"terminal.run","args":{"cmd":"bun test"}}'>Run “bun test”</button>
+        <button data-a='{"t":"cli","token":"sasha-cockpit","op":"clipboard.read"}'>CLI: read clipboard</button>
+      </div>
+      <div class="label">Any app opening a link (no token)</div>
+      <div class="row">
+        <button data-a='{"t":"url","op":"hud.show","args":{"text":"Build green"}}'>Show a HUD</button>
+        <button data-a='{"t":"url","op":"palette.show","args":{"query":"$ git status"}}'>Open palette with a query</button>
+        <button data-a='{"t":"url","op":"terminal.run","args":{"cmd":"rm -rf ~/work"}}'>Try to run a command</button>
+        <button data-a='{"t":"url","op":"clipboard.read"}'>Try to read the clipboard</button>
+      </div>
+      <div class="label">A script Tinycast runs (pick-branch.ts)</div>
+      <div class="row">
+        <button data-a='{"t":"spawn","name":"pick-branch.ts"}'>Start script</button>
+        <button data-a='{"t":"script","op":"prompt.arg","args":{"placeholder":"Branch","choices":["main","al/libghostty-prototype","al/automation-protocol-prototype"]}}'>Script asks: pick a branch</button>
+        <button data-a='{"t":"script","op":"hud.show","args":{"text":"Checked out"}}'>Script shows a HUD</button>
+        <button data-a='{"t":"script","op":"terminal.run","args":{"cmd":"git checkout main"}}'>Script runs a command</button>
+        <button data-a='{"t":"exit"}'>Script exits</button>
+      </div>
+      <div class="label">You</div>
+      <div class="row" id="youRow"></div>
+      <div class="row"><button data-a='{"t":"reset"}'>Reset everything</button></div>
+    </section>
+
+    <section class="card" aria-label="State">
+      <h2>What just happened</h2>
+      <div id="last"></div>
+      <div class="label">Tinycast on screen</div>
+      <div class="ui" id="ui"></div>
+      <div class="label">Audit log (newest first) · ~/.tinycast/audit.jsonl</div>
+      <div id="audit"></div>
+    </section>
+  </div>
+
+  <section class="card" aria-label="Walkthroughs">
+    <h2>Guided walkthroughs</h2>
+    <div class="tabs" id="tabs" role="tablist"></div>
+    <div id="scenario"></div>
+  </section>
+
+  <section class="card">
+    <h2>Who may do what (the policy the module enforces)</h2>
+    <div id="policy"></div>
+  </section>
+</div>
+
+<script>
+/* ===== Portable module: pure, no DOM. Lift into Tinycast as AutomationRouter. ===== */
+const Protocol = (() => {
+  // One command set. kind: resource (read, returns data) | tool (does something).
+  const OPS = {
+    'context.read':   {kind:'resource', uri:'tinycast://context',   scope:'read',            mcp:'resources/read'},
+    'agents.read':    {kind:'resource', uri:'tinycast://agents',    scope:'read',            mcp:'resources/read'},
+    'clipboard.read': {kind:'resource', uri:'tinycast://clipboard', scope:'clipboard:read',  mcp:'resources/read'},
+    'hud.show':       {kind:'tool', tool:'hud_show',       scope:'ui'},
+    'palette.show':   {kind:'tool', tool:'palette_show',   scope:'ui'},
+    'card.needsYou':  {kind:'tool', tool:'card_needs_you', scope:'ui'},
+    'terminal.run':   {kind:'tool', tool:'terminal_run',   scope:'exec', confirm:true},
+    'prompt.arg':     {kind:'tool', tool:null,             scope:'prompt', scriptOnly:true},
+  };
+  // Trust per caller. URL links can be opened by ANY app, so they get the least.
+  const TRANSPORTS = {
+    url:    {label:'tinycast:// link', fixedScopes:['ui'], returnsValue:false},
+    mcp:    {label:'MCP over HTTP 127.0.0.1:43311/mcp', returnsValue:true},
+    cli:    {label:'tinycast CLI (stdio → HTTP bridge)', returnsValue:true},
+    script: {label:'script child process (JSON lines on stdio)', fixedScopes:['ui','read','prompt'], returnsValue:true},
+  };
+  const TOKENS = {
+    'claude-worker': ['read','ui'],
+    'sasha-cockpit': ['read','ui','exec','clipboard:read'],
+  };
+  const FAKE = {
+    'tinycast://context': {frontApp:'Ghostty', selection:'func raise()', branch:'main'},
+    'tinycast://agents':  [{name:'checkout-retries', agent:'claude', state:'working'},{name:'flaky-cart', agent:'codex', state:'blocked'}],
+    'tinycast://clipboard': {latest:'git log --oneline -3'},
+  };
+
+  const initial = () => ({ seq:0, ui:{hud:null, palette:null, cards:[], prompt:null, terminals:[]},
+    pending:null, script:null, audit:[], last:null });
+
+  function wire(t, op, args, id, token){
+    const o = OPS[op];
+    if (t==='url') return `open "tinycast://${op}?${new URLSearchParams(args||{})}"`;
+    if (t==='script') return JSON.stringify({type: op==='prompt.arg'?'arg':op, id, ...args});
+    const body = o.kind==='resource'
+      ? {jsonrpc:'2.0', id, method:'resources/read', params:{uri:o.uri}}
+      : {jsonrpc:'2.0', id, method:'tools/call', params:{name:o.tool, arguments:args||{}}};
+    if (t==='cli') return `tinycast ${o.kind==='resource'?'read '+o.uri:'call '+o.tool+" '"+JSON.stringify(args||{})+"'"}\n# → POST /mcp  Authorization: Bearer <${token}>\n${JSON.stringify(body)}`;
+    return `POST /mcp  Authorization: Bearer <${token}>\n${JSON.stringify(body)}`;
+  }
+
+  function scopesFor(a){
+    const tr = TRANSPORTS[a.t];
+    return tr.fixedScopes ? tr.fixedScopes : (TOKENS[a.token] || []);
+  }
+
+  function effect(s, op, args){
+    const ui = {...s.ui};
+    if (op==='hud.show') ui.hud = args.text;
+    if (op==='palette.show') ui.palette = args.query;
+    if (op==='card.needsYou') ui.cards = [...ui.cards, {run:args.run, question:args.question}];
+    if (op==='terminal.run') ui.terminals = [...ui.terminals, args.cmd];
+    if (op==='prompt.arg') ui.prompt = {placeholder:args.placeholder, choices:args.choices};
+    return ui;
+  }
+
+  function log(s, a, op, decision, why){
+    const who = a.t==='script' ? `script:${s.script?.name||'?'}` : a.t==='url' ? 'any app (link)' : `token:${a.token}`;
+    return [{n:s.seq, via:TRANSPORTS[a.t].label, who, op, decision, why}, ...s.audit];
+  }
+
+  function request(s, a){
+    const id = ++s.seq, op = a.op, o = OPS[op], tr = TRANSPORTS[a.t];
+    const base = {...s, seq:id};
+    const out = {wire: wire(a.t, op, a.args, id, a.token)};
+    const deny = (why) => ({...base, audit:log(base,a,op,'denied',why),
+      last:{...out, decision:'denied', why, reply: tr.returnsValue ? errReply(a.t,id,why) : '(links cannot return anything — the caller never learns it failed)'}});
+
+    if (a.t==='script' && !s.script) return deny('no script is running');
+    if (o.scriptOnly && a.t!=='script') return deny('prompts are only for scripts Tinycast started');
+    if (a.t==='url' && o.kind==='resource') return deny('links cannot return values; read over MCP or the CLI');
+    const scopes = scopesFor(a);
+    if (!scopes.includes(o.scope)) return deny(`needs scope “${o.scope}”, caller has [${scopes.join(', ')||'none'}]`);
+    if (o.confirm) {
+      return {...base, pending:{a, id}, audit:log(base,a,op,'waiting for Sasha','destructive: Allow/Deny banner'),
+        last:{...out, decision:'waiting', why:'Tinycast shows an Allow / Deny banner before running commands', reply:'(held until you decide)'}};
+    }
+    return perform(base, a, id, out);
+  }
+
+  function errReply(t,id,why){
+    return t==='script' ? JSON.stringify({type:'error', id, message:why}) : JSON.stringify({jsonrpc:'2.0', id, error:{code:-32001, message:why}});
+  }
+
+  function perform(s, a, id, out){
+    const o = OPS[a.op];
+    const data = o.kind==='resource' ? FAKE[o.uri] : {ok:true};
+    let reply;
+    if (a.t==='url') reply = '(links cannot return anything)';
+    else if (a.t==='script') reply = a.op==='prompt.arg' ? '(waiting for you to pick — the answer goes to the script\'s stdin)' : JSON.stringify({type:'result', id, ...data});
+    else reply = JSON.stringify(o.kind==='resource' ? {jsonrpc:'2.0', id, result:{contents:[{uri:o.uri, mimeType:'application/json', text:JSON.stringify(data)}]}}
+                                                    : {jsonrpc:'2.0', id, result:{content:[{type:'text', text:'ok'}]}});
+    const script = a.op==='prompt.arg' ? {...s.script, waitingId:id} : s.script;
+    return {...s, script, ui:effect(s, a.op, a.args), audit:log(s,a,a.op,'allowed',''), last:{...out, decision:'allowed', reply}};
+  }
+
+  function reduce(s, a){
+    switch(a.t){
+      case 'reset': return initial();
+      case 'spawn': {
+        const seq = s.seq+1;
+        const hello = JSON.stringify({type:'hello', protocol:1, capabilities:['arg','hud','terminal']});
+        return {...s, seq, script:{name:a.name}, audit:[{n:seq, via:'script child process (JSON lines on stdio)', who:`script:${a.name}`, op:'spawn', decision:'allowed', why:'bun run --preload tinycast-sdk.ts'}, ...s.audit],
+          last:{wire:`bun run --preload ~/.tinycast/sdk/tinycast-sdk.ts pick-branch.ts\nscript → ${hello}`, decision:'allowed', reply:JSON.stringify({type:'helloAck', protocol:1})}};
+      }
+      case 'exit': {
+        if (!s.script) return {...s, last:{wire:'—', decision:'denied', why:'no script is running', reply:'—'}};
+        return {...s, script:null, ui:{...s.ui, prompt:null}, last:{wire:'script → {"type":"exit","code":0}', decision:'allowed', reply:'(process group reaped)'}};
+      }
+      case 'pick': {
+        if (!s.ui.prompt || !s.script) return s;
+        const id = s.script.waitingId;
+        return {...s, ui:{...s.ui, prompt:null}, script:{...s.script, waitingId:null},
+          last:{wire:`you picked “${a.value}”`, decision:'allowed', reply:`Tinycast → script stdin: ${JSON.stringify({type:'submit', id, value:a.value})}`}};
+      }
+      case 'decide': {
+        if (!s.pending) return s;
+        const {a:req, id} = s.pending; const cleared = {...s, pending:null};
+        if (!a.allow) return {...cleared, audit:log(cleared, req, req.op, 'denied by Sasha', 'Deny pressed'),
+          last:{wire:'you pressed Deny', decision:'denied', why:'you declined', reply:errReply(req.t,id,'declined by user')}};
+        const done = perform(cleared, req, id, {wire:'you pressed Allow'});
+        return {...done, audit:[{...done.audit[0], decision:'allowed by Sasha'}, ...done.audit.slice(1)]};
+      }
+      default: return request(s, a);
+    }
+  }
+  return {reduce, initial, OPS, TRANSPORTS, TOKENS};
+})();
+
+/* ===== Throwaway page ===== */
+let state = Protocol.initial(), prev = state;
+const $ = (id) => document.getElementById(id);
+function dispatch(a){ prev = state; state = Protocol.reduce(state, a); render(); }
+document.addEventListener('click', e => { const b = e.target.closest('button[data-a]'); if (b) dispatch(JSON.parse(b.dataset.a)); });
+
+function esc(s){return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}
+function render(){
+  const L = state.last;
+  const cls = !L ? '' : L.decision==='allowed' ? 'ok' : L.decision==='waiting' ? 'warn' : 'bad';
+  $('last').innerHTML = !L ? '<p class="lede">Press any button. You will see the exact message on the wire, Tinycast\'s decision, and what the caller gets back.</p>' :
+    `<dl class="fields"><dt>Decision</dt><dd><span class="pill ${cls}">${esc(L.decision)}</span> ${L.why?esc(L.why):''}</dd></dl>
+     <div class="label">On the wire</div><pre>${esc(L.wire)}</pre>
+     <div class="label">Caller gets back</div><pre>${esc(L.reply)}</pre>`;
+  const ui = state.ui, ch = (k) => JSON.stringify(ui[k])!==JSON.stringify(prev.ui[k]) ? ' class="changed"' : '';
+  $('ui').innerHTML = `<dl class="fields">
+    <dt>HUD</dt><dd${ch('hud')}>${ui.hud?esc(ui.hud):'—'}</dd>
+    <dt>Palette</dt><dd${ch('palette')}>${ui.palette?'open with “'+esc(ui.palette)+'”':'—'}</dd>
+    <dt>Terminal instances</dt><dd${ch('terminals')}>${ui.terminals.length?ui.terminals.map(esc).join(' · '):'—'}</dd>
+    <dt>Running script</dt><dd>${state.script?esc(state.script.name):'—'}</dd></dl>
+    <div${ch('cards')}>${ui.cards.map(c=>`<div class="cardx"><strong>Needs you · ${esc(c.run)}</strong><br>${esc(c.question)}</div>`).join('')}</div>
+    ${ui.prompt?`<div class="changed"><strong>Prompt: ${esc(ui.prompt.placeholder)}</strong><div class="row" style="margin:6px 0 0">${ui.prompt.choices.map(v=>`<button data-a='${esc(JSON.stringify({t:"pick",value:v}))}'>${esc(v)}</button>`).join('')}</div></div>`:''}`;
+  $('youRow').innerHTML = state.pending
+    ? `<span>Banner: “${esc(state.pending.a.args.cmd)}” requested by ${state.pending.a.t==='script'?'a script':'token '+esc(state.pending.a.token)}</span>
+       <button class="primary" data-a='{"t":"decide","allow":true}'>Allow</button><button data-a='{"t":"decide","allow":false}'>Deny</button>`
+    : '<span class="lede">Nothing waiting for you.</span>';
+  $('audit').innerHTML = state.audit.length ? `<table><tr><th>#</th><th>Caller</th><th>Asked for</th><th>Result</th></tr>${state.audit.slice(0,8).map(r=>
+    `<tr><td>${r.n}</td><td>${esc(r.who)}<br><small class="lede">${esc(r.via)}</small></td><td>${esc(r.op)}</td><td>${esc(r.decision)}${r.why?'<br><small class="lede">'+esc(r.why)+'</small>':''}</td></tr>`).join('')}</table>` : '<p class="lede">Empty.</p>';
+  renderScenario();
+}
+
+const SCENARIOS = [
+  {name:'Agent asks for you', desc:'A Claude worker reads what you are doing, then puts a “needs you” card in Tinycast. Watch: reads return data over MCP; the card appears without any prompt because it only touches the UI.',
+    steps:[{t:'mcp',token:'claude-worker',op:'context.read'},{t:'mcp',token:'claude-worker',op:'agents.read'},{t:'mcp',token:'claude-worker',op:'card.needsYou',args:{run:'checkout-retries',question:'Retry 3× or 5×?'}}]},
+  {name:'Script with a prompt', desc:'Tinycast starts a script as its own process. The script asks you to pick a branch, gets your answer on stdin, then shows a HUD. Watch the JSON lines go each way.',
+    steps:[{t:'spawn',name:'pick-branch.ts'},{t:'script',op:'prompt.arg',args:{placeholder:'Branch',choices:['main','al/libghostty-prototype']}},{t:'pick',value:'main'},{t:'script',op:'hud.show',args:{text:'Checked out'}},{t:'exit'}]},
+  {name:'A link tries something dangerous', desc:'Any app or web page can open a tinycast:// link, so links may only touch the UI. Watch: the command is refused, and the caller never finds out because links cannot reply.',
+    steps:[{t:'url',op:'hud.show',args:{text:'Build green'}},{t:'url',op:'terminal.run',args:{cmd:'rm -rf ~/work'}},{t:'url',op:'clipboard.read'}]},
+  {name:'Scoped tokens + Allow/Deny', desc:'The worker token lacks “exec”, so running a command is refused outright. Your cockpit token has it, but commands still wait for your Allow. Press Deny once, then Allow.',
+    steps:[{t:'mcp',token:'claude-worker',op:'terminal.run',args:{cmd:'bun test'}},{t:'mcp',token:'sasha-cockpit',op:'terminal.run',args:{cmd:'bun test'}},{t:'decide',allow:false},{t:'mcp',token:'sasha-cockpit',op:'terminal.run',args:{cmd:'bun test'}},{t:'decide',allow:true}]},
+  {name:'CLI bridge', desc:'The tinycast CLI is what you register in Claude or Codex (`tinycast mcp --stdio`). It reads the token from ~/.tinycast/server.json and forwards to the same HTTP endpoint, so the policy is identical.',
+    steps:[{t:'cli',token:'sasha-cockpit',op:'clipboard.read'},{t:'cli',token:'claude-worker',op:'clipboard.read'}]},
+];
+let tab = 0, stepIx = 0;
+function label(a){
+  if (a.t==='decide') return a.allow?'Press Allow':'Press Deny';
+  if (a.t==='pick') return `Pick “${a.value}”`;
+  if (a.t==='spawn') return `Start ${a.name}`;
+  if (a.t==='exit') return 'Script exits';
+  const who = a.t==='url'?'Link':a.t==='script'?'Script':a.t==='cli'?`CLI (${a.token})`:`Agent (${a.token})`;
+  return `${who}: ${a.op}${a.args?.cmd?' “'+a.args.cmd+'”':''}`;
+}
+function renderScenario(){
+  $('tabs').innerHTML = SCENARIOS.map((s,i)=>`<button role="tab" aria-selected="${i===tab}" data-tab="${i}">${esc(s.name)}</button>`).join('');
+  const s = SCENARIOS[tab];
+  $('scenario').innerHTML = `<p class="lede">${esc(s.desc)}</p><ol class="steps">${s.steps.map((a,i)=>
+    `<li class="${i<stepIx?'done':''}"><button data-step="${i}" ${i!==stepIx?'disabled':''}>${esc(label(a))}</button></li>`).join('')}</ol>`;
+}
+document.addEventListener('click', e => {
+  const t = e.target.closest('button[data-tab]');
+  if (t){ tab = +t.dataset.tab; stepIx = 0; prev = state = Protocol.initial(); render(); return; }
+  const st = e.target.closest('button[data-step]');
+  if (st){ const a = SCENARIOS[tab].steps[+st.dataset.step]; stepIx++; dispatch(a); }
+});
+
+$('policy').innerHTML = `<table><tr><th>Command</th><th>Kind</th><th>MCP name / URI</th><th>Scope</th><th>Link?</th><th>Asks you?</th></tr>${
+  Object.entries(Protocol.OPS).map(([k,o])=>`<tr><td>${k}</td><td>${o.kind}</td><td><code>${o.uri||o.tool||'script only'}</code></td><td>${o.scope}</td><td>${o.kind==='resource'||!(Protocol.TRANSPORTS.url.fixedScopes.includes(o.scope))?'no':'yes'}</td><td>${o.confirm?'yes':'no'}</td></tr>`).join('')}</table>
+  <div class="label">Tokens</div><pre>${esc(JSON.stringify(Protocol.TOKENS,null,2))}</pre>`;
+render();
+</script>
+</body>
+</html>
