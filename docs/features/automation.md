@@ -149,11 +149,11 @@ stdio MCP server that POSTs each line to the running app's endpoint:
 | Operation | Scope | What it does |
 | --- | --- | --- |
 | resource `tinycast://agents` | `agents:read` | Runs from the existing status helper (`attach` is reduced to `attachable`). |
-| resource `tinycast://terminals` | `agents:read` | Open terminal instances: id, directory, phase, pinned. No command text. |
+| resource `tinycast://terminals` | `agents:read` | Open terminal instances: id, directory, phase, pinned, `startedByYou`. No command text. |
 | resource `tinycast://questions` | `ui` | The caller's own questions with `state` (`pending`, `answered`, `expired`, `acknowledged`), `answer`, `expiresAt`. |
 | tool `question_ask` | `ui` | Puts a card on screen with up to six buttons; returns the question id. |
 | tool `question_ack` | `ui` | Marks an answered or expired question handled so it leaves the resource. |
-| tool `terminal_focus` | `ui` | Raises an existing terminal instance by id. |
+| tool `terminal_focus` | `ui` | Raises a terminal instance **this client started** (via `terminal_run` or `agent_dispatch`) by id; any other id is refused as if absent. |
 | tool `terminal_run` | `exec` | Opens a terminal instance running a command, **after the user approves it**. |
 | tool `agent_dispatch` | `dispatch` | Starts a named profile with a prompt, **after the user approves it**; returns the terminal id. |
 | resource `tinycast://agent-profiles` | `dispatch` | Profile names the caller may ask for. |
@@ -161,6 +161,9 @@ stdio MCP server that POSTs each line to the running app's endpoint:
 
 `clipboard:read` is a defined scope with no operation yet.
 
+- **Terminals a client may focus are its own.** `ui` alone would otherwise let any client raise any
+  terminal, including ones the user opened. The ownership record lives in memory and lasts as long
+  as the terminal; a terminal the user opened can only be focused by the user.
 - **Questions belong to the client that asked** (its token label heads the card, so the text cannot
   impersonate a run). They live in memory in `AutomationQuestionStore`: a client that reconnects reads
   them again; a quit loses them. At most 10 open per client, 50 in total, lifetime 10 s to 24 h

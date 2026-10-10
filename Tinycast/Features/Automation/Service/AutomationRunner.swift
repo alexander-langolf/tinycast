@@ -11,6 +11,8 @@ final class AutomationRunner {
     private unowned let core: AppCore
     private let questions: AutomationQuestionStore
     private let profiles: AutomationAgentProfileStore
+    /// Which client started each terminal; `terminal_focus` reaches only a client's own.
+    private var startedBy: [UUID: UUID] = [:]
 
     init(core: AppCore, questions: AutomationQuestionStore, profiles: AutomationAgentProfileStore) {
         self.core = core
@@ -81,13 +83,17 @@ final class AutomationRunner {
             guard let command = prepared.command, let directory = prepared.directory,
                 let instance = core.terminalInstances.open(command: command, directory: directory)
             else { return .toolError("Could not start the terminal.") }
+            let open = Set(core.terminalInstances.instances.map(\.id))
+            startedBy = startedBy.filter { open.contains($0.key) }
+            if let client = call.caller.clientID { startedBy[instance.id] = client }
             var result: [String: JSONValue] = ["terminalId": .string(instance.id.uuidString)]
             if let agent = arguments["agent"] { result["agent"] = agent }
             return .value(.object(result))
         case AutomationOperationCatalog.terminalFocus.name:
             guard let id = arguments["id"]?.stringValue.flatMap(UUID.init(uuidString:)),
+                let client = call.caller.clientID, startedBy[id] == client,
                 core.terminalInstancesPresenter.focus(id)
-            else { return .toolError("No open terminal has that id.") }
+            else { return .toolError("No open terminal you started has that id.") }
             return .value(.object(["focused": .bool(true)]))
         case AutomationOperationCatalog.questionAsk.name:
             return ask(call)
@@ -110,8 +116,14 @@ final class AutomationRunner {
             await core.agentRuns.refreshOnce()
             return .value(.object(["runs": .array(core.agentRuns.runs.map(Self.json))]))
         case AutomationOperationCatalog.terminals.name:
+            let client = call.caller.clientID
             return .value(
-                .object(["terminals": .array(core.terminalInstances.instances.map(Self.json))]))
+                .object([
+                    "terminals": .array(
+                        core.terminalInstances.instances.map { instance in
+                            json(instance, startedByCaller: client != nil && startedBy[instance.id] == client)
+                        })
+                ]))
         case AutomationOperationCatalog.questions.name:
             guard let client = call.caller.clientID else { return .toolError("Not available.") }
             return .value(
@@ -149,7 +161,7 @@ final class AutomationRunner {
         return .object(object)
     }
 
-    private static func json(_ instance: TerminalInstance) -> JSONValue {
+    private func json(_ instance: TerminalInstance, startedByCaller: Bool) -> JSONValue {
         let phase: String
         switch instance.session.phase {
         case .starting: phase = "starting"
@@ -159,7 +171,8 @@ final class AutomationRunner {
         }
         return .object([
             "id": .string(instance.id.uuidString), "directory": .string(instance.session.directory),
-            "phase": .string(phase), "pinned": .bool(instance.isPinned)
+            "phase": .string(phase), "pinned": .bool(instance.isPinned),
+            "startedByYou": .bool(startedByCaller)
         ])
     }
 

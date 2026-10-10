@@ -59,7 +59,7 @@ enum AutomationOperationCatalog {
         required: ["id"])
     static let terminalFocus = tool(
         "terminal_focus", "Focus a terminal",
-        "Bring an existing terminal instance to the front by the id in tinycast://terminals.",
+        "Bring a terminal this client started (terminal_run, agent_dispatch) to the front by id.",
         scope: .ui, properties: ["id": string("Terminal instance id.", max: 64)], required: ["id"])
     static let terminalRun = tool(
         "terminal_run", "Run a command",
