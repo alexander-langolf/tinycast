@@ -98,7 +98,16 @@ and `Tinycast/Windows/AgentRuns/`, with its own documentation and `Tests/agent-r
 `AppCore` owns its monitor, coordinator and panel presenter. Palette integration consists of tagged
 lifecycle and geometry calls; the presenter owns observation, child-panel management and placement.
 Feature-only dimensions live in `AgentRunsMetrics`, leaving Theme and InterfaceMetrics unchanged.
-Polling runs only while the palette is visible and retains the last snapshot when hidden.
+Polling runs while the palette is visible or an automation subscriber holds it open
+(`setAutomationHold`), and retains the last snapshot otherwise.
+
+## Inbound automation
+
+The [automation feature](features/automation.md) is fork-owned under `Tinycast/Features/Automation/`.
+`AppCore` lazily owns `AutomationCoordinator`, which owns the router, runner, audit log, client
+store, approval queue, question store and HTTP endpoint. It is separate from the MCP client. The
+`tinycast` stdio bridge is its own target in `project.fork.yml`, sources in `TinycastCLI/`, embedded
+in the app's `Contents/Helpers`.
 
 ## Search
 
@@ -321,6 +330,13 @@ unless they have an explicit symbol-only allowance. The audit is a static guard,
 | `Scripts/run-tests.sh` | `// FORK: palette-chips` | Register the chip state-machine and layout harness. |
 | `Tinycast/App/AppCore.swift` | `// FORK: terminal-instances` | Lazily own the coordinator and presenter; hang up every session at termination. |
 | `Tinycast/App/AppCore.swift` | `// FORK: palette-chips` | Lazily own the chips coordinator and presenter. |
+| `Tinycast/App/AppCore.swift` | `// FORK: automation` | Lazily own the inbound automation coordinator; start it after MCP, offer it each opened URL first, stop it at termination. |
+| `Tinycast/Features/Settings/Panes/GeneralSettingsView.swift` | `// FORK: automation-settings` | Render the automation clients section. |
+| `Tinycast/App/AppCore.swift` | `// FORK: automation` | Route the automation approval dialog to `DialogController`. |
+| `Tinycast/Windows/Dialog/DialogRequest.swift` | `// FORK: automation` | The `automationApproval` accessory case. |
+| `Tinycast/Windows/Dialog/DialogController.swift` | `// FORK: automation` | `approveAutomation`, its width, and the hook that lets an expired approval close its dialog. |
+| `Tinycast/Windows/Dialog/DialogView.swift` | `// FORK: automation` | Render the approval's labelled fields. |
+| `Tinycast/Info.plist` | `FORK: automation` (XML comment) | Claim the bundle id as a second URL scheme so automation links reach one channel. |
 | `Tinycast/Palette/RootPaletteView.swift` | `// FORK: terminal-instances` | Route standalone `$` launcher queries to the terminal command screen. |
 | `Tinycast/Palette/RootPaletteView.swift` | `// FORK: palette-chips` | Toggle chips with Tab in the collapsed bar; handle empty-query Escape; set pill radius, show the `⌘1–4` hint and hide compact favourites. |
 | `Tinycast/Palette/PaletteWindowController.swift` | `// FORK: palette-chips` | Route number-row favourite slots to active chips and consume unused slots; set collapsed pill width. |

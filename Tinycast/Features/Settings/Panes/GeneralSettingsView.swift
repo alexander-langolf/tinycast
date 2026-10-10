@@ -113,6 +113,8 @@ struct GeneralSettingsView: View {
                 SettingsSectionHeader(.generalAppearance)
             }
 
+            AutomationSettingsSection()  // FORK: automation-settings
+
             Section {
                 Picker(selection: hyperKeySelection) {
                     ForEach(HyperKeyPhysicalKey.allCases) { key in

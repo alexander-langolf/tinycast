@@ -7,6 +7,8 @@ import os
 final class AgentRunsMonitor {
     private(set) var runs: [AgentRun] = []
     @ObservationIgnored private var pollTask: Task<Void, Never>?
+    @ObservationIgnored private var wantedByPalette = false
+    @ObservationIgnored private var heldByAutomation = false
 
     private static let statusPath = "LangolfVault/.agents/bin/agent-status"
     nonisolated private static let logger = Logger(subsystem: "com.tinycast", category: "AgentRuns")
@@ -21,6 +23,30 @@ final class AgentRunsMonitor {
     #endif
 
     func start() {
+        wantedByPalette = true
+        run()
+    }
+
+    /// Automation keeps status flowing while a client is subscribed, palette or not.
+    func setAutomationHold(_ hold: Bool) {
+        heldByAutomation = hold
+        if hold {
+            run()
+        } else if !wantedByPalette {
+            cancelPolling()
+        }
+    }
+
+    /// One read outside the poll loop, for a client reading while nothing is polling.
+    func refreshOnce() async {
+        guard pollTask == nil else { return }
+        let executable = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(Self.statusPath)
+        guard let next = try? await Self.read(executable) else { return }
+        publish(next)
+    }
+
+    private func run() {
         guard pollTask == nil else { return }
         let executable = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(Self.statusPath)
@@ -44,6 +70,12 @@ final class AgentRunsMonitor {
     }
 
     func stop() {
+        wantedByPalette = false
+        guard !heldByAutomation else { return }
+        cancelPolling()
+    }
+
+    private func cancelPolling() {
         pollTask?.cancel()
         pollTask = nil
         // Keep the last snapshot: the next summon shows it at once while the first poll refreshes it.

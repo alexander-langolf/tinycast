@@ -2,6 +2,15 @@
 # Per-configuration settings outrank the upstream target's base icon setting after include merging.
 targets:
   Tinycast:
+    dependencies:
+      # Automation bridge: `Tinycast.app/Contents/Helpers/tinycast mcp --stdio`.
+      - target: TinycastCLI
+        link: false
+        embed: true
+        codeSign: true
+        copy:
+          destination: wrapper
+          subpath: Contents/Helpers
     settings:
       base:
         # libghostty-vt prototype: built by Scripts/fork-build-libghostty.sh into .tools/libghostty (gitignored).
@@ -72,3 +81,16 @@ targets:
       configs:
         Debug:
           CODE_SIGN_IDENTITY: "-"
+
+  TinycastCLI:
+    type: tool
+    platform: macOS
+    sources:
+      - TinycastCLI
+    settings:
+      base:
+        EXECUTABLE_NAME: tinycast
+        PRODUCT_MODULE_NAME: TinycastCLI
+        SKIP_INSTALL: YES
+        SWIFT_VERSION: "6.0"
+        SWIFT_STRICT_CONCURRENCY: complete

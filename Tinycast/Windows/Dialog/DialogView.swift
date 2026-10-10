@@ -47,6 +47,7 @@ struct DialogView: View {
                 switch request.accessory {
                 case .volume(let volume): VolumeSlider(state: volume)
                 case .snippetArguments(let arguments): SnippetArgumentFields(state: arguments)
+                case .automationApproval(let approval): AutomationApprovalFields(presentation: approval)  // FORK: automation
                 case nil: EmptyView()
                 }
             }

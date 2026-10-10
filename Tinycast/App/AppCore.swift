@@ -127,6 +127,8 @@ final class AppCore {
     @ObservationIgnored private(set) lazy var terminalInstances = TerminalInstancesCoordinator(core: self)
     @ObservationIgnored private(set) lazy var terminalInstancesPresenter =
         TerminalInstancesPresenter(core: self)
+    // FORK: automation
+    @ObservationIgnored private(set) lazy var automation = AutomationCoordinator(core: self)
     // FORK: palette-chips
     @ObservationIgnored private(set) lazy var paletteChips = PaletteChipsCoordinator(core: self)
     @ObservationIgnored private(set) lazy var paletteChipsPresenter = PaletteChipsPresenter(core: self)
@@ -314,6 +316,7 @@ final class AppCore {
             chatGPTSubscription.launchSettings = { [aiSettings] in aiSettings.launch(for: .codex) }
             aiChatCoordinator.applyEnabled()
             mcpCoordinator.applyEnabled()
+            automation.start()  // FORK: automation
             customQuickActions.onChange = { [weak self] _ in
                 self?.quickActionCoordinator.applyCustomQuickActionsPresence()
             }
@@ -483,6 +486,7 @@ final class AppCore {
     }
 
     func handleOpenURL(_ url: URL) {
+        if automation.handleLink(url) { return }  // FORK: automation
         guard ExtensionDeepLink.claims(url) else { return }
         guard let route = ExtensionDeepLink.route(url: url) else {
             paletteCoordinator.showPalette(mode: .launcher, restoreAnyMode: true)
@@ -569,6 +573,7 @@ final class AppCore {
         settingsFile?.flush()
         agentRunsCoordinator.stop()  // FORK: agent-runs
         terminalInstances.closeAll()  // FORK: terminal-instances
+        automation.stop()  // FORK: automation
         clipboardTextIndexer?.stop()
         // Caps Lock first: its remap is the one teardown that outlives the process.
         hyperKeyTap.prepareForTermination()
@@ -901,6 +906,11 @@ final class AppCore {
         await dialogs.confirm(
             title: title, message: message, symbol: symbol, tone: tone, confirmTitle: confirmTitle,
             confirmRole: confirmRole, dismissTitle: dismissTitle)
+    }
+
+    // FORK: automation
+    func approveAutomation(_ approval: AutomationApprovalPresentation) async -> Bool {
+        await dialogs.approveAutomation(approval)
     }
 
     /// A question with more than two answers; the returned index is into `options`.

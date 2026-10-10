@@ -39,6 +39,17 @@ final class DialogController: NSObject, NSWindowDelegate {
         return await present(request)
     }
 
+    // FORK: automation
+    /// Allow or Deny, defaulting to Deny; the presentation can take the dialog down from outside.
+    func approveAutomation(_ approval: AutomationApprovalPresentation) async -> Bool {
+        let request = DialogRequest(
+            title: approval.request.title, message: nil, symbol: "terminal", tone: .danger,
+            actions: [DialogAction(title: "Allow"), DialogAction(title: "Deny", role: .cancel)],
+            defaultIndex: 1, cancelIndex: 1, accessory: .automationApproval(approval))
+        defer { approval.dismiss = nil }
+        return await present(request) == 0
+    }
+
     func notice(title: String, message: String, symbol: String, tone: DialogTone) async {
         let request = DialogRequest(
             title: title, message: message, symbol: symbol, tone: tone,
@@ -101,7 +112,7 @@ final class DialogController: NSObject, NSWindowDelegate {
             let width =
                 switch request.accessory {
                 case nil, .volume: metrics.size.dialogCompactWidth
-                case .snippetArguments: metrics.size.dialogWidth
+                case .snippetArguments, .automationApproval: metrics.size.dialogWidth  // FORK: automation
                 }
             let content = hostingView(
                 DialogView(
@@ -127,6 +138,12 @@ final class DialogController: NSObject, NSWindowDelegate {
                 }
             }
             self.panel = panel
+            if case .automationApproval(let approval) = request.accessory {  // FORK: automation
+                approval.dismiss = { [weak self, weak panel] in
+                    guard let self, let panel, self.panel === panel else { return }
+                    finish(request.cancelIndex)
+                }
+            }
             place(panel)
             show(panel)
         }
