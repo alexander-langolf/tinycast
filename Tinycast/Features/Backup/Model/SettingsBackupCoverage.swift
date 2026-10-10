@@ -179,6 +179,8 @@ enum SettingsBackupCoverage {
             "Names a folder on this Mac; the one a backup lands on may not have it.",
         AppSettingsKey.notesFolder.rawValue:
             "Names a folder on this Mac; the one a backup lands on may not have it.",
+        AppSettingsKey.aiWorkingDirectory.rawValue:  // FORK: ai-working-directory
+            "Names a folder on this Mac, whose instructions an import must not hand to its agents.",
         AppSettingsKey.settingsFileEnabled.rawValue:
             "Lets a file on this Mac change its settings; an import must not hand that to another."
     ]

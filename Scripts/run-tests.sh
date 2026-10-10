@@ -93,6 +93,9 @@ run() {
             ;;
     esac
     case " $* " in
+        *"/SettingsFileSchema.swift "*) set -- "$@" Tinycast/Fork/ForkAIWorkingDirectory.swift ;;
+    esac
+    case " $* " in
         *"/SettingsSearchCatalog.swift "*) set -- "$@" Tinycast/Fork/ForkSettingsSearch.swift ;;
     esac
     case " $* " in

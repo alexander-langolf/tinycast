@@ -132,6 +132,7 @@ struct AISettingsView: View {
                     "A reply stops after this many; Unlimited runs until Stop. "
                         + "API connections, Codex and Claude.")
             }
+            ForkAIWorkingDirectoryRow()  // FORK: ai-working-directory
         } header: {
             SettingsSectionHeader(.aiChat)
         }

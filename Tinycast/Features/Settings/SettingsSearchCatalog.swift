@@ -288,6 +288,7 @@ enum SettingsSearchCatalog {
         .init(.aiChat, "Web search", keywords: ["browse", "internet"]),
         .init(
             .aiChat, "Tool call rounds", keywords: ["mcp", "tools", "limit", "loop", "agent", "unlimited"]),
+        ForkSettingsSearch.aiWorkingDirectoryEntry,  // FORK: ai-working-directory
         .init(
             .aiConversations, "Quick AI opens to",
             keywords: ["new chat", "last", "summon", "resume"]),

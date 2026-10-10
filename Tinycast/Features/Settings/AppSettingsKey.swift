@@ -89,6 +89,7 @@ enum AppSettingsKey: String, CaseIterable {
     case aiOpensTo = "aiOpensTo"
     case aiNewChatAfter = "aiNewChatAfterMinutes"
     case aiToolRounds = "aiToolRounds"
+    case aiWorkingDirectory = "aiWorkingDirectory"  // FORK: ai-working-directory
     case aiShownModels = "aiShownModels"
     case aiDisabledRoutes = "aiDisabledRoutes"
     case aiInstalledOverrides = "aiInstalledOverrides"

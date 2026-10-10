@@ -79,6 +79,7 @@ final class AppCore {
     let customQuickActions = CustomQuickActionStore()
     let chatGPTSubscription = ChatGPTSubscriptionManager()
     let installedAI = InstalledAIManager()
+    let forkAIWorkingDirectory = ForkAIWorkingDirectory()  // FORK: ai-working-directory
     @ObservationIgnored private var appliedLaunchRevisions: [InstalledAIKind: Int] = [:]
 
     /// Set when a layout editor should open with Settings; the pane consumes it.
@@ -286,6 +287,7 @@ final class AppCore {
 
     func start() {
         forkAppearance.start()  // FORK: appearance-start
+        startForkAIWorkingDirectory()  // FORK: ai-working-directory
         // FORK: appearance-observation
         track(forkAppearance, { _ = $0.fontFamily; _ = $0.monoFontFamily }, reproject: { $0.windowController.applyInterfaceSize() })
         Signposts.interval("AppCore.start") {

@@ -93,6 +93,7 @@
 		1A7F214D77D831C7A223631E /* QuickActionResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31F2C83F4B985EA6CD03BC69 /* QuickActionResultView.swift */; };
 		1A9FCDB7A1C1CA3A93E4FB91 /* QuickActionModelPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE61289308F47E3572C293D0 /* QuickActionModelPicker.swift */; };
 		1B22A7E45ADF2FEA95957698 /* ExtensionFieldChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0C8025ED5F2833127E20C05 /* ExtensionFieldChrome.swift */; };
+		1B456588A7166EF789F82B23 /* ForkAIWorkingDirectoryRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1FD035096F97B5577E3FF78 /* ForkAIWorkingDirectoryRow.swift */; };
 		1B61BFFECA23D67A1B48DAD5 /* AgentRunsPanelPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DA86AAB81FA272AFB81369B /* AgentRunsPanelPresenter.swift */; };
 		1B9BC6B00770D1F002E62E0D /* ExtensionBootConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED5AAA98FFF7A4D34D7B490D /* ExtensionBootConfig.swift */; };
 		1BC16048EE05A1FD25739CB4 /* PaletteState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 188A6D3C5B6BC67716F15F83 /* PaletteState.swift */; };
@@ -328,6 +329,7 @@
 		5970306ABC24B03028E66D45 /* FileSearchIgnoreList.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBFF39C46E98D0808B188E2E /* FileSearchIgnoreList.swift */; };
 		5988C5F5629CE78FB6692BB3 /* SettingsEditorPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 607E7B669817BFC39B12C12D /* SettingsEditorPresenter.swift */; };
 		59C5304752BB9245F76AADDC /* CodexMCPLaunch.swift in Sources */ = {isa = PBXBuildFile; fileRef = F31FB61E6F6969851D3874FA /* CodexMCPLaunch.swift */; };
+		5A23113C1E60B5A92913F507 /* ForkAIWorkingDirectory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87A66972D5077178713E7C24 /* ForkAIWorkingDirectory.swift */; };
 		5A5B079A7C57B7A2AA4FABE7 /* GhosttyGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44297197783B2D23B6C4196B /* GhosttyGridView.swift */; };
 		5A894239B5E29EC206ED11CE /* TerminalShellShim.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1E5D459C9B714A9BE54E830 /* TerminalShellShim.swift */; };
 		5A91C58340D02ED0939BCAE2 /* CurrencyFeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE35B5E7B1CC94F759116097 /* CurrencyFeed.swift */; };
@@ -695,6 +697,7 @@
 		C21CAD7076793A5625F6B80C /* ChatHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B715A0256D2D0DDE1D28FC98 /* ChatHistoryStore.swift */; };
 		C22CDD56D33AB01C8D86F47B /* ChatReferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9ABB5C7F5028D84C05612FBB /* ChatReferences.swift */; };
 		C33FF829408F4B2218416743 /* AIRetention.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A82786725DFEB5467778E68 /* AIRetention.swift */; };
+		C347ADBEBD2A068701D183AB /* ForkAIWorkingDirectoryWiring.swift in Sources */ = {isa = PBXBuildFile; fileRef = 904FA1625DD0DE88598AED79 /* ForkAIWorkingDirectoryWiring.swift */; };
 		C385AEF3C8C5A6B2BACC1D9A /* OverflowFade.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88499DF2F503F2A3A19DEF07 /* OverflowFade.swift */; };
 		C396379DCAD85611D4C6F587 /* UpdateDownloader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BD81541882CBCC5B06F718F /* UpdateDownloader.swift */; };
 		C4479572F65559306118A9F0 /* CodexTurnRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E82DD04042376EBDEF3E84C /* CodexTurnRunner.swift */; };
@@ -1406,6 +1409,7 @@
 		867B0475618A01A765AC0DC5 /* WindowSwitchOrder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowSwitchOrder.swift; sourceTree = "<group>"; };
 		8756FBB625DFAE931D8D5D9D /* ColorSpaces.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorSpaces.swift; sourceTree = "<group>"; };
 		878CDE1022D3864D3112B927 /* AgentRunsMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentRunsMetrics.swift; sourceTree = "<group>"; };
+		87A66972D5077178713E7C24 /* ForkAIWorkingDirectory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForkAIWorkingDirectory.swift; sourceTree = "<group>"; };
 		87A6FD8B9919D2B41CF35497 /* ExtensionGitHubPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtensionGitHubPanel.swift; sourceTree = "<group>"; };
 		87C6479121B0371B3491FA8A /* AIConnectionEditorPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIConnectionEditorPanel.swift; sourceTree = "<group>"; };
 		87F282D4BBC2F147D3A98FFB /* ExtensionCleanup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtensionCleanup.swift; sourceTree = "<group>"; };
@@ -1437,6 +1441,7 @@
 		8FC86115B040B8C574EAD0B5 /* FileSearchPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileSearchPolicy.swift; sourceTree = "<group>"; };
 		8FEAC591704D983A2C31188F /* CurrencyRateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurrencyRateStore.swift; sourceTree = "<group>"; };
 		901C92BDC35B5E26BA8BA4AA /* FallbackCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FallbackCoordinator.swift; sourceTree = "<group>"; };
+		904FA1625DD0DE88598AED79 /* ForkAIWorkingDirectoryWiring.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForkAIWorkingDirectoryWiring.swift; sourceTree = "<group>"; };
 		90831A25F96F3563BEC60FCC /* FileSearchSurface.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileSearchSurface.swift; sourceTree = "<group>"; };
 		908B4DB6F8F15188E1FED2A1 /* TerminalMarkParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalMarkParser.swift; sourceTree = "<group>"; };
 		90DEF8D0211CA35DF44537B2 /* MenuSearchItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuSearchItem.swift; sourceTree = "<group>"; };
@@ -1613,6 +1618,7 @@
 		C0599199132DAFBE12C59FBD /* MeetingDay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingDay.swift; sourceTree = "<group>"; };
 		C06BD8A507191F2621FCFFC7 /* FormFieldChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FormFieldChrome.swift; sourceTree = "<group>"; };
 		C1E5D459C9B714A9BE54E830 /* TerminalShellShim.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalShellShim.swift; sourceTree = "<group>"; };
+		C1FD035096F97B5577E3FF78 /* ForkAIWorkingDirectoryRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForkAIWorkingDirectoryRow.swift; sourceTree = "<group>"; };
 		C214E40D42F4812F141C16A8 /* ColorPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorPreview.swift; sourceTree = "<group>"; };
 		C2EAA357A9F0317320CFAADF /* TerminalLogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalLogView.swift; sourceTree = "<group>"; };
 		C3C83D437500107168E12647 /* QuickActionSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickActionSettings.swift; sourceTree = "<group>"; };
@@ -2667,6 +2673,9 @@
 			children = (
 				60D90F376599CD3358AD671A /* Search */,
 				D5F51A2F29338DE5ECCD3534 /* FontCatalog.swift */,
+				87A66972D5077178713E7C24 /* ForkAIWorkingDirectory.swift */,
+				C1FD035096F97B5577E3FF78 /* ForkAIWorkingDirectoryRow.swift */,
+				904FA1625DD0DE88598AED79 /* ForkAIWorkingDirectoryWiring.swift */,
 				D3CB826022B255FDE11B1479 /* ForkAppearance.swift */,
 				75D7A9C497F8111A7798738B /* ForkAppearanceScope.swift */,
 				A8C2BBD29C8210289A5C64DE /* ForkAppIcon.icon */,
@@ -4576,6 +4585,9 @@
 				303FC5342B61A7862EBC1C32 /* FocusRelease.swift in Sources */,
 				6F076223EA47A68C1490F674 /* FolderPicker.swift in Sources */,
 				9179B78CC9DAF65132E6AB0F /* FontCatalog.swift in Sources */,
+				5A23113C1E60B5A92913F507 /* ForkAIWorkingDirectory.swift in Sources */,
+				1B456588A7166EF789F82B23 /* ForkAIWorkingDirectoryRow.swift in Sources */,
+				C347ADBEBD2A068701D183AB /* ForkAIWorkingDirectoryWiring.swift in Sources */,
 				B949C1F8876C3E6FBDBA88A1 /* ForkAppearance.swift in Sources */,
 				5BF773277810AC519D7F4A17 /* ForkAppearanceScope.swift in Sources */,
 				9CCB74DAB331D3320693744F /* ForkAssets.swift in Sources */,
