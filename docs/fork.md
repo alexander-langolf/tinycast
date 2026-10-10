@@ -232,6 +232,7 @@ unless they have an explicit symbol-only allowance. The audit is a static guard,
 | `Tinycast/App/AppCore.swift` | `// FORK: appearance-start` | Publish the current appearance at startup. |
 | `Tinycast/App/MenuBarItem.swift` | `// FORK: status-icon` | Prefer the fork menu-bar image. |
 | `Tinycast/DesignSystem/BarButton.swift` | `// FORK: named-asset` | Prefer the namespaced fork image, then upstream. |
+| `Tinycast/DesignSystem/BarButton.swift` | `// FORK: bar-button` | `BarButtonChrome` and `BarButton` live in their own file so the preview target compiles them alone. |
 | `Tinycast/DesignSystem/InterfaceMetrics.swift` | `// FORK: code-font` | Route code and inline code through the chosen monospaced family, else the system face. |
 | `Tinycast/DesignSystem/InterfaceMetrics.swift` | `// FORK: symbol-font` | Keep symbol sizing on the system face. |
 | `Tinycast/DesignSystem/InterfaceMetrics.swift` | `// FORK: typography-metrics` | Resolve standard and scaled prose through the fork typography cache. |

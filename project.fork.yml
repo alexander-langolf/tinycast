@@ -49,6 +49,7 @@ targets:
           - DesignSystem/InterfaceMetrics.swift
           - DesignSystem/Theme.swift
           - DesignSystem/GlassEffectView.swift
+          - DesignSystem/BarButtonChrome.swift
           - Features/CustomCommands/Service/ShellCommandRunner.swift
           - Fork/ForkColors.swift
           - Fork/ForkTypography.swift

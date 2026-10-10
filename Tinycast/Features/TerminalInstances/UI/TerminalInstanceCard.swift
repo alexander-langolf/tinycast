@@ -39,17 +39,19 @@ struct TerminalInstanceCard<Output: View>: View {
         .background(Theme.Colors.panelScrim)
         .background(GlassEffectView())
         .clipShape(shape)
-        .overlay { shape.strokeBorder(borderColor, lineWidth: 1) }
         .onAppear { fieldFocused = true }
         .onChange(of: phase) { _, phase in
             if case .idle = phase { fieldFocused = true }
         }
     }
 
+    /// The palette header's row: its gutters, icon slot and trailing accessory spacing.
     private var bar: some View {
-        HStack(spacing: metrics.spacing.lg) {
+        HStack(spacing: 0) {
+            gutter(metrics.spacing.md * 2)
             statusGlyph
                 .frame(width: metrics.size.headerIconSlot)
+            gutter(metrics.spacing.xl)
             commandArea
                 .frame(maxWidth: .infinity, alignment: .leading)
             if isFullScreen {
@@ -57,21 +59,27 @@ struct TerminalInstanceCard<Output: View>: View {
                     .font(metrics.typography.rowTrailing)
                     .foregroundStyle(Theme.Colors.warning)
                     .lineLimit(1)
+                gutter(metrics.spacing.md)
             }
             Text((directory as NSString).abbreviatingWithTildeInPath)
-                .font(metrics.typography.rowTrailing)
-                .foregroundStyle(Theme.Colors.textTertiary)
+                .font(metrics.typography.sectionHeader)
+                .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .truncationMode(.head)
+            gutter(metrics.spacing.md)
             barButton(
                 isPinned ? "pin.fill" : "pin.slash",
                 help: isPinned ? "Unpin  ⌘P" : "Pin on Top  ⌘P"
             ) { actions.togglePinned() }
             barButton("arrow.up.forward.app", help: "Open in kitty  ⌘O") { actions.openInKitty() }
             barButton("xmark", help: "Close  ⌘W") { actions.close() }
+            gutter(metrics.spacing.md * 2)
         }
-        .padding(.horizontal, metrics.spacing.md * 2)
         .frame(height: metrics.size.compactHeight)
+    }
+
+    private func gutter(_ width: CGFloat) -> some View {
+        Color.clear.frame(width: width, height: 1)
     }
 
     @ViewBuilder
@@ -112,43 +120,36 @@ struct TerminalInstanceCard<Output: View>: View {
         }
     }
 
+    /// The palette's magnifier slot; the phase shows in its symbol and colour instead of a border.
     @ViewBuilder
     private var statusGlyph: some View {
         switch phase {
         case .starting, .running:
-            ProgressView().controlSize(.small)
+            ProgressView().controlSize(.small).tint(Color.accentColor)
         case .idle(let status?) where status != 0:
             Text(String(status))
                 .font(metrics.typography.keyCap.monospacedDigit())
                 .foregroundStyle(Theme.Colors.destructive)
         case .ended:
-            Image(systemName: "powersleep")
-                .font(metrics.typography.headerIcon)
-                .foregroundStyle(Theme.Colors.textTertiary)
+            glyph("powersleep").foregroundStyle(Theme.Colors.textTertiary)
         case .idle:
-            Image(systemName: "dollarsign")
-                .font(metrics.typography.headerIcon)
-                .foregroundStyle(Theme.Colors.textSecondary)
+            glyph("dollarsign").foregroundStyle(.secondary)
         }
     }
 
-    private var borderColor: Color {
-        switch phase {
-        case .starting, .running: Color.accentColor.opacity(0.7)
-        case .idle(let status?) where status != 0: Theme.Colors.destructive.opacity(0.6)
-        case .idle, .ended: Theme.Colors.border
-        }
+    private func glyph(_ name: String) -> some View {
+        Image(systemName: name)
+            .font(metrics.typography.headerIcon)
+            .symbolRenderingMode(.hierarchical)
     }
 
     private func barButton(_ symbol: String, help: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+        BarButton(chrome: .rounded, isCompact: true, action: action) {
             Image(systemName: symbol)
                 .font(metrics.typography.barSymbol)
                 .foregroundStyle(Theme.Colors.textSecondary)
-                .frame(width: metrics.size.menuButton, height: metrics.size.menuButton)
-                .contentShape(Rectangle())
+                .frame(width: metrics.size.barButtonHeight - metrics.spacing.sm * 2)
         }
-        .buttonStyle(.plain)
         .focusable(false)
         .help(help)
         .accessibilityLabel(help)

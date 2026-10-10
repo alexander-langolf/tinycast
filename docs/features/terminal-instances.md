@@ -74,10 +74,13 @@ independently of pty EOF, including when a background job retains the terminal d
 
 ## Presentation and keys
 
-The “Grow” card uses `GlassEffectView`, the palette scrim and a 1-point rounded border. Starting
-and running use the accent border; a non-zero status uses the destructive border and displays
-the code; idle and ended otherwise use the normal border. The bar matches the compact palette's
-height and full panel width. Output grows beneath a 1-point divider up to `scaled(340)` points,
+The “Grow” card is built like the palette's search row: `GlassEffectView`, the palette scrim and the
+same panel radius, with no border. The bar reuses the header's gutters, icon slot, `searchField` font,
+`textPrimary` caret and `textTertiary` placeholder; the folder uses the section-header style and the
+pin, kitty and close controls are compact `BarButton`s like the palette's accessory. The phase shows in
+the leading glyph instead: starting and running a spinner tinted with the accent, a non-zero status its
+code in the destructive colour, ended a dimmed `powersleep`, otherwise `$`. The bar matches the compact
+palette's height and full panel width. Output grows beneath a 1-point divider up to `scaled(340)` points,
 then scrolls. The log follows its tail while the reader is at the bottom; scrolling up pauses it.
 
 `TerminalLineCounter` estimates rows at the session's fixed pty columns, ignores CSI, handles
