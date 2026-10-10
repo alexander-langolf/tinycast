@@ -33,8 +33,7 @@ enum AutomationText {
         }
     }
 
-    /// For an approval: every scalar kept, but anything that breaks, reorders or hides text is
-    /// shown as a visible token, so a value cannot fake a line or a field of the dialog.
+    /// Visible tokens keep untrusted values from drawing fake dialog fields.
     static func visible(_ text: String, limit: Int) -> String {
         var shown = ""
         var count = 0
@@ -70,8 +69,8 @@ enum AutomationText {
 
     /// For the audit log: enough to recognise the argument, never the whole of it.
     static func redacted(_ text: String, limit: Int = 120) -> String {
-        let flat = displaySafe(text, limit: Int.max)
-        guard flat.count > limit else { return flat }
-        return String(flat.prefix(limit)) + "…(\(flat.count) chars)"
+        let shown = visible(String(text.prefix(limit)), limit: Int.max)
+        guard text.count > limit else { return shown }
+        return shown + "…(\(text.count) chars)"
     }
 }

@@ -60,7 +60,10 @@ Code and Codex both carry both eras and fall back on a 4xx. Spec pages read on 2
   rotated at 5 MiB keeping three files. Each call writes `received`, then `denied`, `approved`,
   `completed`, `failed` or `cancelled` with the request id, caller, transport and redacted
   arguments. A privileged call is refused when its `received` event cannot be written. The log is not
-  tamper-evident against the same user.
+  tamper-evident against the same user. String argument previews keep the first 120 characters
+  with the same visible escapes as approval fields (`␊`, `␍`, `␉`, `⟨U+202E⟩`), rather than
+  flattening whitespace or dropping invisible characters; longer values retain a length marker.
+  Argument names are escaped too.
 
 ## HTTP endpoint
 

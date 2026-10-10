@@ -39,7 +39,8 @@ struct AutomationAuditEvent: Codable, Sendable, Equatable {
     /// Argument values reduced to something recognisable, never the whole prompt or command.
     static func summary(of arguments: [String: JSONValue]) -> String {
         arguments.sorted { $0.key < $1.key }.map { key, value in
-            switch value {
+            let key = AutomationText.visible(key, limit: Int.max)
+            return switch value {
             case .string(let text): "\(key)=\(AutomationText.redacted(text))"
             case .array(let items): "\(key)=[\(items.count) items]"
             case .object: "\(key)={…}"
