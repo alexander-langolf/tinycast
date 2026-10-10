@@ -58,7 +58,10 @@ This changes both `selection` and `menuHover`: identical upstream pairs intentio
 override. Independent named-token overrides are no longer supported. Only tokens using `ramp`
 or `adaptive` participate; fixed semantic colours remain upstream, and accent uses the hosting
 scopes below. Remove a pair (or set accent to `nil`) to return to upstream. These are source-level
-fork choices; the font picker remains the user-facing preference.
+fork choices. The user-facing colour choice is a colour theme (Settings → Appearance → Colours):
+`colors.theme`, a resolved `ForkColorPalette`, which `adaptive` asks before the pairs and which also
+supplies the accent and pins `NSApp.appearance`; see
+[appearance-theme.md](features/appearance-theme.md#colour-themes).
 
 The only Theme edit is the `adaptive` resolver body; `ramp` already calls it. Upstream's stored
 colour tokens remain intact. `ForkAppearance` publishes a locked value snapshot of its pairs at
@@ -112,6 +115,8 @@ Fork components read tokens directly through `ForkTheme.current`. The palette is
 tokens reach it only through `InterfaceMetrics` (the central seam), the fork-owned
 `PaletteChipsCoordinator.paletteRadius` and `PaletteFrameClip`, and one scrim line in `RootPaletteView`.
 Row padding needed a named metric, `spacing.rowVertical`, adopted by every list row's one padding line.
+Colour themes need no upstream view edits: they ride the existing `adaptive` resolver hook, plus
+two `color-theme` lines in `AppCore` for the appearance.
 
 ## Background agent runs
 
@@ -380,6 +385,7 @@ unless they have an explicit symbol-only allowance. The audit is a static guard,
 | `Tinycast/Features/Backup/Model/SettingsBackupCoverage.swift` | `// FORK: ai-working-directory` | Keep the folder out of backups. |
 | `Tinycast/Features/Settings/SettingsSearchCatalog.swift` | `// FORK: ai-working-directory` | Make the row searchable. |
 | `Tinycast/App/AppCore.swift` | `// FORK: appearance-theme` | Own the theme-token store and publish it at startup. |
+| `Tinycast/App/AppCore.swift` | `// FORK: color-theme` | A colour theme pins `NSApp.appearance` to its base; re-apply when it changes. |
 | `Tinycast/DesignSystem/InterfaceMetrics.swift` | `// FORK: appearance-theme` | Palette tokens at the metrics seam: `spacing.rowVertical`, `radius.row`, `size.headerPadding`, `typography.searchFieldSize`. |
 | `Tinycast/Palette/RootPaletteView.swift` | `// FORK: appearance-theme` | Draw the palette scrim from the theme tokens. |
 | `Tinycast/Features/AI/UI/ChatHistoryView.swift` | `// FORK: appearance-theme` | Row vertical padding through `spacing.rowVertical`. |
