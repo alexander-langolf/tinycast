@@ -13,7 +13,8 @@ per-mode special cases.
   capped at `panelHeight`. A shown footer adds `bottomBarHeight`.
 - A hidden footer removes the bottom bar only; ↵ still runs the screen's primary action.
 - The window is top-anchored, so the search bar never moves when the height changes or when the
-  compact bar expands (see testing.md, compact swap).
+  compact bar expands (see testing.md, compact swap). Height changes animate; see
+  [palette-motion.md](palette-motion.md).
 - Compact's collapsed bar ignores presentation; it applies once the window is expanded, in both
   Window mode settings and at every interface size.
 
@@ -23,7 +24,7 @@ per-mode special cases.
 flowchart LR
     Q[mode + query] --> R[PalettePresentationResolver]
     R --> P[PalettePresentation]
-    P --> W[PaletteWindowController.positionPanel: height]
+    P --> W[PaletteWindowController.positionPanel: height, animated]
     P --> V[RootPaletteView: footer]
     V -- presentation changed --> S[syncPaletteSize]
     S --> W

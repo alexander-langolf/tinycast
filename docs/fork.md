@@ -188,6 +188,16 @@ rows, capped at the standard height) and a footer policy (`.shown`, or `.hidden`
 acting). `PalettePresentationResolver` maps the active mode and query to one; the `$` terminal
 command declares `.bar` with a hidden footer. See [palette-presentation.md](features/palette-presentation.md).
 
+## Palette motion
+
+The palette window animates between presentations, and its header glyph, placeholder, Quick AI
+menus, body and footer enter with a staggered reveal and leave with a fade. Everything is
+fork-owned in `Tinycast/Fork/Motion/`: `PaletteMotion` (tokens), `PaletteFrameAnimator`
+(spring-driven frame, live corner radius, fixed layout height), `paletteFrameLayout`,
+`paletteFrameClip`, `paletteReveal` and `PaletteRevealSlot`. `positionPanel` stays the only
+place that sizes the window; it hands the frame to the animator instead of setting it. With
+Reduce Motion on, every resize is instant. See [palette-motion.md](features/palette-motion.md).
+
 ## AI working directory
 
 The [AI working directory](features/ai-working-directory.md) lets Quick AI and AI Chat start installed
@@ -317,6 +327,8 @@ unless they have an explicit symbol-only allowance. The audit is a static guard,
 | `Tinycast/Features/Launcher/UI/LauncherScreen.swift` | `// FORK: palette-chips` | Scope ordinary launcher results to Applications or Shortcuts while preserving pinned command results. |
 | `Tinycast/Palette/PaletteWindowController.swift` | `// FORK: palette-presentation` | Ask the active presentation for the expanded window height. |
 | `Tinycast/Palette/RootPaletteView.swift` | `// FORK: palette-presentation` | Resolve the presentation, hide the body and footer when it says so and resize the window when it changes. |
+| `Tinycast/Palette/PaletteWindowController.swift` | `// FORK: palette-motion` | Own the frame animator, inject it into the palette tree and move the panel through it. |
+| `Tinycast/Palette/RootPaletteView.swift` | `// FORK: palette-motion` | Put the body and footer in reveal slots, lay out at the animated height, clip to the live radius and reveal the header glyph, placeholder and Quick AI menus. |
 | `Tinycast/App/AppCore.swift` | `// FORK: ai-working-directory` | Own the working-directory setting and wire it at startup. |
 | `Tinycast/Features/AI/Service/InstalledCLIProvider.swift` | `// FORK: ai-working-directory` | Widen the runner and its `workspace` for the fork's `cwd`; use `cwd` for the process and directory flags. |
 | `Tinycast/Features/AI/Service/CodexAppServerClient.swift` | `// FORK: ai-working-directory` | Use the fork's `cwd` for the app-server and `mcp list`; `workspace` stays scratch. |
