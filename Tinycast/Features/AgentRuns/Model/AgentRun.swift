@@ -15,4 +15,6 @@ struct AgentRun: Decodable, Equatable, Identifiable, Sendable {
     let attach: String?
     /// Short model name ("Opus", a Codex model id); absent from older helpers.
     let model: String?
+    /// Reasoning effort ("medium", "high"); absent from older helpers.
+    var effort: String? = nil
 }

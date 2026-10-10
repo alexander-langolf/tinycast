@@ -72,7 +72,7 @@ status dot local, scaled through `InterfaceMetrics.scaled`. Existing Theme token
 run cards are `rowIcon + sm * 2` plus `sm` above and below (48 points at standard size, `AgentRunsMetrics.cardHeight`, shared by the card and the panel frame), and the overflow card is
 `barButtonHeight` (28 points). Working uses the accent dot, blocked uses warning orange, and other
 states use tertiary ink; accessibility also reads the state. Names and secondary activity each
-truncate to one line; a missing activity leaves that line empty. The trailing agent kind (Claude or Codex; subagents show none) followed by the model (tertiary after a kind, secondary on its own) and live
+truncate to one line; a missing activity leaves that line empty. The trailing agent kind (Claude or Codex; subagents show none) followed by the model and its reasoning effort ("Opus · medium"; tertiary after a kind, secondary on its own) and live
 elapsed duration use secondary text. A one-second `TimelineView` uses `CommandDuration.text` and
 monospaced digits, matching command output and ticking independently of snapshot publication.
 

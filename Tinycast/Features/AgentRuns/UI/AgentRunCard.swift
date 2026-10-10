@@ -27,6 +27,13 @@ struct AgentRunCard: View {
         }
     }
 
+    /// "Opus · medium": the model, with its reasoning effort when the helper reports one.
+    private var modelLabel: String? {
+        guard let model = run.model, !model.isEmpty else { return nil }
+        guard let effort = run.effort, !effort.isEmpty else { return model }
+        return "\(model) · \(effort)"
+    }
+
     var body: some View {
         Group {
             if canAttach {
@@ -60,7 +67,7 @@ struct AgentRunCard: View {
             VStack(alignment: .trailing, spacing: 0) {
                 HStack(spacing: metrics.spacing.xs) {
                     if let kindLabel { Text(kindLabel) }
-                    if let model = run.model, !model.isEmpty {
+                    if let model = modelLabel {
                         Text(model).foregroundStyle(
                             kindLabel == nil ? Theme.Colors.textSecondary : Theme.Colors.textTertiary)
                     }
