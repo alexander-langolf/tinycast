@@ -47,6 +47,11 @@ struct RootPaletteView: View {
     /// Compact vs. full; the source of truth is on `AppCore`, so the two can't disagree.
     private var isCollapsed: Bool { core.paletteCoordinator.paletteIsCollapsed }
 
+    // FORK: palette-presentation
+    private var presentation: PalettePresentation {
+        PalettePresentationResolver.current(mode: vm.mode, query: vm.query)
+    }
+
     /// The current mode's screen: its rows are the visible order the flat selection indexes.
     private var screen: any PaletteScreen {
         switch vm.mode {
@@ -324,7 +329,8 @@ struct RootPaletteView: View {
                 }
                 .safeAreaInset(edge: .top, spacing: 0) { header }
                 .safeAreaInset(edge: .bottom, spacing: 0) {
-                    if !isCollapsed {
+                    // FORK: palette-presentation
+                    if !isCollapsed, presentation.showsFooter {
                         bottomBar(
                             pillLabel: screen.primaryActionTitle, showActionGroup: showActionGroup,
                             formPrimaryShortcut: screen.hidesSearchField && screen.actsWithoutRows,
@@ -498,6 +504,8 @@ struct RootPaletteView: View {
             .onChange(of: core.paletteCoordinator.paletteIsCollapsed) {
                 core.paletteCoordinator.syncPaletteSize()
             }
+            // FORK: palette-presentation
+            .onChange(of: presentation) { core.paletteCoordinator.syncPaletteSize() }
     }
 
     /// Split from `body`: one chain of this length is past what the type-checker will infer.

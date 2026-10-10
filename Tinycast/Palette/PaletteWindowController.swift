@@ -505,7 +505,11 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
     private func positionPanel(_ panel: NSPanel, collapsed: Bool) {
         guard let anchor = resolveAnchor() else { return }
         let size = metrics.size
-        let height = collapsed ? size.compactHeight : size.panelHeight
+        // FORK: palette-presentation
+        let height =
+            collapsed
+            ? size.compactHeight
+            : PalettePresentationResolver.current(in: core.palette).windowHeight(metrics: metrics)
         // FORK: palette-chips
         let frame = NSRect(
             x: anchor.x, y: anchor.y - height,

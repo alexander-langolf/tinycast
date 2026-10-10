@@ -12,6 +12,10 @@ struct TerminalCommandScreen: PaletteScreen {
 
     var rows: [Row] { command.isEmpty ? [] : [Row(command: command)] }
 
+    static func presentation(for command: String) -> PalettePresentation {
+        .fitted(rows: command.isEmpty ? 0 : 1, footer: .hidden)
+    }
+
     var primaryActionTitle: String { "Run in New Terminal" }
 
     func hasPrimaryAction(at selection: Int) -> Bool { !command.isEmpty }
@@ -55,7 +59,7 @@ private struct TerminalCommandRow: View {
                     .foregroundStyle(Theme.Colors.textSecondary)
             }
             .padding(.horizontal, metrics.spacing.md)
-            .padding(.vertical, metrics.spacing.sm)
+            .frame(height: PalettePresentation.rowHeight(metrics: metrics))
             .background(
                 RoundedRectangle(cornerRadius: metrics.radius.row, style: .continuous)
                     .fill(Theme.Colors.selection)
