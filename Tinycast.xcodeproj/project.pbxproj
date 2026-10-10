@@ -547,6 +547,7 @@
 		978748DE4D909414B3863D1C /* ForkSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FD9A908BA8F7073400EF4C3 /* ForkSearch.swift */; };
 		978FE09E53A632B1473DC5D3 /* MCPOAuthListener.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98310BAA8713A12DF56F19D7 /* MCPOAuthListener.swift */; };
 		97C497EDCABB0F5013E78FA7 /* TerminalInstancesPreviewData.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF97196F61F969186646E35C /* TerminalInstancesPreviewData.swift */; };
+		97D4DBC0E1099F4093296F4C /* PalettePresentationResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D3272BA0B021586B5AA7ADF /* PalettePresentationResolver.swift */; };
 		97D71FF4C0D582828C6EC7F5 /* UpdateFailure.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00B475B5929CC0478EFAC7D8 /* UpdateFailure.swift */; };
 		97EB36833C6785F22D2AAA15 /* WindowSwitchSweep.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F1A3A9CEDBEBC132FC4A552 /* WindowSwitchSweep.swift */; };
 		9969E6858C4FDC5CCCDEB5D8 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C45190564C9D9F1722E83943 /* Assets.xcassets */; };
@@ -642,6 +643,7 @@
 		B17B6FE6F8DE23D815E3C5BB /* InstalledCLIProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = E08F20B0B823443E176F1566 /* InstalledCLIProvider.swift */; };
 		B2404EBFB52B8199DC2536F6 /* HotKeyBinding.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85B00A698366E83C7352BC1E /* HotKeyBinding.swift */; };
 		B277075C16A5641C8F3E58C6 /* CameraAccess.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DD86B3ABBB71BC6EA116D85 /* CameraAccess.swift */; };
+		B34A5D2E639E142F535DEF37 /* PalettePresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96B9CD747201ADF005FBBAEE /* PalettePresentation.swift */; };
 		B374B57D0E9D902AF877153D /* MCPHTTPTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FD57D9B2C6C46B5ADDDE173 /* MCPHTTPTransport.swift */; };
 		B40434D581183863A23D7E86 /* DictionaryCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7DE05BCC5E8CD91E8B0A26E /* DictionaryCoordinator.swift */; };
 		B566FC125D9D193F234EC1AB /* ExtensionFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 988EA3698EA86BA53590C24E /* ExtensionFetcher.swift */; };
@@ -1468,6 +1470,7 @@
 		956F23A84AFB898EDD7286CE /* ForkAssets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = ForkAssets.xcassets; sourceTree = "<group>"; };
 		95BFA41B0D7F369A8CF1E013 /* HyperKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HyperKey.swift; sourceTree = "<group>"; };
 		95E1C2AD9D1D83F90048FD8A /* AIToolLoopProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIToolLoopProvider.swift; sourceTree = "<group>"; };
+		96B9CD747201ADF005FBBAEE /* PalettePresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PalettePresentation.swift; sourceTree = "<group>"; };
 		97208E2C6DB80067EFDB1887 /* TerminalInstancesPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalInstancesPresenter.swift; sourceTree = "<group>"; };
 		974CC87BDA9F9744B5F68A33 /* DictationWire.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationWire.swift; sourceTree = "<group>"; };
 		976A1F05AD82DB8A04B3C3F9 /* MessageHUDView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageHUDView.swift; sourceTree = "<group>"; };
@@ -1494,6 +1497,7 @@
 		9C37CCD024267EB21876C7E9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		9D0A2005448E6F88C3F78489 /* CalendarStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarStore.swift; sourceTree = "<group>"; };
 		9D134673CB1B563A3758FC37 /* UninstallRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UninstallRunner.swift; sourceTree = "<group>"; };
+		9D3272BA0B021586B5AA7ADF /* PalettePresentationResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PalettePresentationResolver.swift; sourceTree = "<group>"; };
 		9D3B79A5140DE53B84B91D38 /* AgentRun.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentRun.swift; sourceTree = "<group>"; };
 		9D4374F29C4E479BB2283A96 /* ChatTextHighlight.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatTextHighlight.swift; sourceTree = "<group>"; };
 		9D4C3D9FA2F775DC650985D8 /* HoverArming.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HoverArming.swift; sourceTree = "<group>"; };
@@ -2543,6 +2547,15 @@
 			path = Settings;
 			sourceTree = "<group>";
 		};
+		5C649C3D55A467ED58D93F21 /* Palette */ = {
+			isa = PBXGroup;
+			children = (
+				96B9CD747201ADF005FBBAEE /* PalettePresentation.swift */,
+				9D3272BA0B021586B5AA7ADF /* PalettePresentationResolver.swift */,
+			);
+			path = Palette;
+			sourceTree = "<group>";
+		};
 		5DCDC77D6BA32FC905DA30CF /* Service */ = {
 			isa = PBXGroup;
 			children = (
@@ -2671,6 +2684,7 @@
 		669511DF531E3651AA25AAFA /* Fork */ = {
 			isa = PBXGroup;
 			children = (
+				5C649C3D55A467ED58D93F21 /* Palette */,
 				60D90F376599CD3358AD671A /* Search */,
 				D5F51A2F29338DE5ECCD3534 /* FontCatalog.swift */,
 				87A66972D5077178713E7C24 /* ForkAIWorkingDirectory.swift */,
@@ -4782,6 +4796,8 @@
 				25E7E031DCF72BFF19725344 /* PaletteMode.swift in Sources */,
 				8090FBE343746D9D43EE2B24 /* PalettePanel.swift in Sources */,
 				1C81DCEBEFFC1191751135F4 /* PalettePlacement.swift in Sources */,
+				B34A5D2E639E142F535DEF37 /* PalettePresentation.swift in Sources */,
+				97D4DBC0E1099F4093296F4C /* PalettePresentationResolver.swift in Sources */,
 				9F8806D46EBAF7058FC2EAEC /* PaletteRowIndex.swift in Sources */,
 				DB6B294B3D15B0AABCE5427E /* PaletteScreen.swift in Sources */,
 				5DB92B34C31D500F69ADF3E8 /* PaletteShortcut.swift in Sources */,
