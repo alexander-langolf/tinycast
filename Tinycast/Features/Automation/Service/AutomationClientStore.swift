@@ -4,8 +4,6 @@ import Observation
 import Security
 import os
 
-/// Per-client bearer tokens. The secret lives only in the login Keychain, under a service named by
-/// the bundle id so Dev and stable never share one; the metadata file holds no secret.
 @MainActor
 @Observable
 final class AutomationClientStore {
@@ -18,10 +16,12 @@ final class AutomationClientStore {
 
     private(set) var clients: [AutomationClient] = []
     @ObservationIgnored private let keychain: KeychainSecretStore
-    @ObservationIgnored private let fileURL: URL
+    @ObservationIgnored private let fileURL: URL?
     @ObservationIgnored private let now: () -> Date
-    /// SHA-256 of each token, so a request is checked without touching the Keychain.
     @ObservationIgnored private var isMetadataLoaded = false
+    @ObservationIgnored private var metadataLoad: Task<[AutomationClient], Never>?
+    @ObservationIgnored private var mutationInProgress = false
+    @ObservationIgnored private var mutationWaiters: [CheckedContinuation<Void, Never>] = []
     @ObservationIgnored private var digests: [UUID: SHA256.Digest] = [:]
     @ObservationIgnored var onChange: ((_ revoked: UUID?) -> Void)?
     @ObservationIgnored private var expiryWatch: Task<Void, Never>?
@@ -29,32 +29,66 @@ final class AutomationClientStore {
 
     init(
         keychain: KeychainSecretStore = KeychainSecretStore(scope: AutomationClientStore.keychainScope),
-        directory: URL = AppPaths.applicationSupport().appending(
-            path: "Automation", directoryHint: .isDirectory),
+        directory: URL? = nil,
         now: @escaping () -> Date = { Date() }
     ) {
         self.keychain = keychain
-        fileURL = directory.appending(path: "clients.json", directoryHint: .notDirectory)
+        fileURL = directory?.appending(path: "clients.json", directoryHint: .notDirectory)
         self.now = now
     }
 
     /// Labels, scopes and expiry only: what Settings lists. No Keychain access.
-    func loadMetadata() {
+    func loadMetadata() async {
         guard !isMetadataLoaded else { return }
+        let fileURL = fileURL
+        let load = metadataLoad ?? Task.detached { Self.readMetadata(at: fileURL) }
+        metadataLoad = load
+        let stored = await load.value
+        guard !isMetadataLoaded else { return }
+        clients = stored
         isMetadataLoaded = true
-        guard let data = try? Data(contentsOf: fileURL) else { return }
+        metadataLoad = nil
+    }
+
+    private nonisolated static func metadataURL(_ fileURL: URL?) -> URL {
+        fileURL
+            ?? AppPaths.applicationSupport()
+            .appending(path: "Automation", directoryHint: .isDirectory)
+            .appending(path: "clients.json", directoryHint: .notDirectory)
+    }
+
+    private nonisolated static func readMetadata(at fileURL: URL?) -> [AutomationClient] {
+        guard let data = try? Data(contentsOf: metadataURL(fileURL)) else { return [] }
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         guard let stored = try? decoder.decode([AutomationClient].self, from: data) else {
-            Self.logger.error("Could not read the automation client list")
+            logger.error("Could not read the automation client list")
+            return []
+        }
+        return stored
+    }
+
+    private func beginMutation() async {
+        if mutationInProgress {
+            await withCheckedContinuation { mutationWaiters.append($0) }
+        } else {
+            mutationInProgress = true
+        }
+    }
+
+    private func endMutation() {
+        guard !mutationWaiters.isEmpty else {
+            mutationInProgress = false
             return
         }
-        clients = stored
+        mutationWaiters.removeFirst().resume()
     }
 
     /// Reads every client's token once, off the main actor: the read can wait on a Keychain prompt.
     func loadDigests() async {
-        loadMetadata()
+        await beginMutation()
+        defer { endMutation() }
+        await loadMetadata()
         let keychain = keychain
         let ids = clients.map(\.id)
         let found = await Task.detached {
@@ -72,8 +106,6 @@ final class AutomationClientStore {
         digests = found.filter { live.contains($0.key) }.merging(digests) { _, current in current }
     }
 
-    /// Expiry is enforced like a revoke, not only when the next request arrives: a lapsed client's
-    /// streams, questions and approvals end at its expiry.
     func watchExpiry() {
         expiryWatch?.cancel()
         expiryWatch = Task { [weak self] in
@@ -123,35 +155,42 @@ final class AutomationClientStore {
     @discardableResult
     func create(
         label: String, scopes: Set<AutomationScope>, lifetime: TimeInterval?
-    ) throws
+    ) async throws
         -> AutomationClient
     {
-        loadMetadata()
+        await beginMutation()
+        defer { endMutation() }
+        await loadMetadata()
         let created = now()
         let client = AutomationClient(
             id: UUID(), label: AutomationText.displaySafe(label, limit: 40), scopes: scopes,
             createdAt: created, expiresAt: lifetime.map { created.addingTimeInterval($0) })
-        try store(token: Self.makeToken(for: client.id), for: client.id)
+        try await storeToken(for: client.id)
         clients.append(client)
-        try persist()
+        try await persist()
         onChange?(nil)
         return client
     }
 
     /// A new secret under the same identity; the old one stops working at once.
-    func rotate(_ id: UUID) throws {
-        loadMetadata()
+    func rotate(_ id: UUID) async throws {
+        await beginMutation()
+        defer { endMutation() }
+        await loadMetadata()
         guard clients.contains(where: { $0.id == id }) else { return }
-        try store(token: Self.makeToken(for: id), for: id)
+        try await storeToken(for: id)
         onChange?(id)
     }
 
-    func revoke(_ id: UUID) {
-        loadMetadata()
-        try? keychain.removeSecret(for: id)
+    func revoke(_ id: UUID) async {
+        await beginMutation()
+        defer { endMutation() }
+        await loadMetadata()
+        let keychain = keychain
+        _ = try? await Task.detached { try keychain.removeSecret(for: id) }.value
         digests[id] = nil
         clients.removeAll { $0.id == id }
-        try? persist()
+        try? await persist()
         onChange?(id)
     }
 
@@ -160,16 +199,29 @@ final class AutomationClientStore {
         "\(Bundle.main.bundleIdentifier ?? "com.tinycast.app").\(Self.keychainScope)"
     }
 
-    private func store(token: String, for id: UUID) throws {
-        do {
-            try keychain.setSecret(token, for: id)
-        } catch {
-            throw Failure.keychain
-        }
-        digests[id] = SHA256.hash(data: Data(token.utf8))
+    private func storeToken(for id: UUID) async throws {
+        let keychain = keychain
+        let digest = try await Task.detached {
+            let token = Self.makeToken(for: id)
+            do {
+                try keychain.setSecret(token, for: id)
+            } catch {
+                throw Failure.keychain
+            }
+            return SHA256.hash(data: Data(token.utf8))
+        }.value
+        digests[id] = digest
     }
 
-    private func persist() throws {
+    private func persist() async throws {
+        let clients = clients
+        let fileURL = fileURL
+        try await Task.detached { try Self.writeMetadata(clients, at: fileURL) }.value
+    }
+
+    private nonisolated static func writeMetadata(_ clients: [AutomationClient], at requestedURL: URL?) throws
+    {
+        let fileURL = metadataURL(requestedURL)
         let directory = fileURL.deletingLastPathComponent()
         do {
             try FileManager.default.createDirectory(

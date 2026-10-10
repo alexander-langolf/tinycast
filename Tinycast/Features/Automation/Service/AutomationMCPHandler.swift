@@ -1,7 +1,5 @@
 import Foundation
 
-/// MCP method dispatch over validated calls. Serves the stateless 2026-07-28 revision and answers
-/// the older handshake revisions without ever minting a session.
 @MainActor
 final class AutomationMCPHandler {
     private let router: AutomationRouter
@@ -53,8 +51,6 @@ final class AutomationMCPHandler {
                 id, .methodNotFound(call.method, status: modern ? 404 : 200), call.era)
         }
     }
-
-    // MARK: - Results
 
     private func serverInfo() -> JSONValue {
         .object(["name": .string("Tinycast"), "version": .string(serverVersion)])
@@ -131,7 +127,7 @@ final class AutomationMCPHandler {
             return failure(id, .invalidParams("arguments must be an object"), call.era)
         }
         guard let operation = AutomationOperationCatalog.tool(named: name) else {
-            router.recordUnknown(
+            await router.recordUnknown(
                 name, caller: caller, arguments: arguments, transport: "mcp-http",
                 callerRequestID: id.description)
             return failure(id, .invalidParams("Unknown tool: \(name)"), call.era)
@@ -172,7 +168,7 @@ final class AutomationMCPHandler {
             return failure(id, .invalidParams("uri is required"), call.era)
         }
         guard let operation = AutomationOperationCatalog.resource(uri: uri) else {
-            router.recordUnknown(
+            await router.recordUnknown(
                 uri, caller: caller, arguments: [:], transport: "mcp-http",
                 callerRequestID: id.description)
             return failure(id, .invalidParams("Resource not found"), call.era)
@@ -194,8 +190,6 @@ final class AutomationMCPHandler {
             return failure(id, error, call.era)
         }
     }
-
-    // MARK: - Subscriptions
 
     private func listen(
         _ call: AutomationMCPCall, id: AutomationRPCID, caller: AutomationCaller
@@ -257,8 +251,6 @@ final class AutomationMCPHandler {
         data.append(Data("\r\n\r\n".utf8))
         return data
     }
-
-    // MARK: - Envelope
 
     private func success(
         _ id: AutomationRPCID, _ result: [String: JSONValue], _ era: AutomationMCPCall.Era

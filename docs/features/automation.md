@@ -54,6 +54,8 @@ Code and Codex both carry both eras and fall back on a 4xx. Spec pages read on 2
   Create, rotate and revoke are in Settings → General → Automation. Expiry is enforced like a
   revoke while the endpoint runs (re-checked at least hourly and at each expiry instant): the
   client's listen streams end, its questions go and its pending approvals are withdrawn.
+  Metadata reads and writes, Keychain access, profile reads, directory checks and audit writes
+  run off the main actor. Client mutations are serialized across their asynchronous IO.
   Bearer tokens are a deliberate departure from MCP's OAuth profile: this is a local, per-user
   endpoint with manually provisioned clients.
 - **Audit.** `Automation/audit.jsonl` (0600, folder 0700) is append-only, serialized under a lock and

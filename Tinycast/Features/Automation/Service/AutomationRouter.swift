@@ -1,8 +1,6 @@
 import Foundation
 import os
 
-/// The one door. Every transport authenticates its own caller, then hands a call here; nothing
-/// else decides who may do what. Each call leaves received, then one or more outcome events.
 @MainActor
 final class AutomationRouter {
     static let approvalWindow: TimeInterval = 60
@@ -32,29 +30,29 @@ final class AutomationRouter {
     func route(_ call: AutomationCall) async -> AutomationOutcome {
         let operation = call.operation
         guard admit(call.caller) else {
-            recordThrottled(call)
+            await recordThrottled(call)
             return .toolError("Too many requests; try again shortly.")
         }
         do {
-            try record(.received, call, detail: nil)
+            try await record(.received, call, detail: nil)
         } catch  where operation.isPrivileged {
             return .toolError("The audit log is unavailable, so this action is refused.")
         } catch {}
 
         if case .deny(let reason) = AutomationPolicy.decide(caller: call.caller, operation: operation) {
-            try? record(.denied, call, detail: reason)
+            try? await record(.denied, call, detail: reason)
             return .rpcError(.invalidParams(Self.unavailable(operation)))
         }
         if let problem = AutomationSchemaValidator.validate(
             arguments: call.arguments, against: operation.inputSchema)
         {
-            try? record(.denied, call, detail: problem)
+            try? await record(.denied, call, detail: problem)
             return .toolError("Invalid arguments: \(problem)")
         }
         let prepared: Prepared
-        switch runner.prepare(call) {
+        switch await runner.prepare(call) {
         case .failure(let failure):
-            try? record(.denied, call, detail: failure.description)
+            try? await record(.denied, call, detail: failure.description)
             return .toolError(failure.description)
         case .success(let value):
             prepared = value
@@ -66,11 +64,11 @@ final class AutomationRouter {
         guard let caller = currentCaller(call.caller),
             AutomationPolicy.permits(caller: caller, operation: operation)
         else {
-            try? record(.denied, call, detail: "Authority was withdrawn before the action ran")
+            try? await record(.denied, call, detail: "Authority was withdrawn before the action ran")
             return .toolError("This client is no longer authorized.")
         }
         guard !Task.isCancelled else {
-            try? record(.cancelled, call, detail: "Caller went away before the action ran")
+            try? await record(.cancelled, call, detail: "Caller went away before the action ran")
             return .toolError("Cancelled.")
         }
         if operation.isPrivileged, !audit.isHealthy {
@@ -78,9 +76,9 @@ final class AutomationRouter {
         }
         let outcome = await runner.perform(call, prepared: prepared)
         switch outcome {
-        case .value: try? record(.completed, call, detail: nil)
-        case .toolError(let message): try? record(.failed, call, detail: message)
-        case .rpcError(let error): try? record(.failed, call, detail: error.message)
+        case .value: try? await record(.completed, call, detail: nil)
+        case .toolError(let message): try? await record(.failed, call, detail: message)
+        case .rpcError(let error): try? await record(.failed, call, detail: error.message)
         }
         return outcome
     }
@@ -89,11 +87,11 @@ final class AutomationRouter {
     func recordUnknown(
         _ name: String, caller: AutomationCaller, arguments: [String: JSONValue], transport: String,
         callerRequestID: String?
-    ) {
+    ) async {
         guard admit(caller) else { return }
         let request = UUID()
         for (kind, detail) in [(AutomationAuditEvent.Kind.received, nil), (.denied, "Unknown name")] {
-            try? audit.append(
+            try? await audit.append(
                 AutomationAuditEvent(
                     id: UUID(), request: request, at: now(), kind: kind, transport: transport,
                     callerRequestID: callerRequestID, caller: caller.label, client: caller.clientID,
@@ -111,19 +109,19 @@ final class AutomationRouter {
             expiresAt: created.addingTimeInterval(Self.approvalWindow))
         switch await approvals.request(request) {
         case .allowed:
-            try? record(.approved, call, detail: "Approved by the user")
+            try? await record(.approved, call, detail: "Approved by the user")
             return nil
         case .denied:
-            try? record(.denied, call, detail: "Declined by the user")
+            try? await record(.denied, call, detail: "Declined by the user")
             return .toolError("The user declined.")
         case .expired:
-            try? record(.denied, call, detail: "Approval expired")
+            try? await record(.denied, call, detail: "Approval expired")
             return .toolError("The approval request expired before the user answered.")
         case .cancelled:
-            try? record(.cancelled, call, detail: "Caller went away while waiting for approval")
+            try? await record(.cancelled, call, detail: "Caller went away while waiting for approval")
             return .toolError("Cancelled.")
         case .tooMany:
-            try? record(.denied, call, detail: "Too many pending approvals")
+            try? await record(.denied, call, detail: "Too many pending approvals")
             return .toolError("Too many approval requests are waiting; try again later.")
         }
     }
@@ -145,18 +143,18 @@ final class AutomationRouter {
     }
 
     /// A flood must not flood the log: one throttled record per caller every ten seconds.
-    private func recordThrottled(_ call: AutomationCall) {
+    private func recordThrottled(_ call: AutomationCall) async {
         let key = call.caller.clientID?.uuidString ?? "link"
         let current = now()
         if let last = lastThrottleRecord[key], current.timeIntervalSince(last) < 10 { return }
         lastThrottleRecord[key] = current
-        try? record(.denied, call, detail: "Rate limited")
+        try? await record(.denied, call, detail: "Rate limited")
     }
 
     private func record(
         _ kind: AutomationAuditEvent.Kind, _ call: AutomationCall, detail: String?
-    ) throws {
-        try audit.append(
+    ) async throws {
+        try await audit.append(
             AutomationAuditEvent(
                 id: UUID(), request: call.request, at: now(), kind: kind, transport: call.transport,
                 callerRequestID: call.callerRequestID, caller: call.caller.label,

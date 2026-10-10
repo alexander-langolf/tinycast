@@ -3,7 +3,7 @@ import AppKit
 /// The effects themselves. The router has already decided the call may happen.
 @MainActor
 final class AutomationRunner {
-    struct PrepareFailure: Error, CustomStringConvertible {
+    struct PrepareFailure: Error, CustomStringConvertible, Sendable {
         let description: String
         init(_ description: String) { self.description = description }
     }
@@ -21,7 +21,7 @@ final class AutomationRunner {
     }
 
     /// Validates what the call will do and writes the exact words an approval will show.
-    func prepare(_ call: AutomationCall) -> Result<AutomationRouter.Prepared, PrepareFailure> {
+    func prepare(_ call: AutomationCall) async -> Result<AutomationRouter.Prepared, PrepareFailure> {
         var prepared = AutomationRouter.Prepared()
         let arguments = call.arguments
         switch call.operation.name {
@@ -29,7 +29,10 @@ final class AutomationRunner {
             guard let command = arguments["command"]?.stringValue,
                 !command.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             else { return .failure(PrepareFailure("The command is empty.")) }
-            switch resolveDirectory(arguments["cwd"]?.stringValue) {
+            let directory = await Task.detached {
+                Self.resolveDirectory(arguments["cwd"]?.stringValue)
+            }.value
+            switch directory {
             case .failure(let failure): return .failure(failure)
             case .success(let directory):
                 prepared.command = command
@@ -43,7 +46,9 @@ final class AutomationRunner {
             }
         case AutomationOperationCatalog.agentDispatch.name:
             let name = arguments["agent"]?.stringValue ?? ""
-            guard let profile = profiles.profile(named: name) else {
+            let profiles = profiles
+            let found = await Task.detached { profiles.profile(named: name) }.value
+            guard let profile = found else {
                 return .failure(
                     PrepareFailure(
                         "No agent profile named “\(name)”. Read tinycast://agent-profiles for the names."))
@@ -51,7 +56,10 @@ final class AutomationRunner {
             let prompt = AutomationText.displaySafe(
                 arguments["prompt"]?.stringValue ?? "", limit: Int.max)
             guard !prompt.isEmpty else { return .failure(PrepareFailure("The prompt is empty.")) }
-            switch resolveDirectory(arguments["cwd"]?.stringValue) {
+            let directory = await Task.detached {
+                Self.resolveDirectory(arguments["cwd"]?.stringValue)
+            }.value
+            switch directory {
             case .failure(let failure): return .failure(failure)
             case .success(let directory):
                 let line = profile.shellLine(prompt: prompt)
@@ -108,8 +116,6 @@ final class AutomationRunner {
         }
     }
 
-    // MARK: - Resources
-
     private func read(_ call: AutomationCall) async -> AutomationOutcome {
         switch call.operation.name {
         case AutomationOperationCatalog.agents.name:
@@ -129,10 +135,12 @@ final class AutomationRunner {
             return .value(
                 .object(["questions": .array(questions.visible(to: client).map(\.json))]))
         case AutomationOperationCatalog.agentProfiles.name:
+            let profiles = profiles
+            let available = await Task.detached { profiles.profiles() }.value
             return .value(
                 .object([
                     "profiles": .array(
-                        profiles.profiles().map {
+                        available.map {
                             .object(["name": .string($0.name), "title": .string($0.title ?? $0.name)])
                         })
                 ]))
@@ -176,8 +184,6 @@ final class AutomationRunner {
         ])
     }
 
-    // MARK: - Questions
-
     private func ask(_ call: AutomationCall) -> AutomationOutcome {
         let text = AutomationText.displaySafe(
             call.arguments["question"]?.stringValue ?? "", limit: 500)
@@ -202,8 +208,6 @@ final class AutomationRunner {
             ]))
     }
 
-    // MARK: - Presentation
-
     func showMessage(from label: String, text: String) {
         let text = AutomationText.displaySafe(text, limit: 120)
         let label = AutomationText.displaySafe(label, limit: 40)
@@ -217,7 +221,7 @@ final class AutomationRunner {
             mode: .launcher, restoreAnyMode: false, seeding: query.isEmpty ? nil : query)
     }
 
-    private func resolveDirectory(_ requested: String?) -> Result<String, PrepareFailure> {
+    private nonisolated static func resolveDirectory(_ requested: String?) -> Result<String, PrepareFailure> {
         guard let requested, !requested.isEmpty else {
             return .success(FileManager.default.homeDirectoryForCurrentUser.path)
         }

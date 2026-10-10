@@ -3,8 +3,6 @@ import Network
 import Observation
 import os
 
-/// The loopback HTTP listener. It frames and authenticates requests; everything after that is the
-/// MCP handler's. Bound to 127.0.0.1 only, bounded in connections, sizes and time.
 @MainActor
 @Observable
 final class AutomationHTTPServer {
@@ -23,7 +21,7 @@ final class AutomationHTTPServer {
     @ObservationIgnored private var task: Task<Void, Never>?
     @ObservationIgnored private let handler: AutomationMCPHandler
     @ObservationIgnored private let authenticate: (String) -> AutomationClient?
-    @ObservationIgnored private let onRefused: (String) -> Void
+    @ObservationIgnored private let onRefused: (String) async -> Void
     @ObservationIgnored private var failedAuth = AutomationRateLimiter(capacity: 10, perSecond: 1)
     @ObservationIgnored private var openConnections = 0
     private nonisolated static let logger = Logger(subsystem: "com.tinycast", category: "Automation")
@@ -31,7 +29,7 @@ final class AutomationHTTPServer {
     init(
         port: UInt16, handler: AutomationMCPHandler,
         authenticate: @escaping (String) -> AutomationClient?,
-        onRefused: @escaping (String) -> Void
+        onRefused: @escaping (String) async -> Void
     ) {
         self.port = port
         self.handler = handler
@@ -44,17 +42,22 @@ final class AutomationHTTPServer {
     func start() {
         guard task == nil else { return }
         guard let endpointPort = NWEndpoint.Port(rawValue: port) else { return }
-        let listener: NetworkListener<TCP>
-        do {
-            listener = try NetworkListener(
-                using: .parameters { TCP() }
-                    .localEndpoint(.hostPort(host: .ipv4(.loopback), port: endpointPort)))
-        } catch {
-            status = .failed("Could not listen on port \(port)")
-            return
-        }
         status = .listening(port)
+        let port = port
         task = Task { [weak self] in
+            let listener: NetworkListener<TCP>
+            do {
+                listener = try await Task.detached {
+                    try NetworkListener(
+                        using: .parameters { TCP() }
+                            .localEndpoint(.hostPort(host: .ipv4(.loopback), port: endpointPort)))
+                }.value
+            } catch {
+                guard !Task.isCancelled else { return }
+                self?.status = .failed("Could not listen on port \(port)")
+                return
+            }
+            guard !Task.isCancelled else { return }
             do {
                 try await listener.onStateUpdate { [weak self] _, state in
                     switch state {
@@ -84,8 +87,7 @@ final class AutomationHTTPServer {
         status = .stopped
     }
 
-    // MARK: - Connection
-
+    @MainActor
     private final class Cancellation {
         var action: (@Sendable () -> Void)?
         var watcher: Task<Void, Never>?
@@ -131,13 +133,13 @@ final class AutomationHTTPServer {
     private func respond(
         on connection: NetworkConnection<TCP>, cancellation: Cancellation
     ) async throws -> AutomationHTTPResponse {
-        let (head, buffer) = try await readHead(connection)
+        let (head, buffer) = try await Self.readHead(connection)
         if let rejection = AutomationHTTPGate.check(head, port: port) { throw rejection }
         guard let token = AutomationHTTPGate.bearer(in: head), let client = authenticate(token) else {
             guard failedAuth.take(at: Date()) else {
                 throw AutomationHTTPRejection(status: 429, reason: "Too many failed attempts")
             }
-            onRefused("Missing, unknown, revoked or expired bearer token")
+            await onRefused("Missing, unknown, revoked or expired bearer token")
             throw AutomationHTTPRejection(
                 status: 401, reason: "Unauthorized",
                 headers: ["WWW-Authenticate": "Bearer realm=\"tinycast\""])
@@ -145,11 +147,11 @@ final class AutomationHTTPServer {
         guard AutomationHTTPGate.contentTypeIsJSON(head) else {
             throw AutomationHTTPRejection(status: 415, reason: "Content-Type must be application/json")
         }
-        let body = try await readBody(head, buffer: buffer, from: connection)
+        let body = try await Self.readBody(head, buffer: buffer, from: connection)
         // Only now: a second reader earlier would swallow the request's own bytes.
-        cancellation.watcher = Task { @MainActor in
+        cancellation.watcher = Task.detached {
             _ = try? await connection.receive(atLeast: 1, atMost: 1)
-            cancellation.cancel()
+            await cancellation.cancel()
         }
         switch AutomationMCPCall.parse(body: body, headers: head.headers) {
         case .failure(let error):
@@ -173,7 +175,7 @@ final class AutomationHTTPServer {
         }
     }
 
-    private func readHead(
+    private nonisolated static func readHead(
         _ connection: NetworkConnection<TCP>
     ) async throws -> (AutomationHTTPHead, Data) {
         try await withDeadline(Self.readDeadline) {
@@ -193,7 +195,7 @@ final class AutomationHTTPServer {
         }
     }
 
-    private func readBody(
+    private nonisolated static func readBody(
         _ head: AutomationHTTPHead, buffer: Data, from connection: NetworkConnection<TCP>
     ) async throws -> Data {
         try await withDeadline(Self.readDeadline) {
@@ -210,7 +212,7 @@ final class AutomationHTTPServer {
         }
     }
 
-    private func withDeadline<T: Sendable>(
+    private nonisolated static func withDeadline<T: Sendable>(
         _ duration: Duration, _ operation: @escaping @Sendable () async throws -> T
     ) async throws -> T {
         try await withThrowingTaskGroup(of: T.self) { group in
@@ -231,20 +233,31 @@ final class AutomationHTTPServer {
     ) async throws {
         switch response.body {
         case .empty:
-            try await connection.send(response.head(), endOfStream: true)
+            try await Self.send(response.head(), to: connection, endOfStream: true)
         case .json(let data):
-            try await connection.send(response.head() + data, endOfStream: true)
+            try await Self.send(response.head() + data, to: connection, endOfStream: true)
         case .stream(let stream):
-            try await connection.send(response.head())
+            try await Self.send(response.head(), to: connection)
             let writer = Task { @MainActor in
                 for await chunk in stream {
-                    try await connection.send(chunk)
+                    try await Self.send(chunk, to: connection)
                 }
             }
             cancellation.action = { writer.cancel() }
             if cancellation.requested { writer.cancel() }
             try await writer.value
-            try await connection.send(Data(), endOfStream: true)
+            try await Self.send(Data(), to: connection, endOfStream: true)
+        }
+    }
+
+    private nonisolated static func send(
+        _ data: Data, to connection: NetworkConnection<TCP>, endOfStream: Bool = false
+    ) async throws {
+        let work = Task.detached { try await connection.send(data, endOfStream: endOfStream) }
+        try await withTaskCancellationHandler {
+            try await work.value
+        } onCancel: {
+            work.cancel()
         }
     }
 }

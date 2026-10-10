@@ -1,8 +1,6 @@
 import Foundation
 import Observation
 
-/// Inbound automation: the feature's single entry from `AppCore`. It owns the router and what the
-/// transports share. Separate from the MCP client under `Features/MCP/`.
 @MainActor
 @Observable
 final class AutomationCoordinator {
@@ -20,6 +18,7 @@ final class AutomationCoordinator {
     @ObservationIgnored private(set) var approvals: AutomationApprovalQueue
     @ObservationIgnored private(set) var router: AutomationRouter
     @ObservationIgnored private var lastRefusalRecord: Date?
+    @ObservationIgnored private var startup: Task<Void, Never>?
 
     /// Off until the user turns it on, and never carried by a backup or settings.json.
     var isEnabled: Bool {
@@ -55,7 +54,7 @@ final class AutomationCoordinator {
         questions.onChange = { [hub] client in
             hub.publish(uri: AutomationOperationCatalog.questions.name, client: client)
         }
-        hub.onActivityChange = { [core] active in core.agentRuns.setAutomationHold(active) }
+        hub.onActivityChange = { [unowned core] active in core.agentRuns.setAutomationHold(active) }
     }
 
     /// Called once from `AppCore.start()`; a disabled feature touches nothing.
@@ -65,6 +64,8 @@ final class AutomationCoordinator {
 
     func stop() {
         observationGeneration += 1
+        startup?.cancel()
+        startup = nil
         server?.stop()
         server = nil
         clients.stopWatchingExpiry()
@@ -75,8 +76,6 @@ final class AutomationCoordinator {
         core.agentRuns.setAutomationHold(false)
     }
 
-    /// True when the URL is an automation link and has been handled, whatever the router decided.
-    /// A disabled feature claims nothing, so the URL falls through to the extension handler.
     func handleLink(_ url: URL) -> Bool {
         guard isEnabled, let request = AutomationURL.parse(url, channelScheme: Bundle.main.bundleIdentifier)
         else { return false }
@@ -92,10 +91,10 @@ final class AutomationCoordinator {
 
     func createClient(
         label: String, scopes: Set<AutomationScope>, lifetime: TimeInterval?
-    ) throws
+    ) async throws
         -> AutomationClient
     {
-        try clients.create(label: label, scopes: scopes, lifetime: lifetime)
+        try await clients.create(label: label, scopes: scopes, lifetime: lifetime)
     }
 
     var endpointURL: String {
@@ -115,20 +114,21 @@ final class AutomationCoordinator {
             port: AutomationEndpoint.port(bundleIdentifier: Bundle.main.bundleIdentifier),
             handler: handler,
             authenticate: { [clients] in clients.authenticate(bearer: $0) },
-            onRefused: { [weak self] in self?.recordRefusal($0) })
+            onRefused: { [weak self] in await self?.recordRefusal($0) })
         self.server = server
-        Task { [weak self] in
+        startup = Task { [weak self] in
             await self?.clients.loadDigests()
-            guard let self, self.server === server else { return }
+            guard !Task.isCancelled, let self, self.server === server else { return }
             self.clients.watchExpiry()
             server.start()
         }
         questionPresenter.start()
         observationGeneration += 1
-        observe(AutomationOperationCatalog.agents.name, generation: observationGeneration) { [core] in
+        observe(AutomationOperationCatalog.agents.name, generation: observationGeneration) { [unowned core] in
             _ = core.agentRuns.runs
         }
-        observe(AutomationOperationCatalog.terminals.name, generation: observationGeneration) { [core] in
+        let terminals = AutomationOperationCatalog.terminals.name
+        observe(terminals, generation: observationGeneration) { [unowned core] in
             for instance in core.terminalInstances.instances {
                 _ = instance.session.phase
                 _ = instance.session.directory
@@ -152,11 +152,11 @@ final class AutomationCoordinator {
     }
 
     /// One audit line per ten seconds: a client hammering a bad token must not fill the disk.
-    private func recordRefusal(_ reason: String) {
+    private func recordRefusal(_ reason: String) async {
         let now = Date()
         if let last = lastRefusalRecord, now.timeIntervalSince(last) < 10 { return }
         lastRefusalRecord = now
-        try? audit.append(
+        try? await audit.append(
             AutomationAuditEvent(
                 id: UUID(), request: UUID(), at: now, kind: .denied, transport: "mcp-http",
                 callerRequestID: nil, caller: "unauthenticated", client: nil,

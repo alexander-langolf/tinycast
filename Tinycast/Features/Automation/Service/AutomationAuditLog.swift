@@ -3,8 +3,6 @@ import Foundation
 import Synchronization
 import os
 
-/// Append-only JSONL, one event per line, written under a lock so lines never interleave.
-/// Same-user tampering is out of scope: the file is 0600 in a 0700 folder, not tamper-evident.
 final class AutomationAuditLog: Sendable {
     struct Failure: Error, Sendable {
         let reason: String
@@ -19,26 +17,31 @@ final class AutomationAuditLog: Sendable {
     static let maximumBytes = 5 * 1024 * 1024
     static let retainedFiles = 3
 
-    private let url: URL
+    private let directory: URL?
     private let state = Mutex(State())
-    private let encoder = AutomationAuditEvent.makeEncoder()
     private static let logger = Logger(subsystem: "com.tinycast", category: "Automation")
 
-    init(directory: URL) {
-        url = directory.appending(path: "audit.jsonl", directoryHint: .notDirectory)
+    init(directory: URL? = nil) {
+        self.directory = directory
     }
 
-    static func standard() -> AutomationAuditLog {
-        AutomationAuditLog(
-            directory: AppPaths.applicationSupport().appending(
-                path: "Automation", directoryHint: .isDirectory))
+    private var url: URL {
+        (directory ?? AppPaths.applicationSupport().appending(path: "Automation", directoryHint: .isDirectory))
+            .appending(path: "audit.jsonl", directoryHint: .notDirectory)
     }
+
+    static func standard() -> AutomationAuditLog { AutomationAuditLog() }
 
     /// False after a write failed, until one succeeds. Privileged effects check it.
     var isHealthy: Bool { state.withLock { $0.healthy } }
 
-    func append(_ event: AutomationAuditEvent) throws {
-        let line = try event.line(encoder: encoder)
+    nonisolated func append(_ event: AutomationAuditEvent) async throws {
+        let log = self
+        try await Task.detached { try log.writeEvent(event) }.value
+    }
+
+    private nonisolated func writeEvent(_ event: AutomationAuditEvent) throws {
+        let line = try event.line()
         let outcome: Result<Void, Failure> = state.withLock { state in
             do {
                 try openIfNeeded(&state)

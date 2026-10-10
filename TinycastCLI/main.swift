@@ -1,9 +1,6 @@
 import Foundation
 import Security
 
-// `tinycast mcp --stdio`: a stdio MCP server that forwards every message to the running app's
-// loopback endpoint. Credentials come from the login Keychain; logs go to stderr only.
-
 setvbuf(stdout, nil, _IOLBF, 0)
 signal(SIGPIPE, SIG_IGN)
 
@@ -84,8 +81,6 @@ func parse(_ arguments: [String]) -> Options {
     return options
 }
 
-// MARK: - Keychain
-
 enum Credentials {
     static func token(service: String, client: String?) -> String {
         let account = client ?? onlyAccount(service: service)
@@ -100,7 +95,7 @@ enum Credentials {
         var result: CFTypeRef?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
         guard status == errSecSuccess, let data = result as? Data,
-            let token = String(data: data, encoding: .utf8)
+            let token = String(bytes: data, encoding: .utf8)
         else {
             fail("no token for client \(account) in the Keychain (service \(service), status \(status))")
         }
@@ -128,8 +123,7 @@ enum Credentials {
     }
 }
 
-// MARK: - Bridge
-
+// Mutable state and output are locked; configuration stays immutable after initialization.
 final class Bridge: @unchecked Sendable {
     private let endpoint: URL
     private let token: String
@@ -200,23 +194,26 @@ final class Bridge: @unchecked Sendable {
         defer { lock.unlock() }
         guard let id else {
             let token = UUID()
-            unanswered[token] = Task { [self] in
-                await post(request, id: nil)
-                _ = lock.withLock { unanswered.removeValue(forKey: token) }
+            unanswered[token] = Task { [weak self] in
+                guard let self else { return }
+                await self.post(request, id: nil)
+                _ = self.lock.withLock { self.unanswered.removeValue(forKey: token) }
             }
             return
         }
         let identifier = key(of: id)
         guard method == "subscriptions/listen" else {
-            inFlight[identifier] = Task { [self] in
-                await post(request, id: id)
-                _ = lock.withLock { inFlight.removeValue(forKey: identifier) }
+            inFlight[identifier] = Task { [weak self] in
+                guard let self else { return }
+                await self.post(request, id: id)
+                _ = self.lock.withLock { self.inFlight.removeValue(forKey: identifier) }
             }
             return
         }
-        listening[identifier] = Task { [self] in
-            await post(request, id: id)
-            _ = lock.withLock { listening.removeValue(forKey: identifier) }
+        listening[identifier] = Task { [weak self] in
+            guard let self else { return }
+            await self.post(request, id: id)
+            _ = self.lock.withLock { self.listening.removeValue(forKey: identifier) }
         }
     }
 
@@ -301,7 +298,6 @@ final class Bridge: @unchecked Sendable {
         return value
     }
 
-    /// `AsyncBytes.lines` drops empty lines, which are what end an SSE event, so lines are split here.
     private func forwardEvents(_ bytes: URLSession.AsyncBytes) async throws {
         var line = [UInt8]()
         var data = ""
@@ -331,14 +327,14 @@ final class Bridge: @unchecked Sendable {
     private func forward(_ body: Data, status: Int, id: Any?, method: String) {
         if status == 202 || body.isEmpty && id == nil { return }
         if var object = (try? JSONSerialization.jsonObject(with: body)) as? [String: Any] {
-            if (object["id"] == nil || object["id"] is NSNull), let id { object["id"] = id }
+            if object["id"] == nil || object["id"] is NSNull, let id { object["id"] = id }
             if method == "initialize", let result = object["result"] as? [String: Any],
                 let version = result["protocolVersion"] as? String
             {
                 lock.withLock { legacyVersion = version }
             }
             if let data = try? JSONSerialization.data(withJSONObject: object, options: [.sortedKeys]),
-                let text = String(data: data, encoding: .utf8)
+                let text = String(bytes: data, encoding: .utf8)
             {
                 emit(text)
                 return
@@ -367,10 +363,12 @@ final class Bridge: @unchecked Sendable {
     }
 }
 
-let options = parse(Array(CommandLine.arguments.dropFirst()))
-let token = Credentials.token(
-    service: "\(options.channel.bundleIdentifier).automation-clients", client: options.client)
-let bridge = Bridge(
-    port: options.channel.port, token: token, appName: options.channel.appName)
-warn("bridging stdio to 127.0.0.1:\(options.channel.port) as \(options.channel.rawValue)")
-await bridge.run()
+await Task.detached {
+    let options = parse(Array(CommandLine.arguments.dropFirst()))
+    let token = Credentials.token(
+        service: "\(options.channel.bundleIdentifier).automation-clients", client: options.client)
+    let bridge = Bridge(
+        port: options.channel.port, token: token, appName: options.channel.appName)
+    warn("bridging stdio to 127.0.0.1:\(options.channel.port) as \(options.channel.rawValue)")
+    await bridge.run()
+}.value

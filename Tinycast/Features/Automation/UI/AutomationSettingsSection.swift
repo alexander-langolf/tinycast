@@ -41,7 +41,7 @@ struct AutomationSettingsSection: View {
                 Text("Allow automation")
                 Text(statusText).foregroundStyle(.secondary)
             }
-            .task { automation.clients.loadMetadata() }
+            .task { await automation.clients.loadMetadata() }
             ForEach(automation.clients.clients) { client in
                 clientRow(client)
             }
@@ -55,7 +55,7 @@ struct AutomationSettingsSection: View {
             Picker("Token lifetime", selection: $lifetime) {
                 ForEach(Lifetime.allCases) { Text($0.title).tag($0) }
             }
-            Button("Create Client") { create() }
+            Button("Create Client") { Task { await create() } }
                 .disabled(createBlocker != nil)
             if let createBlocker {
                 Text(createBlocker).foregroundStyle(.secondary)
@@ -99,7 +99,7 @@ struct AutomationSettingsSection: View {
                 Text(summary(of: client)).foregroundStyle(.secondary)
             }
             Spacer()
-            Button("Rotate Token") { rotate(client) }
+            Button("Rotate Token") { Task { await rotate(client) } }
             Button("Revoke", role: .destructive) { revoke(client) }
         }
     }
@@ -118,9 +118,9 @@ struct AutomationSettingsSection: View {
             })
     }
 
-    private func create() {
+    private func create() async {
         do {
-            let client = try automation.createClient(
+            let client = try await automation.createClient(
                 label: label, scopes: scopes, lifetime: lifetime.seconds)
             label = ""
             notice =
@@ -130,9 +130,9 @@ struct AutomationSettingsSection: View {
         }
     }
 
-    private func rotate(_ client: AutomationClient) {
+    private func rotate(_ client: AutomationClient) async {
         do {
-            try automation.clients.rotate(client.id)
+            try await automation.clients.rotate(client.id)
             notice = "Rotated “\(client.label)”. The old token no longer works."
         } catch {
             notice = "Could not rotate the token."
@@ -145,7 +145,7 @@ struct AutomationSettingsSection: View {
                 title: "Revoke “\(client.label)”?",
                 message: "Anything using its token stops working immediately.", symbol: "key",
                 confirmTitle: "Revoke")
-            if confirmed { automation.clients.revoke(client.id) }
+            if confirmed { await automation.clients.revoke(client.id) }
         }
     }
 }
