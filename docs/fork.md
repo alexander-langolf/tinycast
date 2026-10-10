@@ -182,11 +182,11 @@ With chip mode off, these hooks retain upstream behaviour. The
 The [AI working directory](features/ai-working-directory.md) lets Quick AI and AI Chat start installed
 agents in a chosen folder, so Claude Code and Codex load its `CLAUDE.md` or `AGENTS.md`. The owner,
 row and wiring are fork-owned: `Tinycast/Fork/ForkAIWorkingDirectory.swift`,
-`ForkAIWorkingDirectoryRow.swift` and `ForkAIWorkingDirectoryWiring.swift`. `AppCore` owns it and
-injects a closure into `InstalledAIManager` and `ChatGPTSubscriptionManager`, the way it injects
-launch settings. Upstream's `workspace` keeps its meaning, the private scratch folder; the hooks add a
-separate `cwd` used only where a process starts or a directory flag is passed. Unset, `cwd` is
-`workspace` and every route is upstream.
+`ForkAIWorkingDirectoryRow.swift` and `ForkAIWorkingDirectoryWiring.swift`. `AppCore` owns it; the
+wiring file adds a computed `cwd` to `InstalledCLITurnRunner` and `CodexAppServerClient` that reads
+`ForkAIWorkingDirectory.current`. Upstream's `workspace` keeps its meaning, the private scratch
+folder; the hooks read `cwd` only where a process starts or a directory flag is passed. Unset, `cwd`
+is `workspace` and every route is upstream.
 
 ## Merge playbook
 
@@ -305,10 +305,8 @@ unless they have an explicit symbol-only allowance. The audit is a static guard,
 | `Tinycast/Palette/PaletteWindowController.swift` | `// FORK: palette-chips` | Route number-row favourite slots to active chips and consume unused slots; set collapsed pill width. |
 | `Tinycast/Features/Launcher/UI/LauncherScreen.swift` | `// FORK: palette-chips` | Scope ordinary launcher results to Applications or Shortcuts while preserving pinned command results. |
 | `Tinycast/App/AppCore.swift` | `// FORK: ai-working-directory` | Own the working-directory setting and wire it at startup. |
-| `Tinycast/Features/AI/Service/InstalledAIManager.swift` | `// FORK: ai-working-directory` | Hold the injected working directory and hand it to each CLI turn. |
-| `Tinycast/Features/AI/Service/InstalledCLIProvider.swift` | `// FORK: ai-working-directory` | Separate `cwd` for the process and directory flags; scratch files stay in `workspace`. |
-| `Tinycast/Features/AI/Service/ChatGPTSubscriptionManager.swift` | `// FORK: ai-working-directory` | Forward the working directory to the Codex client. |
-| `Tinycast/Features/AI/Service/CodexAppServerClient.swift` | `// FORK: ai-working-directory` | Resolve `cwd` at launch for the app-server and `mcp list`; `workspace` stays scratch. |
+| `Tinycast/Features/AI/Service/InstalledCLIProvider.swift` | `// FORK: ai-working-directory` | Widen the runner and its `workspace` for the fork's `cwd`; use `cwd` for the process and directory flags. |
+| `Tinycast/Features/AI/Service/CodexAppServerClient.swift` | `// FORK: ai-working-directory` | Use the fork's `cwd` for the app-server and `mcp list`; `workspace` stays scratch. |
 | `Tinycast/Features/AI/Service/CodexTurnRunner.swift` | `// FORK: ai-working-directory` | Start threads in the client's `cwd`. |
 | `Tinycast/Features/AI/Settings/AISettingsView.swift` | `// FORK: ai-working-directory` | Show the Working folder row in the Chat section. |
 | `Tinycast/Features/Settings/AppSettingsKey.swift` | `// FORK: ai-working-directory` | Name the `aiWorkingDirectory` defaults key. |

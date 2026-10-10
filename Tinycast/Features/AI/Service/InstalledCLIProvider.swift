@@ -6,13 +6,11 @@ struct InstalledCLIProvider: AIProvider {
     @MainActor
     init(
         kind: InstalledAIKind, executable: URL?, model: String, effort: String?, workspace: URL,
-        workingDirectory: URL? = nil,  // FORK: ai-working-directory
         launch: InstalledAILaunch = InstalledAILaunch(), toolServers: AIToolServerSession? = nil
     ) {
         runner = InstalledCLITurnRunner(
             kind: kind, executable: executable, model: model, effort: effort,
-            workspace: workspace, cwd: workingDirectory ?? workspace,  // FORK: ai-working-directory
-            launch: launch, toolServers: toolServers)
+            workspace: workspace, launch: launch, toolServers: toolServers)
     }
 
     func stream(_ request: AIRequest) -> AIProviderStream {
@@ -21,7 +19,7 @@ struct InstalledCLIProvider: AIProvider {
 }
 
 @MainActor
-private final class InstalledCLITurnRunner {
+final class InstalledCLITurnRunner {  // FORK: ai-working-directory
     private static let safetyInstructions = """
         You are generating text inside Tinycast. Do not invoke tools, read files, inspect the \
         environment, access external resources, or modify anything. Use only the conversation and \
@@ -49,8 +47,7 @@ private final class InstalledCLITurnRunner {
     private let configuredExecutable: URL?
     private let model: String
     private let effort: String?
-    private let workspace: URL
-    private let cwd: URL  // FORK: ai-working-directory
+    let workspace: URL  // FORK: ai-working-directory
     private let launch: InstalledAILaunch
     private let toolServers: AIToolServerSession?
 
@@ -72,7 +69,6 @@ private final class InstalledCLITurnRunner {
 
     init(
         kind: InstalledAIKind, executable: URL?, model: String, effort: String?, workspace: URL,
-        cwd: URL,  // FORK: ai-working-directory
         launch: InstalledAILaunch, toolServers: AIToolServerSession? = nil
     ) {
         self.kind = kind
@@ -81,7 +77,6 @@ private final class InstalledCLITurnRunner {
         self.model = model
         self.effort = effort
         self.workspace = workspace
-        self.cwd = cwd  // FORK: ai-working-directory
         self.toolServers = toolServers
     }
 

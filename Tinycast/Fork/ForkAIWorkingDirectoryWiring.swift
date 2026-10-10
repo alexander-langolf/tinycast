@@ -1,17 +1,24 @@
 import Foundation
 
 extension AppCore {
-    /// The managers ask at each launch; only Codex's app-server keeps a directory between turns.
+    /// Only Codex's app-server keeps a directory between turns, so only it starts again.
     func startForkAIWorkingDirectory() {
-        let directory = forkAIWorkingDirectory
-        directory.start()
-        installedAI.workingDirectory = { [weak directory] in directory?.url }
-        chatGPTSubscription.workingDirectory = { [weak directory] in directory?.url }
-        directory.onChange = { [weak self] in
+        forkAIWorkingDirectory.start()
+        forkAIWorkingDirectory.onChange = { [weak self] in
             guard let subscription = self?.chatGPTSubscription, subscription.phase != .idle
             else { return }
             subscription.stop()
             subscription.refresh()
         }
     }
+}
+
+extension InstalledCLITurnRunner {
+    /// Where the agent starts; `workspace` stays the private folder for Tinycast's own files.
+    var cwd: URL { ForkAIWorkingDirectory.current?.url ?? workspace }
+}
+
+extension CodexAppServerClient {
+    /// Read at launch and at each thread start; a change restarts the server, so the two agree.
+    var cwd: URL { ForkAIWorkingDirectory.current?.url ?? workspace }
 }
