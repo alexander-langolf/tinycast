@@ -14,7 +14,7 @@ wins if this plan disagrees with it.
 
 **Architecture in one line:** a fork-owned `ForkQuickAIRoot` keeps one persistent, read-only root
 thread ready on the running Codex app-server. `CodexTurnRunner.prepareThread` claims it for Quick AI
-sends. Start Work opens a terminal instance running `codex fork <root>` and retires the root. A JSONL
+sends. Start Work opens a terminal instance running `codex fork -C <folder> <root>` and retires the root. A JSONL
 log and a retention prune clean up.
 
 **Verified anchors** (`main` @ `6161df5d`):
@@ -37,23 +37,31 @@ log and a retention prune clean up.
 Answers the spec's four open questions. Scratch scripts only, in the session scratchpad. One trivial
 real prompt is allowed.
 
-- [ ] **0.1 Fork from the CLI.** Start a real app-server with Quick AI's flags, run `thread/start`
+- [x] **0.1 Fork from the CLI.** Start a real app-server with Quick AI's flags, run `thread/start`
       with `ephemeral: false` and one trivial `turn/start`, then wait for `turn/completed`. Run
       `codex fork <threadId> 'say ok'` in a PTY, and record whether the fork carries the history and
       whether the rollout was on disk at `turn/completed`.
-- [ ] **0.2 Instruction carry-over.** In that fork, ask "may you run shell commands here?" and record
+- [x] **0.2 Instruction carry-over.** In that fork, ask "may you run shell commands here?" and record
       whether Tinycast's text-only developer instructions came with it.
-- [ ] **0.3 `thread/delete`.** List the `~/.codex/sessions` files for a test thread before and after
+- [x] **0.3 `thread/delete`.** List the `~/.codex/sessions` files for a test thread before and after
       `thread/delete`.
-- [ ] **0.4 Idle cost.** With Tinycast's MCP tool servers armed, leave the app-server idle for 15 min
+- [x] **0.4 Idle cost.** With Tinycast's MCP tool servers armed, leave the app-server idle for 15 min
       and record its RSS, its child processes and any network traffic (`nettop -p`).
-- [ ] **0.5 Decide and record.** Choose the handoff path:
+- [x] **0.5 Decide and record.** Choose the handoff path:
       - **A:** `codex fork <root> '<handoff>'` (spec default);
       - **B:** app-server `thread/fork` with new `developerInstructions`, then `codex resume <fork>`.
 
       Write the result into the spec ("Spike first" section → "Spike results"). Also settle the
       shortcut: ⇧⌘↵ if the AI screen's Return handler doesn't route it to the calculator, otherwise
       ⌥⌘↵.
+
+      **Result (2026-10-10):** neither A nor B as written. Both keep the root's text-only developer
+      message in the fork's history, and the fork refuses to work (3/3 for A; B's new instructions
+      never reached the history). **Path C** works 3/3: A's `codex fork <root> '<handoff>'`, with the
+      root's safety text worded as Quick AI's own limits that end on a move to a work session. The
+      shortcut is **⌘↵**, through `AIScreen.secondary(at:)`, which is unused today. Surface check:
+      `chats.quickAI.holds(conversationID)`, with no change to `AIRequest`. Details are in the spec's
+      *Spike results*.
 
 **Gate:** Group 4 doesn't start until 0.5 has picked a path. A fork that refuses or loses the history
 in both A and B stops the plan; report back to Sasha.
@@ -99,6 +107,10 @@ them. `log.jsonl` is written only while the toggle is on.
       Record the choice in `docs/fork.md`.
 - [ ] **2.4** The root is the only thread created with `ephemeral: false`. Every other thread keeps
       `ephemeral: true`.
+- [ ] **2.5** Root safety wording. For a Quick AI request while the root is enabled,
+      `developerInstructions(for:hasTools:)` uses `ForkQuickAIRoot.safetyInstructions` (the spec's
+      scoped wording) in place of `safetyInstructions`. It's one `// FORK: quick-ai-root` line. The
+      mismatch check compares this text, so the root and its claiming send always agree.
 
 **Done when:** with the toggle on, a Quick AI send after warming shows in the debug log as `claimed`
 and makes no `thread/start` request. With the toggle off, behaviour is byte-for-byte today's.
@@ -119,15 +131,15 @@ and makes no `thread/start` request. With the toggle off, behaviour is byte-for-
 
 ## Group 4: Start Work
 
-- [ ] **4.1** Create `Tinycast/Fork/QuickAIRoot/ForkQuickAIHandoff.swift`. It builds the command for
-      path A or B (from 0.5), with every argument single-quoted for zsh and the spec's fixed handoff
-      prompt. A pure `command(rootID:)` returns the string.
+- [ ] **4.1** Create `Tinycast/Fork/QuickAIRoot/ForkQuickAIHandoff.swift`. It builds
+      `codex fork -C '<folder>' '<root>' '<handoff>'` (path C; `-C` because a fork otherwise keeps the root's `cwd`), with every argument single-quoted for zsh and the
+      spec's fixed handoff prompt. A pure `command(rootID:)` returns the string.
 - [ ] **4.2** Hook `AIScreen.actions(at:)` (`:22`) to add "Start Work in Codex" (systemImage
-      `hammer`, the shortcut from 0.5). It's shown only when the root is `inUse`, the chat has at
+      `hammer`, shortcut label "⌘↵"). It's shown only when the root is `inUse`, the chat has at
       least one completed assistant turn, and nothing is streaming.
-- [ ] **4.3** Add the shortcut through the same route `continueInChat` uses: one new
-      `PaletteShortcut` case plus `resolve`, or the AI screen's own key handler if that's less
-      invasive.
+- [ ] **4.3** Hook `AIScreen.secondary(at:)`, which returns `false` today: when the action is
+      available, run it and return `true`. The palette's Return handler already sends ⌘↵ there, and
+      ⇧⌘↵ falls through to it too, so `PaletteShortcut` and `RootPaletteView` are untouched.
 - [ ] **4.4** The action:
       1. calls `TerminalInstancesCoordinator.open(command:directory:)` with the working folder, or
          home when none is set;
@@ -141,8 +153,10 @@ conversation, asks before it runs a shell command, and Quick AI is empty afterwa
 ## Group 5: Retention
 
 - [ ] **5.1** When a root is retired and once an hour while the app-server runs, read the log and
-      `thread/delete` each retired root older than the retention. Skip any root that is `inUse`. Log
-      `deleted`, then rewrite the log without expired lines (atomic replace).
+      `thread/delete` each retired root older than the retention. Skip any root that is `inUse`, and
+      any root with a `handedOff` line: Codex refuses to delete a thread a fork still reads
+      (`forked history still references it`). Log `deleted`, then rewrite the log without expired
+      lines (atomic replace), keeping a handed-off root's lines out of the prune list.
 - [ ] **5.2** A `thread/delete` failure is logged and retried on the next prune. It never surfaces in
       the UI.
 
