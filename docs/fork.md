@@ -87,8 +87,9 @@ live in `project.fork.yml`; regenerate the Xcode project after changing them. Th
 `TinycastPreviews`, a small app target (bundle id `com.tinycast.previews`) that compiles only the
 AgentRuns UI, the terminal-instance card (`TerminalInstanceCard` and its metrics) and the design-system, fork-typography and shell-runner files they read, so Xcode's canvas
 can preview without libghostty or AppCore. Its entry point is `PreviewsApp/`; run it for a card playground.
-Debug builds of all three targets sign "Sign to Run Locally" (`CODE_SIGN_IDENTITY: "-"`), so Xcode
-builds without the `Tinycast Self-Signed` identity; Release keeps upstream's identity.
+Debug builds sign with upstream's `Tinycast Self-Signed` identity (create it once per `signing.md` §1;
+with OpenSSL 3+, add `-legacy` to `openssl pkcs12 -export` or `security import` fails its MAC check), so
+Accessibility and Keychain grants survive rebuilds. `TinycastPreviews` alone signs ad-hoc.
 
 ## Background agent runs
 

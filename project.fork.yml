@@ -13,20 +13,8 @@ targets:
       configs:
         Debug:
           ASSETCATALOG_COMPILER_APPICON_NAME: ForkAppIcon
-          # Fork: Debug signs "Sign to Run Locally" so Xcode builds without the Tinycast Self-Signed identity.
-          CODE_SIGN_IDENTITY: "-"
         Release:
           ASSETCATALOG_COMPILER_APPICON_NAME: ForkAppIcon
-  ClipboardTextHelper:
-    settings:
-      configs:
-        Debug:
-          CODE_SIGN_IDENTITY: "-"
-  DictationHelper:
-    settings:
-      configs:
-        Debug:
-          CODE_SIGN_IDENTITY: "-"
   # Preview host: only the AgentRuns and terminal card UI and the design-system files they read, so
   # Xcode's canvas (whose JIT linker cannot take libghostty-vt) has a target to preview in. No AppCore.
   TinycastPreviews:
