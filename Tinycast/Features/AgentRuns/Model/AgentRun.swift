@@ -13,6 +13,6 @@ struct AgentRun: Decodable, Equatable, Identifiable, Sendable {
     let startedAt: Int
     let last: String?
     let attach: String?
-    /// Short model name ("Opus 4.5", a Codex model id); absent from older helpers.
+    /// Short model name ("Opus", a Codex model id); absent from older helpers.
     let model: String?
 }

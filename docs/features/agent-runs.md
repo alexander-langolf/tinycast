@@ -45,7 +45,7 @@ shell text. Only stdout is decoded as a JSON array of `AgentRun` values:
 | `name`, `cwd` | Display name and working directory |
 | `state` | Open-ended state string, including `working` and `blocked` |
 | `startedAt` | Integer epoch milliseconds |
-| `last`, `attach`, `model` | Optional strings; omitted and null both decode as absent. `model` is a short name such as "Opus 4.5" or a Codex model id |
+| `last`, `attach`, `model` | Optional strings; omitted and null both decode as absent. `model` is a short name such as "Opus" or a Codex model id |
 
 `AgentRunsCoordinator.paletteDidShow()` starts the monitor and `paletteDidHide()` stops it, following
 Calendar's lifecycle for both explicit hiding and focus-loss dismissal. The child panel follows
