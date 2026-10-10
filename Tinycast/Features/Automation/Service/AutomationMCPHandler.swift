@@ -131,6 +131,9 @@ final class AutomationMCPHandler {
             return failure(id, .invalidParams("arguments must be an object"), call.era)
         }
         guard let operation = AutomationOperationCatalog.tool(named: name) else {
+            router.recordUnknown(
+                name, caller: caller, arguments: arguments, transport: "mcp-http",
+                callerRequestID: id.description)
             return failure(id, .invalidParams("Unknown tool: \(name)"), call.era)
         }
         let outcome = await router.route(
@@ -169,6 +172,9 @@ final class AutomationMCPHandler {
             return failure(id, .invalidParams("uri is required"), call.era)
         }
         guard let operation = AutomationOperationCatalog.resource(uri: uri) else {
+            router.recordUnknown(
+                uri, caller: caller, arguments: [:], transport: "mcp-http",
+                callerRequestID: id.description)
             return failure(id, .invalidParams("Resource not found"), call.era)
         }
         let outcome = await router.route(
@@ -183,7 +189,7 @@ final class AutomationMCPHandler {
             ])
             return success(id, ["contents": .array([contents])], call.era)
         case .toolError(let message):
-            return failure(id, .internalError(message), call.era)
+            return failure(id, .resourceUnreadable(message), call.era)
         case .rpcError(let error):
             return failure(id, error, call.era)
         }

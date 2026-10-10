@@ -49,7 +49,7 @@ final class AutomationRouter {
             arguments: call.arguments, against: operation.inputSchema)
         {
             try? record(.denied, call, detail: problem)
-            return .rpcError(.invalidParams(problem))
+            return .toolError("Invalid arguments: \(problem)")
         }
         let prepared: Prepared
         switch runner.prepare(call) {
@@ -83,6 +83,23 @@ final class AutomationRouter {
         case .rpcError(let error): try? record(.failed, call, detail: error.message)
         }
         return outcome
+    }
+
+    /// A name the registry does not know never reaches `route`, but the attempt is still logged.
+    func recordUnknown(
+        _ name: String, caller: AutomationCaller, arguments: [String: JSONValue], transport: String,
+        callerRequestID: String?
+    ) {
+        guard admit(caller) else { return }
+        let request = UUID()
+        for (kind, detail) in [(AutomationAuditEvent.Kind.received, nil), (.denied, "Unknown name")] {
+            try? audit.append(
+                AutomationAuditEvent(
+                    id: UUID(), request: request, at: now(), kind: kind, transport: transport,
+                    callerRequestID: callerRequestID, caller: caller.label, client: caller.clientID,
+                    operation: AutomationText.redacted(name, limit: 64),
+                    arguments: AutomationAuditEvent.summary(of: arguments), detail: detail))
+        }
     }
 
     private func approve(_ call: AutomationCall, _ prepared: Prepared) async -> AutomationOutcome? {

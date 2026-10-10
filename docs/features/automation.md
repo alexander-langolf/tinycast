@@ -73,8 +73,11 @@ Allow automation starts and stops it; it is off by default and the flag is not i
   handshake-era request: `initialize` is answered with no session id, later requests need a legacy
   `MCP-Protocol-Version` (absent means 2025-03-26).
 - **Errors.** Envelope and header faults are JSON-RPC errors with HTTP 400. Unknown tools and
-  resources are `-32602`. A tool that ran and failed, or was declined, is a result with
-  `isError: true`. The caller's JSON-RPC id is echoed untouched and recorded in the audit log.
+  resources are `-32602`, and the attempt is audited (`received`, then `denied`). Arguments that fail
+  the tool's input schema, a tool that ran and failed, or one that was declined, are a result with
+  `isError: true` (MCP counts input validation as a tool execution error). A resource read that
+  is refused or fails after the resource was found (rate limit, audit log down) is `-32603` with
+  HTTP 200. The caller's JSON-RPC id is echoed untouched and recorded in the audit log.
 - **Cancellation.** Each POST has its own connection; when the client closes it the handler task is
   cancelled, which withdraws a pending approval. The legacy `notifications/cancelled` is accepted
   and ignored: closing the connection is the signal on this transport.

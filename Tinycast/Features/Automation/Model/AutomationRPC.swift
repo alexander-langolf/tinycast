@@ -35,6 +35,8 @@ struct AutomationRPCError: Error, Equatable, Sendable {
         .init(-32601, "Method not found: \(method)", status)
     }
     static func internalError(_ message: String) -> Self { .init(-32603, message, 500) }
+    /// The read was refused or failed on Tinycast's side; the exchange itself worked, so HTTP 200.
+    static func resourceUnreadable(_ message: String) -> Self { .init(-32603, message, 200) }
     static func headerMismatch(_ message: String) -> Self { .init(-32020, message, 400) }
     static func unsupportedVersion(requested: String) -> Self {
         .init(
