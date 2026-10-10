@@ -32,14 +32,7 @@ final class ForkQuickAIHandoffCoordinator {
             guard let kind = kind(for: engine) else { continue }
             let path = core.aiSettings.override(for: kind).commandPath
             guard resolutions[engine]?.commandPath != path else { continue }
-            let executable: URL?
-            switch InstalledAILaunch(commandPath: path).command() {
-            case .executable(let url): executable = url
-            case .missing: executable = nil
-            case .automatic:
-                executable = await ExecutableLocator.locate(
-                    kind.command, extraHomePaths: kind.extraExecutablePaths)
-            }
+            let executable = await ForkAIExecutableResolver.resolve(kind: kind, commandPath: path)
             guard !Task.isCancelled else { return }
             guard core.aiSettings.override(for: kind).commandPath == path else { continue }
             resolutions[engine] = Resolution(commandPath: path, executable: executable)

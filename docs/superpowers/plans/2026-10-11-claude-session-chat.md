@@ -51,22 +51,32 @@ changes the design but doesn't stop it.
 
 ## Group 1: Host, registry, hooks
 
-- [ ] **1.1** `ForkClaudeSessionHost`:
+**Done 2026-10-11** (build, lint and fork audit green). Runtime check: Dev writes `hooks.json` at
+launch, and a `--bg` session started with it filled `events.jsonl` with SessionStart,
+UserPromptSubmit and Stop, each carrying `session_id` and `transcript_path`. The registry write is
+exercised for real when Group 3 starts sessions from Start Work. Findings fixed in review: `resume`
+now runs in the session's folder; Claude's stderr is the error message; the agents listing skips
+interactive sessions, which have no short `id`. `--bg` refuses an untrusted folder (see the spec).
+The implementation uses one shared `ClaudeSessions/events.jsonl`, filtered by payload `session_id`,
+as documented in the spec. The temporary Debug scratch hook is `AppCore.debugStartClaudeSession`,
+in `Tinycast/Fork/ClaudeSession/ForkClaudeSessionDebug.swift`; remove it before merge.
+
+- [x] **1.1** `ForkClaudeSessionHost`:
       - `start(prompt:directory:) async throws -> Handle`, which runs
         `claude --bg --settings <hooks> -- <prompt>` with the clean environment (strip `CLAUDE*`,
         `CLAUDECODE`, `ANTHROPIC*`) and parses `backgrounded · <id>`;
       - `lookup(id)` through `claude agents --json --all`, giving `sessionId`, `status`, `state` and
         `cwd`;
       - `stop(id)` and `resume(sessionID)`.
-- [ ] **1.2** The hooks file at `<Application Support>/ClaudeSessions/hooks.json`, written at launch,
+- [x] **1.2** The hooks file at `<Application Support>/ClaudeSessions/hooks.json`, written at launch,
       for `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse` (matcher `*`),
       `PermissionRequest`, `Notification` and `Stop`. The command appends stdin to
-      `ClaudeSessions/<session id>.events.jsonl` (form decided by 0.2). The session id comes from
-      the hook's own payload.
-- [ ] **1.3** `ForkClaudeSessionRegistry`: `ClaudeSessions/registry.json`, mapping chat id to short
+      the shared `ClaudeSessions/events.jsonl`; readers select the session id from the hook's own
+      payload, as documented in the authoritative spec.
+- [x] **1.3** `ForkClaudeSessionRegistry`: `ClaudeSessions/registry.json`, mapping chat id to short
       id, session id, transcript path, folder and read offset. Atomic writes; no message text.
 
-**Done when:** a scratch call from a Debug-only menu item (removed before the merge) starts a
+**Done when:** a scratch call from the Debug-only fork hook (removed before the merge) starts a
 session, the events file fills in, and the registry holds the entry.
 
 ## Group 2: Reader, writer, provider

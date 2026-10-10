@@ -261,6 +261,22 @@ Overflow writes revalidate the source chat, draft, attachments, settings and dir
 launching; a stale result leaves the current chat untouched. Start Work retires the warm root
 with reason `newChat` through `startNewChat`, which also prewarms the next root.
 
+## Claude session chat
+
+Group 1 of [Claude session chat](features/claude-session-chat.md) lives entirely in
+`Tinycast/Fork/ClaudeSession/`: the Process-based background host, hook settings writer and atomic
+metadata registry. `AppCore` lazily owns the host and registry, prepares hooks at launch and cancels
+only preparation at termination; Claude's daemon keeps sessions alive. Quick AI's existing handoff
+uses the same fork-owned executable resolver, with its override and missing-path behaviour preserved.
+
+Storage is channel-specific under `AppPaths.applicationSupport()/ClaudeSessions/`. All seven hooks
+append stdin to one `events.jsonl`, whose payloads carry `session_id`; transcript paths come from the
+agents listing or hook payloads. `registry.json` maps chat UUIDs to session metadata and offsets,
+without message text. No chat provider or Start Work routing is changed in Group 1.
+
+`ForkClaudeSessionDebug.swift` is a temporary `#if DEBUG` scratch hook, marked for removal before
+merge. Its callable entry point and the manual Group 1 verification steps are in the spec.
+
 ## Quick AI warm root
 
 `AppCore` owns `ForkQuickAIRoot`, wired to `CodexTurnRunner` at startup. The fork-owned state
@@ -322,6 +338,7 @@ unless they have an explicit symbol-only allowance. The audit is a static guard,
 
 | File | Tag | Purpose |
 | --- | --- | --- |
+| `Tinycast/App/AppCore.swift` | `// FORK: claude-session-chat` | Lazily own the background Claude host and registry; write hooks at launch and cancel preparation at termination without stopping daemon sessions. |
 | `Scripts/run-tests.sh` | `// FORK: agent-runs` | Register the AgentRuns decoding harness. |
 | `Tinycast/App/AppDelegate.swift` | `// FORK: previews` | Skip AppCore start and termination work when Xcode's canvas hosts the app. |
 | `Tinycast/App/AppCore.swift` | `// FORK: agent-runs` | Own the monitor, coordinator and presenter; stop work at termination. |

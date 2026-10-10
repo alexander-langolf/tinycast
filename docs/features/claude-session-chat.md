@@ -1,6 +1,7 @@
 # Claude session chat: specification
 
-**Status:** spec, not built. It's an experiment, and it extends Quick AI's Start Work
+**Status:** Group 1 (host, hooks, registry) built; Groups 2–5 to do.
+It's an experiment, and it extends Quick AI's Start Work
 (`docs/features/quick-ai-root-session.md`). Evidence comes from the vault note *Tinycast Agent Hub —
 Design & Plan*, section "Spike results: background Claude (2026-10-11)".
 
@@ -56,6 +57,9 @@ through a Tinycast restart, and `claude attach <id>` opens it in any terminal.
 
    It reads the short id from the output (`backgrounded · <id>`), then the session id and
    transcript path from `claude agents --json` or the first hook event.
+   `claude --bg` refuses a folder Claude Code hasn't trusted yet ("Workspace not trusted. Run
+   `claude` in <folder> once and accept the trust prompt"). Start Work then shows that message
+   and falls back to today's visible terminal, where Sasha answers the trust prompt himself.
 3. Moves the Quick AI chat into the AI Chat window (today's Continue in AI Chat path), registers
    `chat id → session` in the fork's registry, and shows the first reply arriving as the session
    produces it.
@@ -67,8 +71,14 @@ through a Tinycast restart, and `claude attach <id>` opens it in any terminal.
 
 - **Events:** the fork's hooks file adds command hooks for `SessionStart`, `UserPromptSubmit`,
   `PreToolUse`, `PostToolUse`, `PermissionRequest`, `Notification` and `Stop`. Each appends its JSON
-  line to `<Application Support>/ClaudeSessions/<session id>.events.jsonl`. `--settings` merges with
-  Sasha's own settings, so his hooks still run (seen in the spike).
+  line to `<Application Support>/<Tinycast bundle id>/ClaudeSessions/events.jsonl` using
+  `/bin/cat >> '<events file>'`. This is one shared file: readers filter each complete line by the
+  payload's `session_id`, rather than parsing JSON in a shell to choose a filename. Paths containing
+  quotes are shell-escaped in the hook command; Claude itself is launched directly as a `Process`.
+  `--settings` merges with Sasha's own settings, so his hooks still run (seen in the spike).
+  `SessionStart`'s `transcript_path` supplies the path when the agents listing doesn't include it.
+  Hooks are written atomically at Tinycast launch and again before start/resume; the bundle-id root
+  keeps Dev and installed builds separate.
 - **Content:** the transcript JSONL, read from the last offset on every event, and every 0.5 s while
   a turn is running. Mapping:
   - assistant `text` → `.text`;
@@ -138,6 +148,30 @@ through a Tinycast restart, and `claude attach <id>` opens it in any terminal.
 | `ForkQuickAIHandoffCoordinator` (fork-owned) | ⌘↵ with Claude takes the session path instead of the visible terminal. |
 
 ## Acceptance criteria
+
+Group 1 has a temporary `#if DEBUG` scratch entry point in
+`Tinycast/Fork/ClaudeSession/ForkClaudeSessionDebug.swift`, to remove before merge. From a Debug
+session's Swift debugger, exercise it with an explicit prompt and working folder:
+
+```swift
+Task { @MainActor in
+    do {
+        let result = try await AppCore.shared.debugStartClaudeSession(
+            prompt: "Reply with hello", directory: "/path/to/working/folder")
+        AppCore.shared.showMessage(result)
+    } catch {
+        AppCore.shared.showMessage(error.localizedDescription, tone: .danger)
+    }
+}
+```
+
+It calls the host and registers a fresh scratch chat UUID after resolving the transcript path.
+It does not create an AI Chat conversation or change Quick AI's Start Work routing. Inspect the
+Dev channel's `ClaudeSessions/events.jsonl` and `registry.json` for Group 1's done criterion.
+Session commands have a 30-second timeout; cancellation or timeout terminates only the CLI client,
+not a daemon-hosted session that may already have started. A metadata/transcript failure reports
+the short ID so that the scratch session can be inspected and stopped manually. The host exposes
+`stop(id:)` and `remove(id:)`; the scratch hook never stops or removes a session automatically.
 
 1. **Start:** `+stardust what was in joyce handoff?` and ⌘↵ in Quick AI opens the AI Chat window
    within 2 s. The reply arrives there, with the sigil resolved by the session's hook, and
