@@ -57,7 +57,12 @@ struct AgentRunCard: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             VStack(alignment: .trailing, spacing: 0) {
-                Text(kindLabel)
+                HStack(spacing: metrics.spacing.xs) {
+                    Text(kindLabel)
+                    if let model = run.model, !model.isEmpty {
+                        Text(model).foregroundStyle(Theme.Colors.textTertiary)
+                    }
+                }
                 elapsed(from: Date(timeIntervalSince1970: Double(run.startedAt) / 1_000))
             }
             .fixedSize()
@@ -67,8 +72,9 @@ struct AgentRunCard: View {
         .lineLimit(1)
         .truncationMode(.tail)
         .padding(.horizontal, metrics.spacing.xl)
+        .padding(.vertical, agentRunsMetrics.cardVerticalPadding)
         .frame(maxWidth: .infinity)
-        .frame(height: metrics.size.rowIcon + metrics.spacing.sm * 2)
+        .frame(height: agentRunsMetrics.cardHeight)
         .background(hovered && canAttach ? Theme.Colors.rowHover : .clear)
         .background(GlassEffectView())
         .clipShape(RoundedRectangle(cornerRadius: metrics.radius.panel, style: .continuous))

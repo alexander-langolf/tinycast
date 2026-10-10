@@ -50,7 +50,7 @@ final class AgentRunsPanelPresenter {
             agentRunsPanel = child
         }
         let cards = min(count, AgentRunsStack.cardLimit)
-        let rowHeight = metrics.size.rowIcon + metrics.spacing.sm * 2
+        let rowHeight = AgentRunsMetrics(metrics: metrics).cardHeight
         var height = CGFloat(cards) * rowHeight + CGFloat(cards - 1) * metrics.spacing.md
         if count > cards { height += metrics.spacing.md + metrics.size.barButtonHeight }
         let gap = metrics.spacing.xl

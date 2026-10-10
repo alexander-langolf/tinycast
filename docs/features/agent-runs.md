@@ -25,7 +25,7 @@
   wide: right if that fits, left otherwise. Run changes, palette moves, resizes, screen changes and
   Interface Size changes recompute placement. These dimensions use the shared interface scale.
 - **At most four run cards stack vertically, with transparent 8-point gaps.** Source order is
-  preserved; a smaller `+N more` card counts the rest. Each run card is one launcher row tall.
+  preserved; a smaller `+N more` card counts the rest. Each run card is one launcher row plus vertical padding tall.
   A card without a nonempty `attach` command is display-only.
 - **`Model/` is Foundation-only and pure.** `agent-runs-test` compiles the shipped decoding model.
 - **`AppCore` owns the monitor, coordinator and panel presenter.** There is no feature singleton,
@@ -45,7 +45,7 @@ shell text. Only stdout is decoded as a JSON array of `AgentRun` values:
 | `name`, `cwd` | Display name and working directory |
 | `state` | Open-ended state string, including `working` and `blocked` |
 | `startedAt` | Integer epoch milliseconds |
-| `last`, `attach` | Optional strings; omitted and null both decode as absent |
+| `last`, `attach`, `model` | Optional strings; omitted and null both decode as absent. `model` is a short name such as "Opus 4.5" or a Codex model id |
 
 `AgentRunsCoordinator.paletteDidShow()` starts the monitor and `paletteDidHide()` stops it, following
 Calendar's lifecycle for both explicit hiding and focus-loss dismissal. The child panel follows
@@ -69,10 +69,10 @@ clipped to the palette's continuous corner radius. The transparent panel supplie
 around the card silhouettes. `AgentRunsMetrics` keeps the feature's 360-point side width and 6-point
 status dot local, scaled through `InterfaceMetrics.scaled`. Existing Theme tokens and
 `InterfaceMetrics` supply the shared typography and geometry:
-run cards are `rowIcon + sm * 2` (36 points at standard size), and the overflow card is
+run cards are `rowIcon + sm * 2` plus `sm` above and below (48 points at standard size, `AgentRunsMetrics.cardHeight`, shared by the card and the panel frame), and the overflow card is
 `barButtonHeight` (28 points). Working uses the accent dot, blocked uses warning orange, and other
 states use tertiary ink; accessibility also reads the state. Names and secondary activity each
-truncate to one line; a missing activity leaves that line empty. The trailing agent kind and live
+truncate to one line; a missing activity leaves that line empty. The trailing agent kind (followed by the model, in tertiary text, when known) and live
 elapsed duration use secondary text. A one-second `TimelineView` uses `CommandDuration.text` and
 monospaced digits, matching command output and ticking independently of snapshot publication.
 
