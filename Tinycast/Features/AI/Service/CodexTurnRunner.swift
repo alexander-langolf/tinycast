@@ -346,7 +346,7 @@ final class CodexTurnRunner {
                 method: "thread/start",
                 params: [
                     "model": model,
-                    "cwd": client.workspace.path,
+                    "cwd": client.cwd.path,  // FORK: ai-working-directory
                     "approvalPolicy": turn.servers.isEmpty ? "never" : "untrusted",
                     "sandbox": "read-only",
                     "ephemeral": true,

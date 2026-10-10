@@ -6,11 +6,13 @@ struct InstalledCLIProvider: AIProvider {
     @MainActor
     init(
         kind: InstalledAIKind, executable: URL?, model: String, effort: String?, workspace: URL,
+        workingDirectory: URL? = nil,  // FORK: ai-working-directory
         launch: InstalledAILaunch = InstalledAILaunch(), toolServers: AIToolServerSession? = nil
     ) {
         runner = InstalledCLITurnRunner(
             kind: kind, executable: executable, model: model, effort: effort,
-            workspace: workspace, launch: launch, toolServers: toolServers)
+            workspace: workspace, cwd: workingDirectory ?? workspace,  // FORK: ai-working-directory
+            launch: launch, toolServers: toolServers)
     }
 
     func stream(_ request: AIRequest) -> AIProviderStream {
@@ -48,6 +50,7 @@ private final class InstalledCLITurnRunner {
     private let model: String
     private let effort: String?
     private let workspace: URL
+    private let cwd: URL  // FORK: ai-working-directory
     private let launch: InstalledAILaunch
     private let toolServers: AIToolServerSession?
 
@@ -69,6 +72,7 @@ private final class InstalledCLITurnRunner {
 
     init(
         kind: InstalledAIKind, executable: URL?, model: String, effort: String?, workspace: URL,
+        cwd: URL,  // FORK: ai-working-directory
         launch: InstalledAILaunch, toolServers: AIToolServerSession? = nil
     ) {
         self.kind = kind
@@ -77,6 +81,7 @@ private final class InstalledCLITurnRunner {
         self.model = model
         self.effort = effort
         self.workspace = workspace
+        self.cwd = cwd  // FORK: ai-working-directory
         self.toolServers = toolServers
     }
 
@@ -175,7 +180,7 @@ private final class InstalledCLITurnRunner {
         let stdout = Pipe()
         let stderr = Pipe()
         process.executableURL = executable
-        process.currentDirectoryURL = workspace
+        process.currentDirectoryURL = cwd  // FORK: ai-working-directory
         process.environment = environment(for: executable)
         var grokPrompt: URL?
         if kind == .grok {
@@ -332,7 +337,7 @@ private final class InstalledCLITurnRunner {
         case .openCode:
             var result = [
                 "run", "--pure", "--format", "json", "--model", model,
-                "--dir", workspace.path, "--title", "Tinycast"
+                "--dir", cwd.path, "--title", "Tinycast"  // FORK: ai-working-directory
             ]
             if let effort { result += ["--variant", effort] }
             return result
@@ -353,7 +358,7 @@ private final class InstalledCLITurnRunner {
                 // strict refuses to start if /var/run/docker.sock is a symlink.
                 "--sandbox", "workspace",
                 "--verbatim",
-                "--cwd", workspace.path,
+                "--cwd", cwd.path,  // FORK: ai-working-directory
                 "--rules", Self.safetyInstructions
             ]
             if let effort { result += ["--effort", effort] }
@@ -363,7 +368,7 @@ private final class InstalledCLITurnRunner {
                 "-p",
                 "--mode", "ask",
                 "--trust",
-                "--workspace", workspace.path,
+                "--workspace", cwd.path,  // FORK: ai-working-directory
                 "--model", model,
                 "--output-format", "stream-json",
                 "--stream-partial-output"
@@ -536,7 +541,7 @@ private final class InstalledCLITurnRunner {
             let arguments =
                 kind == .grok
                 ? ["sessions", "delete", sessionID] : ["session", "delete", sessionID, "--pure"]
-            let workspace = workspace
+            let workspace = cwd  // FORK: ai-working-directory
             let environment = environment(for: executable)
             Task.detached {
                 Self.deleteCLISession(

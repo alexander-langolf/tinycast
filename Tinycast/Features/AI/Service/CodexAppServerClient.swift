@@ -36,6 +36,8 @@ final class CodexAppServerClient {
 
     private let codexHome: URL?
     let workspace: URL
+    var workingDirectory: () -> URL? = { nil }  // FORK: ai-working-directory
+    private(set) var cwd: URL  // FORK: ai-working-directory
     /// The command the last launch ran, kept after it stops so Settings can still name it.
     private(set) var executable: URL?
     private var process: Process?
@@ -55,6 +57,7 @@ final class CodexAppServerClient {
     init(codexHome: URL? = nil, workspace: URL) {
         self.codexHome = codexHome
         self.workspace = workspace
+        cwd = workspace  // FORK: ai-working-directory
     }
 
     /// Process-scoped, never written to the reader's config; `plugins=false` drops plugin servers.
@@ -157,10 +160,11 @@ final class CodexAppServerClient {
             throw ClientError.launchFailed("Its private support folder could not be prepared.")
         }
 
+        cwd = workingDirectory() ?? workspace  // FORK: ai-working-directory
         // Unread, the reader's servers would start inside the chat; so Codex does not start either.
         guard
             let foreign = await Self.foreignServerNames(
-                executable: executable, workspace: workspace, codexHome: codexHome,
+                executable: executable, workspace: cwd, codexHome: codexHome,  // FORK: ai-working-directory
                 inherited: inherited)
         else {
             throw ClientError.launchFailed(
@@ -189,7 +193,7 @@ final class CodexAppServerClient {
             Self.configurationFlags
             + CodexMCPLaunch.arguments(servers: toolServers, disabling: foreign)
             + ["app-server"]
-        process.currentDirectoryURL = workspace
+        process.currentDirectoryURL = cwd  // FORK: ai-working-directory
         var environment = ExecutableLocator.environment(
             running: executable, adding: secrets, inherited: inherited)
         // Tests can isolate app-server state; production deliberately inherits the user's Codex home.

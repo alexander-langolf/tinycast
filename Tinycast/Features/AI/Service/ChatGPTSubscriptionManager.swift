@@ -15,6 +15,10 @@ final class ChatGPTSubscriptionManager {
         get { client.launchSettings }
         set { client.launchSettings = newValue }
     }
+    @ObservationIgnored var workingDirectory: () -> URL? {  // FORK: ai-working-directory
+        get { client.workingDirectory }
+        set { client.workingDirectory = newValue }
+    }
 
     private(set) var phase = ChatGPTSubscription.Phase.idle
     private(set) var access: ChatGPTSubscription.Access?

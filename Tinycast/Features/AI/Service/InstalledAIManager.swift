@@ -13,6 +13,7 @@ final class InstalledAIManager {
     @ObservationIgnored var launchSettings: (InstalledAIKind) -> InstalledAILaunch = { _ in
         InstalledAILaunch()
     }
+    @ObservationIgnored var workingDirectory: () -> URL? = { nil }  // FORK: ai-working-directory
 
     /// An admin's MCP policy makes Claude reject both MCP flags; a harness points this elsewhere.
     nonisolated static var hasManagedMCPPolicy: Bool {
@@ -174,7 +175,8 @@ final class InstalledAIManager {
         }
         return InstalledCLIProvider(
             kind: kind, executable: status.executable, model: model, effort: effort,
-            workspace: workspace, launch: launchSettings(kind), toolServers: toolServers)
+            workspace: workspace, workingDirectory: workingDirectory(),  // FORK: ai-working-directory
+            launch: launchSettings(kind), toolServers: toolServers)
     }
 
     private enum Command {

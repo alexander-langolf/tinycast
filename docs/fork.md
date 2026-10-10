@@ -293,6 +293,11 @@ unless they have an explicit symbol-only allowance. The audit is a static guard,
 | `Tinycast/Palette/RootPaletteView.swift` | `// FORK: palette-chips` | Toggle chips with Tab in the collapsed bar; handle empty-query Escape; set pill radius, show the `⌘1–4` hint and hide compact favourites. |
 | `Tinycast/Palette/PaletteWindowController.swift` | `// FORK: palette-chips` | Route number-row favourite slots to active chips and consume unused slots; set collapsed pill width. |
 | `Tinycast/Features/Launcher/UI/LauncherScreen.swift` | `// FORK: palette-chips` | Scope ordinary launcher results to Applications or Shortcuts while preserving pinned command results. |
+| `Tinycast/Features/AI/Service/InstalledAIManager.swift` | `// FORK: ai-working-directory` | Hold the injected working directory and hand it to each CLI turn. |
+| `Tinycast/Features/AI/Service/InstalledCLIProvider.swift` | `// FORK: ai-working-directory` | Separate `cwd` for the process and directory flags; scratch files stay in `workspace`. |
+| `Tinycast/Features/AI/Service/ChatGPTSubscriptionManager.swift` | `// FORK: ai-working-directory` | Forward the working directory to the Codex client. |
+| `Tinycast/Features/AI/Service/CodexAppServerClient.swift` | `// FORK: ai-working-directory` | Resolve `cwd` at launch for the app-server and `mcp list`; `workspace` stays scratch. |
+| `Tinycast/Features/AI/Service/CodexTurnRunner.swift` | `// FORK: ai-working-directory` | Start threads in the client's `cwd`. |
 
 ## Refactor inventory
 
