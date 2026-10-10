@@ -78,8 +78,9 @@ The “Grow” card is built like the palette's search row: `GlassEffectView`, t
 same panel radius, with no border. The bar reuses the header's gutters, icon slot, `searchField` font,
 `textPrimary` caret and `textTertiary` placeholder; the folder uses the section-header style and the
 pin, kitty and close controls are compact `BarButton`s like the palette's accessory. The phase shows in
-the leading glyph instead: starting and running a spinner tinted with the accent, a non-zero status its
-code in the destructive colour, ended a dimmed `powersleep`, otherwise `$`. The bar matches the compact
+the leading glyph instead: starting and running a spinner tinted with the accent, a non-zero status a
+neutral `exclamationmark.circle` with the code in its tooltip (a crash signal, 128 + SIGILL/ABRT/FPE/KILL/BUS/SEGV, shows a
+red `xmark.octagon` instead), ended a dimmed `powersleep`, otherwise `$`. The bar matches the compact
 palette's height and full panel width. Output grows beneath a 1-point divider up to `scaled(340)` points,
 then scrolls. The log follows its tail while the reader is at the bottom; scrolling up pauses it.
 
