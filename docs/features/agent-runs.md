@@ -4,7 +4,10 @@
 
 - **The status snapshot owns card lifetime.** Every returned run is eligible regardless of state;
   a run missing from the next successful snapshot disappears immediately. Nothing is persisted.
-- **Polling belongs to palette visibility.** Opening starts an immediate read, then reads every two
+- **Polling belongs to palette visibility, plus one lease.** While an automation client holds a
+  `subscriptions/listen` stream, `AgentRunsMonitor.setAutomationHold` keeps polling after the palette
+  hides, and `refreshOnce()` serves a read when nothing polls. Without a lease, the rule below holds.
+  **Polling belongs to palette visibility.** Opening starts an immediate read, then reads every two
   seconds without overlapping within a polling task. `PaletteWindowController` calls the coordinator's
   `paletteDidShow()` / `paletteDidHide()` beside Calendar's lifecycle calls and `palette.noteVisible`.
   `PaletteState.isVisible` remains the visibility flag. Hiding cancels polling but keeps the last

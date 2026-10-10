@@ -3,21 +3,31 @@ import AppKit
 /// The effects themselves. The router has already decided the call may happen.
 @MainActor
 final class AutomationRunner {
-    private unowned let core: AppCore
+    struct PrepareFailure: Error, CustomStringConvertible {
+        let description: String
+        init(_ description: String) { self.description = description }
+    }
 
-    init(core: AppCore) {
+    private unowned let core: AppCore
+    private let questions: AutomationQuestionStore
+    private let profiles: AutomationAgentProfileStore
+
+    init(core: AppCore, questions: AutomationQuestionStore, profiles: AutomationAgentProfileStore) {
         self.core = core
+        self.questions = questions
+        self.profiles = profiles
     }
 
     /// Validates what the call will do and writes the exact words an approval will show.
     func prepare(_ call: AutomationCall) -> Result<AutomationRouter.Prepared, PrepareFailure> {
         var prepared = AutomationRouter.Prepared()
+        let arguments = call.arguments
         switch call.operation.name {
         case AutomationOperationCatalog.terminalRun.name:
-            guard let command = call.arguments["command"]?.stringValue,
+            guard let command = arguments["command"]?.stringValue,
                 !command.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             else { return .failure(PrepareFailure("The command is empty.")) }
-            switch resolveDirectory(call.arguments["cwd"]?.stringValue) {
+            switch resolveDirectory(arguments["cwd"]?.stringValue) {
             case .failure(let failure): return .failure(failure)
             case .success(let directory):
                 prepared.command = command
@@ -29,15 +39,33 @@ final class AutomationRunner {
                     .init(label: "Folder", value: directory)
                 ]
             }
+        case AutomationOperationCatalog.agentDispatch.name:
+            let name = arguments["agent"]?.stringValue ?? ""
+            guard let profile = profiles.profile(named: name) else {
+                return .failure(
+                    PrepareFailure(
+                        "No agent profile named “\(name)”. Read tinycast://agent-profiles for the names."))
+            }
+            let prompt = AutomationText.displaySafe(
+                arguments["prompt"]?.stringValue ?? "", limit: Int.max)
+            guard !prompt.isEmpty else { return .failure(PrepareFailure("The prompt is empty.")) }
+            switch resolveDirectory(arguments["cwd"]?.stringValue) {
+            case .failure(let failure): return .failure(failure)
+            case .success(let directory):
+                let line = profile.shellLine(prompt: prompt)
+                prepared.command = line
+                prepared.directory = directory
+                prepared.approvalTitle = "Start \(profile.title ?? profile.name)?"
+                prepared.approvalDetails = [
+                    .init(label: "Requested by", value: call.caller.label),
+                    .init(label: "Command", value: line),
+                    .init(label: "Folder", value: directory)
+                ]
+            }
         default:
             break
         }
         return .success(prepared)
-    }
-
-    struct PrepareFailure: Error, CustomStringConvertible {
-        let description: String
-        init(_ description: String) { self.description = description }
     }
 
     func perform(_ call: AutomationCall, prepared: AutomationRouter.Prepared) async -> AutomationOutcome {
@@ -49,15 +77,119 @@ final class AutomationRunner {
         case AutomationOperationCatalog.paletteShow.name:
             showPalette(query: arguments["query"]?.stringValue ?? "")
             return .value(.object(["shown": .bool(true)]))
-        case AutomationOperationCatalog.terminalRun.name:
+        case AutomationOperationCatalog.terminalRun.name, AutomationOperationCatalog.agentDispatch.name:
             guard let command = prepared.command, let directory = prepared.directory,
                 let instance = core.terminalInstances.open(command: command, directory: directory)
             else { return .toolError("Could not start the terminal.") }
-            return .value(.object(["terminalId": .string(instance.id.uuidString)]))
+            var result: [String: JSONValue] = ["terminalId": .string(instance.id.uuidString)]
+            if let agent = arguments["agent"] { result["agent"] = agent }
+            return .value(.object(result))
+        case AutomationOperationCatalog.terminalFocus.name:
+            guard let id = arguments["id"]?.stringValue.flatMap(UUID.init(uuidString:)),
+                core.terminalInstancesPresenter.focus(id)
+            else { return .toolError("No open terminal has that id.") }
+            return .value(.object(["focused": .bool(true)]))
+        case AutomationOperationCatalog.questionAsk.name:
+            return ask(call)
+        case AutomationOperationCatalog.questionAcknowledge.name:
+            guard let client = call.caller.clientID,
+                let id = arguments["id"]?.stringValue.flatMap(UUID.init(uuidString:)),
+                questions.acknowledge(id, by: client)
+            else { return .toolError("No answered or expired question of yours has that id.") }
+            return .value(.object(["acknowledged": .bool(true)]))
+        default:
+            return await read(call)
+        }
+    }
+
+    // MARK: - Resources
+
+    private func read(_ call: AutomationCall) async -> AutomationOutcome {
+        switch call.operation.name {
+        case AutomationOperationCatalog.agents.name:
+            await core.agentRuns.refreshOnce()
+            return .value(.object(["runs": .array(core.agentRuns.runs.map(Self.json))]))
+        case AutomationOperationCatalog.terminals.name:
+            return .value(
+                .object(["terminals": .array(core.terminalInstances.instances.map(Self.json))]))
+        case AutomationOperationCatalog.questions.name:
+            guard let client = call.caller.clientID else { return .toolError("Not available.") }
+            return .value(
+                .object(["questions": .array(questions.visible(to: client).map(\.json))]))
+        case AutomationOperationCatalog.agentProfiles.name:
+            return .value(
+                .object([
+                    "profiles": .array(
+                        profiles.profiles().map {
+                            .object(["name": .string($0.name), "title": .string($0.title ?? $0.name)])
+                        })
+                ]))
+        case AutomationOperationCatalog.context.name:
+            let app = NSWorkspace.shared.frontmostApplication
+            return .value(
+                .object([
+                    "frontmostApp": .object([
+                        "name": .string(app?.localizedName ?? ""),
+                        "bundleId": .string(app?.bundleIdentifier ?? "")
+                    ])
+                ]))
         default:
             return .rpcError(.internalError("Operation is not implemented"))
         }
     }
+
+    private static func json(_ run: AgentRun) -> JSONValue {
+        var object: [String: JSONValue] = [
+            "id": .string(run.id), "agent": .string(run.agent.rawValue), "name": .string(run.name),
+            "cwd": .string(run.cwd), "state": .string(run.state),
+            "startedAt": .number(Double(run.startedAt)),
+            "attachable": .bool(!(run.attach ?? "").isEmpty)
+        ]
+        if let last = run.last { object["last"] = .string(last) }
+        return .object(object)
+    }
+
+    private static func json(_ instance: TerminalInstance) -> JSONValue {
+        let phase: String
+        switch instance.session.phase {
+        case .starting: phase = "starting"
+        case .idle: phase = "idle"
+        case .running: phase = "running"
+        case .ended: phase = "ended"
+        }
+        return .object([
+            "id": .string(instance.id.uuidString), "directory": .string(instance.session.directory),
+            "phase": .string(phase), "pinned": .bool(instance.isPinned)
+        ])
+    }
+
+    // MARK: - Questions
+
+    private func ask(_ call: AutomationCall) -> AutomationOutcome {
+        let text = AutomationText.displaySafe(
+            call.arguments["question"]?.stringValue ?? "", limit: 500)
+        var choices: [String] = []
+        for item in call.arguments["choices"]?.arrayValue ?? [] {
+            let choice = AutomationText.displaySafe(item.stringValue ?? "", limit: 60)
+            if !choice.isEmpty, !choices.contains(choice) { choices.append(choice) }
+        }
+        guard !text.isEmpty, !choices.isEmpty else {
+            return .toolError("A question needs text and at least one non-empty choice.")
+        }
+        let lifetime = call.arguments["ttl_seconds"]?.intValue.map(TimeInterval.init)
+        guard
+            let question = questions.ask(
+                client: call.caller, text: text, choices: choices,
+                lifetime: lifetime ?? AutomationQuestionStore.defaultLifetime)
+        else { return .toolError("Too many open questions; wait for some to be answered.") }
+        return .value(
+            .object([
+                "id": .string(question.id.uuidString),
+                "expiresAt": .string(question.expiresAt.formatted(.iso8601))
+            ]))
+    }
+
+    // MARK: - Presentation
 
     func showMessage(from label: String, text: String) {
         let text = AutomationText.displaySafe(text, limit: 120)
@@ -78,7 +210,8 @@ final class AutomationRunner {
         }
         let path = (requested as NSString).expandingTildeInPath
         var isDirectory: ObjCBool = false
-        guard path.hasPrefix("/"), FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory),
+        guard path.hasPrefix("/"),
+            FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory),
             isDirectory.boolValue
         else { return .failure(PrepareFailure("The folder does not exist: \(requested)")) }
         return .success(URL(filePath: path).standardizedFileURL.path)

@@ -76,7 +76,7 @@ enum AutomationOperationCatalog {
         scope: .dispatch, needsApproval: true,
         properties: [
             "agent": string("A profile name from tinycast://agent-profiles.", max: 64),
-            "prompt": string("The task for the agent.", max: 4_000),
+            "prompt": string("The task for the agent.", max: 1_000),
             "cwd": string("Working directory; defaults to the home folder.", max: 500)
         ],
         required: ["agent", "prompt"])

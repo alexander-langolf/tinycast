@@ -118,3 +118,39 @@ stdio MCP server that POSTs each line to the running app's endpoint:
   connection; the app treats that as cancellation. Closing stdin cancels everything and exits.
 - **Logs** go to stderr only; stdout carries nothing but MCP messages. If the app is not listening
   the request fails with a JSON-RPC error saying where to turn automation on.
+
+## The cockpit round trip
+
+| Operation | Scope | What it does |
+| --- | --- | --- |
+| resource `tinycast://agents` | `agents:read` | Runs from the existing status helper (`attach` is reduced to `attachable`). |
+| resource `tinycast://terminals` | `agents:read` | Open terminal instances: id, directory, phase, pinned. No command text. |
+| resource `tinycast://questions` | `ui` | The caller's own questions with `state` (`pending`, `answered`, `expired`, `acknowledged`), `answer`, `expiresAt`. |
+| tool `question_ask` | `ui` | Puts a card on screen with up to six buttons; returns the question id. |
+| tool `question_ack` | `ui` | Marks an answered or expired question handled so it leaves the resource. |
+| tool `terminal_focus` | `ui` | Raises an existing terminal instance by id. |
+| tool `terminal_run` | `exec` | Opens a terminal instance running a command, **after the user approves it**. |
+| tool `agent_dispatch` | `dispatch` | Starts a named profile with a prompt, **after the user approves it**; returns the terminal id. |
+| resource `tinycast://agent-profiles` | `dispatch` | Profile names the caller may ask for. |
+| resource `tinycast://context` | `context:read` | The frontmost app. |
+
+`clipboard:read` is a defined scope with no operation yet.
+
+- **Questions belong to the client that asked** (its token label heads the card, so the text cannot
+  impersonate a run). They live in memory in `AutomationQuestionStore`: a client that reconnects reads
+  them again; a quit loses them. At most 10 open per client, 50 in total, lifetime 10 s to 24 h
+  (default 15 min). The cards float top-right without taking key focus.
+- **Push.** Changes to agents, terminals and a client's questions publish
+  `notifications/resources/updated` to subscribed streams; the client re-reads. A subscriber also
+  holds the agent poll open while the palette is hidden.
+- **Launch grants.** `agent_dispatch` only starts what the user wrote into
+  `~/Library/Application Support/<bundle id>/Automation/agent-profiles.json`, re-read on every call:
+
+  ```json
+  [{"name": "claude", "title": "Claude Code", "command": "claude", "arguments": ["{prompt}"]}]
+  ```
+
+  The client sends a profile name and a prompt (control characters become spaces, at most 1,000
+  characters); the shell line is built with every word single-quoted, and that exact line is what the
+  approval dialog shows. A dispatched agent is an ordinary terminal instance: it appears in
+  `tinycast://agents` only if the status helper reports it, and nothing links the two ids.

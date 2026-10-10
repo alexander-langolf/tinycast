@@ -17,6 +17,8 @@ final class AutomationEventHub {
 
     static let maximumPerClient = 4
     private var entries: [UUID: Entry] = [:]
+    /// Fires when the first subscriber arrives or the last one leaves.
+    var onActivityChange: ((Bool) -> Void)?
 
     var hasSubscribers: Bool { !entries.isEmpty }
 
@@ -26,12 +28,16 @@ final class AutomationEventHub {
         guard count(for: client) < Self.maximumPerClient else { return nil }
         let (stream, continuation) = AsyncStream<String>.makeStream(bufferingPolicy: .bufferingNewest(32))
         let id = UUID()
+        let wasIdle = entries.isEmpty
         entries[id] = Entry(client: client, uris: uris, continuation: continuation)
+        if wasIdle { onActivityChange?(true) }
         return Subscription(id: id, updates: stream)
     }
 
     func unsubscribe(_ id: UUID) {
-        entries.removeValue(forKey: id)?.continuation.finish()
+        guard let entry = entries.removeValue(forKey: id) else { return }
+        entry.continuation.finish()
+        if entries.isEmpty { onActivityChange?(false) }
     }
 
     /// `client` limits delivery to that client's own subscriptions (its private resources).

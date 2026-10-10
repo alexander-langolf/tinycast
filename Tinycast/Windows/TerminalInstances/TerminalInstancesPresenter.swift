@@ -49,6 +49,15 @@ final class TerminalInstancesPresenter: NSObject, NSWindowDelegate {
         place(animated: true)
     }
 
+    /// Raises an existing instance and gives it key focus; false when no such panel is open.
+    @discardableResult
+    func focus(_ id: UUID) -> Bool {
+        guard let panel = panels[id] else { return false }
+        panel.orderFrontRegardless()
+        panel.makeKey()
+        return true
+    }
+
     func applyPin(_ instance: TerminalInstance) {
         panels[instance.id]?.setPinned(instance.isPinned)
     }
