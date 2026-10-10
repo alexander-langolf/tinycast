@@ -3,6 +3,7 @@ import SwiftUI
 /// General's former Appearance section, then the theme tokens per component, each with its reset.
 struct AppearanceSettingsView: View {
     @Environment(AppSettings.self) private var settings
+    private var isThemed: Bool { ForkTheme.current.colorTheme != nil }
 
     var body: some View {
         @Bindable var settings = settings
@@ -14,7 +15,9 @@ struct AppearanceSettingsView: View {
                     }
                 } label: {
                     SettingsRowTitle(.generalAppearance, "Theme")
+                    if isThemed { Text("Only applies to Tinycast (default) colours.") }
                 }
+                .settingsEnabled(!isThemed)
                 InterfaceSizeRow()
                 ForkFontRow()
                 ForkFontRow(kind: .monospaced)
@@ -35,6 +38,7 @@ struct AppearanceSettingsView: View {
                 SettingsSectionHeader(.generalAppearance)
             }
 
+            ForkColorThemeSection()
             ForkThemeSection(component: .agentCard) { AgentCardThemePreview() }
             ForkThemeSection(component: .terminalInstance) { TerminalCardThemePreview() }
             ForkThemeSection(component: .palette)

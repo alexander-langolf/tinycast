@@ -22,26 +22,29 @@ struct TerminalInstanceCard<Output: View>: View {
     var actions = TerminalInstanceActions()
     @ViewBuilder let output: Output
     @Environment(\.metrics) private var metrics
+    @Environment(\.forkColorPreview) private var preview
     @FocusState private var fieldFocused: Bool
 
     private var layout: TerminalInstanceMetrics { TerminalInstanceMetrics(metrics: metrics) }
+    private var ink: ForkInk { ForkInk(preview) }
 
     var body: some View {
         let layout = layout
+        let ink = ink
         let shape = RoundedRectangle(cornerRadius: layout.cornerRadius, style: .continuous)
         VStack(spacing: 0) {
             bar(layout)
             if showsOutput {
                 if layout.dividerHeight > 0 {
                     Rectangle()
-                        .fill(Theme.Colors.separator)
+                        .fill(ink.separator)
                         .frame(height: layout.dividerHeight)
                 }
                 output
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(layout.theme.paletteScrim)
+        .background(ink.terminalScrim)
         .background(GlassEffectView())
         .clipShape(shape)
         .onAppear { fieldFocused = true }
@@ -62,13 +65,13 @@ struct TerminalInstanceCard<Output: View>: View {
             if isFullScreen {
                 Text("Full-screen program · ⌘O opens kitty")
                     .font(metrics.typography.rowTrailing)
-                    .foregroundStyle(Theme.Colors.warning)
+                    .foregroundStyle(ink.warning)
                     .lineLimit(1)
                 gutter(metrics.spacing.md)
             }
             Text((directory as NSString).abbreviatingWithTildeInPath)
                 .font(metrics.typography.sectionHeader)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(ink.textSecondary)
                 .lineLimit(1)
                 .truncationMode(.head)
             gutter(metrics.spacing.md)
@@ -93,29 +96,29 @@ struct TerminalInstanceCard<Output: View>: View {
         case .starting where startupNotice != nil:
             Text(startupNotice ?? "")
                 .font(metrics.typography.rowTrailing)
-                .foregroundStyle(Theme.Colors.warning)
+                .foregroundStyle(ink.warning)
                 .fixedSize(horizontal: false, vertical: true)
         case .starting, .running:
             Text(command)
                 .font(metrics.typography.searchField)
-                .foregroundStyle(Theme.Colors.textPrimary)
+                .foregroundStyle(ink.textPrimary)
                 .lineLimit(1)
                 .truncationMode(.middle)
         case .ended:
             Text("Shell ended · ⌘W closes")
                 .font(metrics.typography.searchField)
-                .foregroundStyle(Theme.Colors.textSecondary)
+                .foregroundStyle(ink.textSecondary)
         case .idle:
             TextField("", text: $input)
                 .textFieldStyle(.plain)
                 .font(metrics.typography.searchField)
-                .tint(Theme.Colors.textPrimary)
+                .tint(ink.textPrimary)
                 .focused($fieldFocused)
                 .background(alignment: .leading) {
                     if input.isEmpty {
                         Text("Next command")
                             .font(metrics.typography.searchField)
-                            .foregroundStyle(Theme.Colors.textTertiary)
+                            .foregroundStyle(ink.textTertiary)
                             .lineLimit(1)
                             .allowsHitTesting(false)
                     }
@@ -136,16 +139,16 @@ struct TerminalInstanceCard<Output: View>: View {
     private var statusGlyph: some View {
         switch phase {
         case .starting, .running:
-            ProgressView().controlSize(.small).tint(Color.accentColor)
+            ProgressView().controlSize(.small).tint(ink.accent)
         case .idle(let status?) where status != 0:
             let crash = Self.crashSignal(status)
             glyph(crash == nil ? "exclamationmark.circle" : "xmark.octagon")
-                .foregroundStyle(crash == nil ? Theme.Colors.textSecondary : Theme.Colors.destructive)
+                .foregroundStyle(crash == nil ? ink.textSecondary : ink.error)
                 .help(crash.map { "Killed by \($0) (status \(status))" } ?? "Exited with status \(status)")
         case .ended:
-            glyph("powersleep").foregroundStyle(Theme.Colors.textTertiary)
+            glyph("powersleep").foregroundStyle(ink.textTertiary)
         case .idle:
-            glyph("dollarsign").foregroundStyle(.secondary)
+            glyph("dollarsign").foregroundStyle(ink.textSecondary)
         }
     }
 
@@ -159,7 +162,7 @@ struct TerminalInstanceCard<Output: View>: View {
         BarButton(chrome: .rounded, isCompact: true, action: action) {
             Image(systemName: symbol)
                 .font(metrics.typography.barSymbol)
-                .foregroundStyle(Theme.Colors.textSecondary)
+                .foregroundStyle(ink.textSecondary)
                 .frame(width: metrics.size.barButtonHeight - metrics.spacing.sm * 2)
         }
         .focusable(false)

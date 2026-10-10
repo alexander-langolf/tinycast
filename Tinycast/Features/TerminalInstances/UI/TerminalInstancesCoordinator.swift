@@ -32,6 +32,7 @@ final class TerminalInstancesCoordinator {
 
     private func applyMonoFont() {
         guard GhosttyRenderer.isEnabled else { return }
+        for instance in instances { applyColors(to: instance) }
         let layout = TerminalInstanceMetrics(metrics: core.settings.interfaceSize.metrics)
         for instance in instances {
             instance.session.resizeTerminal(columns: layout.columns, rows: layout.gridRows)
@@ -55,6 +56,7 @@ final class TerminalInstancesCoordinator {
             columns: layout.columns,
             rowCap: GhosttyRenderer.isEnabled ? layout.gridRows : layout.rowCap)
         instances.insert(instance, at: 0)
+        applyColors(to: instance)
         if !isTrackingMonoFont {
             isTrackingMonoFont = true
             trackMonoFont()
@@ -63,6 +65,19 @@ final class TerminalInstancesCoordinator {
         instance.session.start()
         instance.begin(command)
         return instance
+    }
+
+    /// The colour theme's terminal colours, or ghostty's own under Tinycast's look.
+    private func applyColors(to instance: TerminalInstance) {
+        let palette = ForkTheme.current.palette
+        func packed(_ color: ForkThemeValue.Color?) -> UInt32? {
+            guard let color else { return nil }
+            func byte(_ channel: Double) -> UInt32 { UInt32((channel * 255).rounded()) }
+            return byte(color.red) << 16 | byte(color.green) << 8 | byte(color.blue)
+        }
+        instance.session.grid?.applyColors(
+            foreground: packed(palette?[.text]), background: packed(palette?[.terminal]),
+            cursor: packed(palette?[.accent]), ansi: palette?.ansi?.compactMap(packed))
     }
 
     /// ↵ in the card: the next command in the same session; a typed `$ ` prefix is forgiven.

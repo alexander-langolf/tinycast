@@ -7,6 +7,7 @@ struct AgentRunsMetrics {
 
     var sideWidth: CGFloat { metrics.scaled(360) }
     var statusDot: CGFloat { theme.points(.agentCardDotSize, metrics) }
+    var dotGap: CGFloat { theme.points(.agentCardDotGap, metrics) }
     var horizontalPadding: CGFloat { theme.points(.agentCardHorizontalPadding, metrics) }
     /// Air above and below the two text lines, which otherwise touch the card's edges.
     var cardVerticalPadding: CGFloat { theme.points(.agentCardVerticalPadding, metrics) }
@@ -25,9 +26,14 @@ struct AgentRunsMetrics {
         theme.font(.agentCardTrailingSize, style: .callout, metrics) ?? metrics.typography.rowTrailing
     }
 
-    var scrim: Color {
+    /// A colour theme's surface, mostly solid unless the opacity token is set, or the glass alone.
+    func scrim(_ ink: ForkInk) -> AnyShapeStyle {
         let opacity = theme.number(.agentCardScrimOpacity)
-        return opacity > 0 ? ForkTheme.scrim(dark: opacity, light: opacity) : .clear
+        if let palette = ink.themePalette {
+            let solid = theme.isOverridden(.agentCardScrimOpacity) ? opacity : ForkColorPalette.surfaceOpacity
+            return AnyShapeStyle(Color(nsColor: palette.nsColor(.surface, alpha: solid)))
+        }
+        return AnyShapeStyle(opacity > 0 ? ForkTheme.scrim(dark: opacity, light: opacity) : .clear)
     }
 
     /// One launcher row plus the vertical padding; the stack and the panel's frame both size from it.

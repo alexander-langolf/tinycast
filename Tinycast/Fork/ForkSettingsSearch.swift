@@ -10,9 +10,20 @@ enum ForkSettingsSearch {
         .aiChat, aiWorkingDirectoryTitle,
         keywords: ["cwd", "directory", "vault", "agents.md", "claude.md", "codex", "claude"])
 
-    /// The Appearance pane and one row per theme token, each under its component's section.
+    /// The Appearance pane, its colour theme, and one row per token under its component's section.
     static let appearance: [SettingsSearchEntry] =
-        [.init(pane: .appearance, keywords: ["theme", "look", "style", "customise", "tokens"])]
+        [
+            .init(pane: .appearance, keywords: ["theme", "look", "style", "customise", "tokens"]),
+            .init(
+                .appearanceColors, "Colour theme",
+                keywords: ["color", "preset", "github", "ayu", "material", "cursor", "monokai", "slack"]),
+            .init(group: .appearanceColors, "Import theme", keywords: ["paste", "string", "vs code", "vscode"]),
+            .init(group: .appearanceColors, "Copy theme string", keywords: ["export", "share"]),
+            .init(.appearanceColors, "Window gradient", keywords: ["fade", "background"])
+        ]
+        + ForkColorTheme.Slot.allCases.map {
+            SettingsSearchEntry(.appearanceColors, $0.title, keywords: ["color", "colour", "theme", "hex"])
+        }
         + ForkThemeToken.Component.allCases.flatMap { component -> [SettingsSearchEntry] in
             let anchor = SettingsAnchor.appearance(component)
             let group = SettingsSearchEntry(
@@ -36,6 +47,7 @@ enum ForkSettingsSearch {
 }
 
 extension SettingsAnchor {
+    static let appearanceColors = Self(tab: .appearance, title: "Colours")
     static let appearanceAgentCard = Self(tab: .appearance, title: "Agent Card")
     static let appearanceTerminalInstance = Self(tab: .appearance, title: "Terminal Instance")
     static let appearancePalette = Self(tab: .appearance, title: "Palette")

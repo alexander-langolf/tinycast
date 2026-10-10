@@ -2,6 +2,7 @@ import SwiftUI
 
 struct AgentRunCard: View {
     @Environment(\.metrics) private var metrics
+    @Environment(\.forkColorPreview) private var preview
     let run: AgentRun
     let onAttach: () -> Void
     @State private var hovered = false
@@ -10,11 +11,11 @@ struct AgentRunCard: View {
 
     private var canAttach: Bool { run.attach.map { !$0.isEmpty } ?? false }
 
-    private var stateColor: Color {
+    private func stateColor(_ ink: ForkInk) -> Color {
         switch run.state {
-        case "working": Color.accentColor
-        case "blocked": Theme.Colors.warning
-        default: Theme.Colors.textTertiary
+        case "working": ink.accent
+        case "blocked": ink.warning
+        default: ink.textTertiary
         }
     }
 
@@ -52,18 +53,21 @@ struct AgentRunCard: View {
     private var content: some View {
         let layout = agentRunsMetrics
         let theme = layout.theme
+        let ink = ForkInk(preview, theme: theme)
         return HStack(spacing: metrics.spacing.lg) {
-            Circle()
-                .fill(stateColor)
-                .frame(width: layout.statusDot, height: layout.statusDot)
-                .frame(width: metrics.size.rowIcon)
-                .accessibilityLabel(run.state)
-            VStack(alignment: .leading, spacing: 0) {
-                Text(run.name)
-                    .font(layout.titleFont)
-                    .foregroundStyle(Theme.Colors.textPrimary)
-                Text(run.last ?? " ")
-                    .font(layout.detailFont)
+            HStack(spacing: layout.dotGap) {
+                Circle()
+                    .fill(stateColor(ink))
+                    .frame(width: layout.statusDot, height: layout.statusDot)
+                    .frame(width: metrics.size.rowIcon)
+                    .accessibilityLabel(run.state)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(run.name)
+                        .font(layout.titleFont)
+                        .foregroundStyle(ink.textPrimary)
+                    Text(run.last ?? " ")
+                        .font(layout.detailFont)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             VStack(alignment: .trailing, spacing: 0) {
@@ -72,7 +76,7 @@ struct AgentRunCard: View {
                     if let model = modelLabel {
                         Text(model).foregroundStyle(
                             theme.color(.agentCardModelColor)
-                                ?? (kindLabel == nil ? Theme.Colors.textSecondary : Theme.Colors.textTertiary)
+                                ?? (kindLabel == nil ? ink.textSecondary : ink.textTertiary)
                         )
                     }
                 }
@@ -81,18 +85,18 @@ struct AgentRunCard: View {
             .fixedSize()
         }
         .font(layout.trailingFont)
-        .foregroundStyle(Theme.Colors.textSecondary)
+        .foregroundStyle(ink.textSecondary)
         .lineLimit(1)
         .truncationMode(.tail)
         .padding(.horizontal, layout.horizontalPadding)
         .padding(.vertical, layout.cardVerticalPadding)
         .frame(maxWidth: .infinity)
         .frame(height: layout.cardHeight)
-        .background(hovered && canAttach ? Theme.Colors.rowHover : .clear)
-        .background(layout.scrim)
+        .background(hovered && canAttach ? ink.rowHover : .clear)
+        .background(layout.scrim(ink))
         .background(GlassEffectView())
         .clipShape(layout.shape)
-        .overlay { AgentRunCardBorder(layout: layout) }
+        .overlay { AgentRunCardBorder(layout: layout, ink: ink) }
         .contentShape(layout.shape)
         .accessibilityElement(children: .combine)
     }
@@ -108,12 +112,13 @@ struct AgentRunCard: View {
 /// Drawn over the clip, so the stroke keeps its full width at the corners.
 struct AgentRunCardBorder: View {
     let layout: AgentRunsMetrics
+    let ink: ForkInk
 
     var body: some View {
         if layout.theme.flag(.agentCardBorder) {
             layout.shape
                 .strokeBorder(
-                    layout.theme.color(.agentCardBorderColor) ?? Theme.Colors.border,
+                    layout.theme.color(.agentCardBorderColor) ?? ink.border,
                     lineWidth: layout.theme.points(.agentCardBorderWidth, layout.metrics)
                 )
                 .allowsHitTesting(false)

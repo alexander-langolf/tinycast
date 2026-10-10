@@ -747,6 +747,7 @@ final class AppCore {
             { _ = $0.snippetsShowInLauncher },
             reproject: { $0.snippetCoordinator.applySnippetsLauncherPresence() })
         track({ _ = $0.appearance }, reproject: { $0.applyAppearance() })
+        track(forkAppearance, { _ = $0.colors.theme }, reproject: { $0.applyAppearance() })  // FORK: color-theme
         track({ _ = $0.interfaceSize }, reproject: { $0.windowController.applyInterfaceSize() })
         // Settings panes did these on change; settings.json can change them with no pane open.
         track(
@@ -764,7 +765,7 @@ final class AppCore {
 
     /// `.system` resolves to `nil`, so AppKit follows macOS with nothing polling.
     private func applyAppearance() {
-        NSApp.appearance = settings.appearance.nsAppearance
+        NSApp.appearance = forkAppearance.colors.appearance ?? settings.appearance.nsAppearance  // FORK: color-theme
     }
 
     /// IconCache is told here, not from `applyAppearance()`, which never fires under `.system`.

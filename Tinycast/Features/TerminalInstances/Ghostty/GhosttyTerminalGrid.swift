@@ -79,6 +79,35 @@ final class GhosttyTerminalGrid {
         refresh()
     }
 
+    /// A theme's ink, ground, cursor and sixteen colours as defaults; programs' OSC colours still win.
+    func applyColors(foreground: UInt32?, background: UInt32?, cursor: UInt32?, ansi: [UInt32]?) {
+        guard let terminal else { return }
+        func rgb(_ value: UInt32) -> GhosttyColorRgb {
+            GhosttyColorRgb(r: UInt8(value >> 16 & 0xFF), g: UInt8(value >> 8 & 0xFF), b: UInt8(value & 0xFF))
+        }
+        func set(_ option: GhosttyTerminalOption, _ value: UInt32?) {
+            guard var color = value.map(rgb) else {
+                _ = ghostty_terminal_set(terminal, option, nil)
+                return
+            }
+            _ = ghostty_terminal_set(terminal, option, &color)
+        }
+        set(GHOSTTY_TERMINAL_OPT_COLOR_FOREGROUND, foreground)
+        set(GHOSTTY_TERMINAL_OPT_COLOR_BACKGROUND, background)
+        set(GHOSTTY_TERMINAL_OPT_COLOR_CURSOR, cursor)
+        if let ansi {
+            var table = [GhosttyColorRgb](repeating: GhosttyColorRgb(), count: 256)
+            table.withUnsafeMutableBufferPointer { ghostty_color_palette_default($0.baseAddress) }
+            for (index, value) in ansi.prefix(16).enumerated() { table[index] = rgb(value) }
+            _ = table.withUnsafeBufferPointer {
+                ghostty_terminal_set(terminal, GHOSTTY_TERMINAL_OPT_COLOR_PALETTE, $0.baseAddress)
+            }
+        } else {
+            _ = ghostty_terminal_set(terminal, GHOSTTY_TERMINAL_OPT_COLOR_PALETTE, nil)
+        }
+        refresh()
+    }
+
     isolated deinit {
         ghostty_key_event_free(keyEvent)
         ghostty_key_encoder_free(keyEncoder)

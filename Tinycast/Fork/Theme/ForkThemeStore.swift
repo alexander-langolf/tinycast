@@ -1,6 +1,6 @@
 import Foundation
 
-/// Persists the token overrides under one defaults key and publishes them to `ForkThemeState`.
+/// Persists the tokens and colour theme under one defaults key; publishes them to `ForkThemeState`.
 @MainActor
 final class ForkThemeStore {
     private(set) static var current: ForkThemeStore?
@@ -12,29 +12,41 @@ final class ForkThemeStore {
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         let stored = defaults.dictionary(forKey: Self.defaultsKey) ?? [:]
-        initial = ForkTheme(overrides: Self.decode(stored))
+        initial = ForkTheme(
+            overrides: Self.decode(stored),
+            colorTheme: stored[ForkThemeBackup.colorThemeKey].flatMap(ForkColorTheme.init(propertyList:)))
     }
 
+    /// After `ForkAppearance.start()`, which owns the colour lookup the theme publishes into.
     func start() {
         precondition(Self.current == nil)
         ForkThemeState.shared.theme = initial
+        ForkAppearance.current?.colors.theme = initial.palette
         Self.current = self
     }
 
     var tokens: ForkTheme {
         get { ForkThemeState.shared.theme }
         set {
-            guard newValue != tokens else { return }
+            let previous = tokens
+            guard newValue != previous else { return }
             ForkThemeState.shared.theme = newValue
-            if newValue.overrides.isEmpty {
+            if newValue.palette != previous.palette { ForkAppearance.current?.colors.theme = newValue.palette }
+            var stored = newValue.overrides.reduce(into: [String: Any]()) {
+                $0[$1.key.rawValue] = $1.value.propertyList
+            }
+            stored[ForkThemeBackup.colorThemeKey] = newValue.colorTheme?.propertyList
+            if stored.isEmpty {
                 defaults.removeObject(forKey: Self.defaultsKey)
             } else {
-                defaults.set(
-                    newValue.overrides.reduce(into: [String: Any]()) {
-                        $0[$1.key.rawValue] = $1.value.propertyList
-                    }, forKey: Self.defaultsKey)
+                defaults.set(stored, forKey: Self.defaultsKey)
             }
         }
+    }
+
+    /// Nil returns to Tinycast's adaptive look and the Dark/Light/System choice.
+    func apply(_ colorTheme: ForkColorTheme?) {
+        tokens.colorTheme = colorTheme
     }
 
     /// Today's value clears the override, so an inherited default keeps following its source.
@@ -51,18 +63,22 @@ final class ForkThemeStore {
         tokens.overrides = tokens.overrides.filter { $0.key.component != component }
     }
 
-    /// Flat `component.token` keys, as `SettingsBackup` carries them.
-    var backup: [String: ForkThemeValue] {
-        Dictionary(uniqueKeysWithValues: tokens.overrides.map { ($0.key.rawValue, $0.value) })
+    var backup: ForkThemeBackup {
+        ForkThemeBackup(
+            tokens: Dictionary(uniqueKeysWithValues: tokens.overrides.map { ($0.key.rawValue, $0.value) }),
+            colorTheme: tokens.colorTheme)
     }
 
     /// A backup's set replaces the current one; unknown or unusable entries are skipped.
-    func restore(_ backup: [String: ForkThemeValue]) {
-        tokens.overrides = backup.reduce(into: [:]) { overrides, entry in
-            guard let token = ForkThemeToken(rawValue: entry.key), let value = token.accepting(entry.value)
-            else { return }
-            overrides[token] = value
-        }
+    func restore(_ backup: ForkThemeBackup) {
+        tokens = ForkTheme(
+            overrides: backup.tokens.reduce(into: [:]) { overrides, entry in
+                guard let token = ForkThemeToken(rawValue: entry.key),
+                    let value = token.accepting(entry.value)
+                else { return }
+                overrides[token] = value
+            },
+            colorTheme: backup.colorTheme)
     }
 
     private static func decode(_ stored: [String: Any]) -> [ForkThemeToken: ForkThemeValue] {

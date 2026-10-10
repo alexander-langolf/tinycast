@@ -82,7 +82,10 @@ struct ForkThemeTokenRow: View {
     /// Unset, the well shows the ink the surface draws today.
     private var color: Binding<Color> {
         Binding(
-            get: { store.tokens.color(token) ?? (token == .agentCardModelColor ? Theme.Colors.textTertiary : Theme.Colors.border) },
+            get: {
+                store.tokens.color(token)
+                    ?? (token == .agentCardModelColor ? Theme.Colors.textTertiary : Theme.Colors.border)
+            },
             set: { picked in
                 guard let srgb = NSColor(picked).usingColorSpace(.sRGB) else { return }
                 store.set(

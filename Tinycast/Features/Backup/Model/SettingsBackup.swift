@@ -90,7 +90,7 @@ struct SettingsBackup: Codable {
         var hideCurrentEvent: Int?
         // Safe to carry: it silences a prompt rather than granting anything.
         var supportReminders: Bool?
-        var appearanceTokens: [String: ForkThemeValue]?  // FORK: appearance-theme
+        var appearanceTokens: ForkThemeBackup?  // FORK: appearance-theme
     }
 
     /// One entry per bindable action. docs/features/hotkeys.md#persistence

@@ -3,7 +3,18 @@ import SwiftUI
 
 /// The design tokens in effect: an override for each changed token, today's value for the rest.
 struct ForkTheme: Equatable, Sendable {
-    var overrides: [ForkThemeToken: ForkThemeValue] = [:]
+    var overrides: [ForkThemeToken: ForkThemeValue]
+    /// Nil is Tinycast's adaptive look; a theme's palette is resolved once, when it is set.
+    var colorTheme: ForkColorTheme? {
+        didSet { palette = colorTheme?.resolved() }
+    }
+    private(set) var palette: ForkColorPalette?
+
+    init(overrides: [ForkThemeToken: ForkThemeValue] = [:], colorTheme: ForkColorTheme? = nil) {
+        self.overrides = overrides
+        self.colorTheme = colorTheme
+        palette = colorTheme?.resolved()
+    }
 
     /// The live tokens; a read inside a view body or an observation re-runs it when they change.
     static var current: ForkTheme { ForkThemeState.shared.theme }
@@ -40,7 +51,7 @@ struct ForkTheme: Equatable, Sendable {
         }
     }
 
-    /// A text style at the token's size, in the interface font; nil while unset keeps the style itself.
+    /// A text style at the token's size in the interface font; nil while unset keeps the style.
     func font(_ token: ForkThemeToken, style: NSFont.TextStyle, _ metrics: InterfaceMetrics) -> Font? {
         guard isOverridden(token) else { return nil }
         return Font(nsFont(token, style: style, metrics))
@@ -57,11 +68,29 @@ struct ForkTheme: Equatable, Sendable {
         Theme.Colors.adaptive(dark: .srgbInk(0, alpha: dark), light: .srgbInk(1, alpha: light))
     }
 
-    var paletteScrim: Color {
+    /// A theme's background, mostly solid over the glass, or the adaptive scrim.
+    var paletteScrim: AnyShapeStyle {
+        if let palette { return scrim(palette, .background) }
         guard isOverridden(.paletteScrimDark) || isOverridden(.paletteScrimLight) else {
-            return Theme.Colors.panelScrim
+            return AnyShapeStyle(Theme.Colors.panelScrim)
         }
-        return Self.scrim(dark: number(.paletteScrimDark), light: number(.paletteScrimLight))
+        return AnyShapeStyle(Self.scrim(dark: number(.paletteScrimDark), light: number(.paletteScrimLight)))
+    }
+
+    /// The terminal card's surface: its own theme slot, or the palette's scrim.
+    var terminalScrim: AnyShapeStyle {
+        guard let palette else { return paletteScrim }
+        return scrim(palette, .terminal)
+    }
+
+    /// A scrim token the user set still sets the opacity; Window gradient fades into the surface.
+    func scrim(_ palette: ForkColorPalette, _ slot: ForkColorTheme.Slot) -> AnyShapeStyle {
+        let token: ForkThemeToken = palette.isDark ? .paletteScrimDark : .paletteScrimLight
+        let opacity = isOverridden(token) ? number(token) : ForkColorPalette.surfaceOpacity
+        let base = Color(nsColor: palette.nsColor(slot, alpha: opacity))
+        guard palette.theme.windowGradient else { return AnyShapeStyle(base) }
+        let surface = Color(nsColor: palette.nsColor(.surface, alpha: opacity))
+        return AnyShapeStyle(LinearGradient(colors: [base, surface], startPoint: .top, endPoint: .bottom))
     }
 
     func hasOverrides(in component: ForkThemeToken.Component) -> Bool {
@@ -84,6 +113,8 @@ extension ForkThemeToken {
         case .agentCardDetailSize: Double(NSFont.preferredFont(forTextStyle: .caption1).pointSize)
         case .agentCardTrailingSize: Double(NSFont.preferredFont(forTextStyle: .callout).pointSize)
         case .agentCardDotSize: 6
+        // Wider than the row's `Spacing.lg`, which left the dot crowding the run's name.
+        case .agentCardDotGap: Double(Theme.Spacing.xxl)
         case .terminalBarHeight:
             Double(Theme.Size.headerHeight) + theme.number(.paletteHeaderPadding) * 2
         case .terminalGutter: Double(Theme.Spacing.md * 2)

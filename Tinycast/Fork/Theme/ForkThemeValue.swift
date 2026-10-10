@@ -21,8 +21,11 @@ enum ForkThemeValue: Hashable, Sendable {
             self.alpha = clamp(alpha)
         }
 
+        /// `#RGB`, `#RGBA`, `#RRGGBB` or `#RRGGBBAA`, with or without the `#`.
         init?(hex: String) {
-            let digits = hex.hasPrefix("#") ? hex.dropFirst() : Substring(hex)
+            let trimmed = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+            var digits = trimmed.hasPrefix("#") ? String(trimmed.dropFirst()) : trimmed
+            if digits.count == 3 || digits.count == 4 { digits = digits.map { "\($0)\($0)" }.joined() }
             guard digits.count == 6 || digits.count == 8, let packed = UInt32(digits, radix: 16) else {
                 return nil
             }

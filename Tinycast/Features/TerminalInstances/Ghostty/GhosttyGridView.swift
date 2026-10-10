@@ -96,7 +96,8 @@ final class GhosttyGridNSView: NSView {
             }
             if isRunning, snapshot.cursorVisible, let cursor = snapshot.cursor {
                 let rect = pixelRect(column: cursor.x, row: cursor.y)
-                NSColor.controlAccentColor.withAlphaComponent(0.6).setFill()
+                (ForkTheme.current.palette?.nsColor(.accent) ?? NSColor.controlAccentColor)
+                    .withAlphaComponent(0.6).setFill()
                 rect.fill()
             }
             if bar.total > bar.len, bar.total > 0 {

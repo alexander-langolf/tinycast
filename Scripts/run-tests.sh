@@ -89,7 +89,10 @@ run() {
     case " $* " in
         *"/Theme.swift "*|*"/InterfaceMetrics.swift "*|*"/NoteMarkdownTypography.swift "*|*"/SettingsFileSchema.swift "*|*"/IconCache.swift "*)
             set -- "$@" Tinycast/Fork/ForkAppearance.swift Tinycast/Fork/ForkTypography.swift \
-                Tinycast/Fork/ForkColors.swift Tinycast/Fork/ForkAssets.swift Tinycast/Fork/ForkAppearanceScope.swift
+                Tinycast/Fork/ForkColors.swift Tinycast/Fork/ForkAssets.swift Tinycast/Fork/ForkAppearanceScope.swift \
+                Tinycast/Fork/Theme/ForkColorPalette.swift Tinycast/Fork/Theme/ForkColorTheme.swift \
+                Tinycast/Fork/Theme/ForkColorThemePreset.swift Tinycast/Fork/Theme/ForkThemeValue.swift \
+                Tinycast/Fork/Theme/ForkThemeToken.swift
             ;;
     esac
     # // FORK: harness-sources gives InterfaceMetrics its theme-token seam, which reads Theme itself.
@@ -107,8 +110,9 @@ run() {
     esac
     case " $* " in
         *"/SettingsSearchCatalog.swift "*)
-            set -- "$@" Tinycast/Fork/ForkSettingsSearch.swift
-            case " $* " in *"/ForkThemeToken.swift "*) ;; *) set -- "$@" Tinycast/Fork/Theme/ForkThemeToken.swift ;; esac
+            set -- "$@" Tinycast/Fork/ForkSettingsSearch.swift Tinycast/Fork/Theme/ForkThemeToken.swift \
+                Tinycast/Fork/Theme/ForkColorTheme.swift Tinycast/Fork/Theme/ForkColorThemePreset.swift \
+                Tinycast/Fork/Theme/ForkColorPalette.swift Tinycast/Fork/Theme/ForkThemeValue.swift
             ;;
     esac
     case " $* " in
@@ -125,6 +129,12 @@ run() {
     case " $* " in
         *"/FileSearchSession.swift "*) set -- "$@" Tinycast/Fork/Search/ForkFileSearchService.swift ;;
     esac
+    # // FORK: harness-sources adds shared fork files from several cases, so each is compiled once.
+    local fork_unique=() fork_seen=" " fork_arg
+    for fork_arg in "$@"; do
+        case "$fork_seen" in *" $fork_arg "*) ;; *) fork_unique+=("$fork_arg"); fork_seen="$fork_seen$fork_arg " ;; esac
+    done
+    set -- "${fork_unique[@]}"
     if [ -n "$only" ] && [ "$name" != "$only" ]; then return 0; fi
     if [ "$index_only" -eq 1 ] && [ "$emit_db" -eq 0 ]; then return 0; fi
     ran=$((ran + 1))

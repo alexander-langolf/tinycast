@@ -16,6 +16,7 @@ enum ForkThemeToken: String, CaseIterable, Sendable {
     case agentCardDetailSize = "agentCard.detailFontSize"
     case agentCardTrailingSize = "agentCard.trailingFontSize"
     case agentCardDotSize = "agentCard.dotSize"
+    case agentCardDotGap = "agentCard.dotGap"
     case agentCardModelColor = "agentCard.modelColor"
 
     case terminalBarHeight = "terminalInstance.barHeight"
@@ -81,6 +82,7 @@ enum ForkThemeToken: String, CaseIterable, Sendable {
             .length(0...40, step: 1, scales: true)
         case .paletteRowCornerRadius: .length(0...20, step: 1, scales: true)
         case .agentCardDotSize: .length(2...16, step: 1, scales: true)
+        case .agentCardDotGap: .length(0...40, step: 1, scales: true)
         case .terminalBarHeight: .length(32...120, step: 1, scales: true)
         case .agentCardBorderWidth, .terminalDividerWidth, .paletteBorderWidth:
             .length(0.5...6, step: 0.5, scales: false)
@@ -108,6 +110,7 @@ enum ForkThemeToken: String, CaseIterable, Sendable {
         case .agentCardDetailSize: "Detail font size"
         case .agentCardTrailingSize: "Model and time font size"
         case .agentCardDotSize: "Status dot size"
+        case .agentCardDotGap: "Gap after the status dot"
         case .agentCardModelColor: "Model label colour"
         case .terminalBarHeight: "Bar height"
         case .terminalGutter: "Bar gutters"
@@ -130,6 +133,7 @@ enum ForkThemeToken: String, CaseIterable, Sendable {
         switch self {
         case .agentCardCornerRadius, .terminalCornerRadius: "Follows the palette until set."
         case .agentCardScrimOpacity: "A wash over the glass, dark in Dark and light in Light."
+        case .agentCardDotGap: "Between the dot's column and the run's name."
         case .agentCardModelColor: "Unset, it dims after an agent name."
         case .terminalBarHeight: "Follows the palette's compact bar until set."
         case .terminalGridFontSize: "Uses the Monospaced font."
