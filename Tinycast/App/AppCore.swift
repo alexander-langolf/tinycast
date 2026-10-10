@@ -84,6 +84,8 @@ final class AppCore {
     let forkQuickAIRootSettings = ForkQuickAIRootSettings()  // FORK: quick-ai-root
     @ObservationIgnored private(set) lazy var forkQuickAIRootLog = ForkQuickAIRootLog(
         settings: forkQuickAIRootSettings)  // FORK: quick-ai-root
+    // FORK: quick-ai-root
+    @ObservationIgnored private(set) lazy var forkQuickAIRoot = makeForkQuickAIRoot()
     @ObservationIgnored private var appliedLaunchRevisions: [InstalledAIKind: Int] = [:]
 
     /// Set when a layout editor should open with Settings; the pane consumes it.

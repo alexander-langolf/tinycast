@@ -150,6 +150,7 @@
 		279F586CC34205EBA8ACA892 /* CalloutPlacement.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5DFA4E0FDAC12379F2D38B5 /* CalloutPlacement.swift */; };
 		27E4AAF71ED9D07B3F6ED995 /* AgentRunsCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FD804881211DBC6E1E34E60 /* AgentRunsCoordinator.swift */; };
 		295AA3F6F9E005C57698201B /* ExtensionListPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA6DDE1843D16C172AAA1002 /* ExtensionListPanel.swift */; };
+		296A24AA3F86BFADACDC1D51 /* ForkQuickAIRoot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 184B39E2DADB9685220B884E /* ForkQuickAIRoot.swift */; };
 		29AE7D39F2969F706A8038A6 /* FileSearchScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 847C792F7F5F31259EB56ACC /* FileSearchScreen.swift */; };
 		2B4D323D3B23F7F5FDB0816C /* AgentRunCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA862DAF1EB18B45F6B857CD /* AgentRunCard.swift */; };
 		2BEBF78104855A7E0014D223 /* UnitDef.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E153308EF724D552155C4D2 /* UnitDef.swift */; };
@@ -1141,6 +1142,7 @@
 		175C52A798660607C0FDD180 /* RoomCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomCoordinator.swift; sourceTree = "<group>"; };
 		17EA0B9FFCBAB10941EC7702 /* VisibilityStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisibilityStore.swift; sourceTree = "<group>"; };
 		1847C927A1DA4EE0009201DF /* SnippetCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetCoordinator.swift; sourceTree = "<group>"; };
+		184B39E2DADB9685220B884E /* ForkQuickAIRoot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForkQuickAIRoot.swift; sourceTree = "<group>"; };
 		1868F87E31E20A4775C84E6A /* HyperKeyTap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HyperKeyTap.swift; sourceTree = "<group>"; };
 		188A6D3C5B6BC67716F15F83 /* PaletteState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaletteState.swift; sourceTree = "<group>"; };
 		18A864436CAD5C5F62946603 /* CustomWindowSize.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomWindowSize.swift; sourceTree = "<group>"; };
@@ -2464,6 +2466,7 @@
 			children = (
 				709A1B602DFE9DC0E8A37A77 /* ForkQuickAIHandoff.swift */,
 				04E8FCF39FF3D2C49686A16C /* ForkQuickAIHandoffCoordinator.swift */,
+				184B39E2DADB9685220B884E /* ForkQuickAIRoot.swift */,
 				50D11381E87627885BB4E045 /* ForkQuickAIRootLog.swift */,
 				0FF5FF6EDB4B46609C1BF893 /* ForkQuickAIRootLogFiles.swift */,
 				894822DF77F9098EABDCE8DF /* ForkQuickAIRootSettings.swift */,
@@ -5034,6 +5037,7 @@
 				D4239DFF5B868BD4A366B838 /* ForkInk.swift in Sources */,
 				57721C18A311A9EA6DAF0431 /* ForkQuickAIHandoff.swift in Sources */,
 				7F6425CB002D10271A5C9114 /* ForkQuickAIHandoffCoordinator.swift in Sources */,
+				296A24AA3F86BFADACDC1D51 /* ForkQuickAIRoot.swift in Sources */,
 				3ADCB4DFBC55A49BDD148672 /* ForkQuickAIRootLog.swift in Sources */,
 				A3D1FD042F3A3713F9AD8017 /* ForkQuickAIRootLogFiles.swift in Sources */,
 				7D16CC01F97CAA31BFB2272B /* ForkQuickAIRootSettings.swift in Sources */,

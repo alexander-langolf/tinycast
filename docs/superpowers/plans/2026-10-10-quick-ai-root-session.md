@@ -126,21 +126,28 @@ Code, and its `Sigils parsed:` block shows the sigils resolved.
 
 ## Group 3: Root state and claiming
 
-- [ ] **3.1** Create `Tinycast/Fork/QuickAIRoot/ForkQuickAIRoot.swift`:
+- [x] **3.1** Create `Tinycast/Fork/QuickAIRoot/ForkQuickAIRoot.swift`:
       - an `@MainActor` state machine with states `off`, `warming`, `ready(Root)`,
         `inUse(Root, chat:)` and `unavailable(reason)`;
       - `Root` = `threadID`, `model`, `webSearch`, `instructions` and `startedAt`;
       - a pure reducer plus effects (start a thread, retire, log). `CodexTurnRunner` owns the
         client, so the effects run through a closure it supplies
         (`startThread(params) async throws -> String`).
-- [ ] **3.2** Hook `CodexTurnRunner.prepareThread` (`:331`):
+- [x] **3.2** Hook `CodexTurnRunner.prepareThread` (`:331`):
       - When `ForkQuickAIRoot.isQuickAI(request.conversationID)` and the root is `ready` with
         matching model, web search and instructions: use its `threadID`, skip `thread/start` and
         `inject_items`, and log `claimed`.
       - Otherwise, today's path runs unchanged. A mismatch retires the root and logs
         `retired(reason: mismatch)`.
-- [ ] **3.3** The root's `thread/start` parameters are exactly today's (`ephemeral: true`, the same
+- [x] **3.3** The root's `thread/start` parameters are exactly today's (`ephemeral: true`, the same
       instructions). The fork only changes when the call happens.
+
+**Implementation note:** Group 3 source is implemented, without builds, tests, formatting, project
+generation or git operations. `CodexTurnRunner.warmQuickAIRoot(for:model:toolServers:)` accepts the
+selected model, the Quick AI request snapshot and its scoped tool-server session. The runner computes
+the existing developer instructions and supplies thread creation to the fork through a closure.
+Claiming excludes prior request history and chats marked as reopened. Start Work retires the root;
+other lifecycle hooks remain Group 4. Compilation and manual acceptance remain unverified.
 
 **Done when:**
 - with the toggle on, a Quick AI send after warming logs `claimed` and makes no `thread/start`;

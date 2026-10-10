@@ -48,6 +48,8 @@ final class ForkQuickAIHandoffCoordinator {
 
     func reopened(chatID: UUID) { reopenedChatID = chatID }
 
+    func isReopened(chatID: UUID) -> Bool { reopenedChatID == chatID }
+
     func stop() {
         handoffTask?.cancel()
         handoffTask = nil
@@ -145,6 +147,7 @@ final class ForkQuickAIHandoffCoordinator {
             .handedOff, chat: chatID, engine: engine == .claude ? .claude : .codex,
             terminal: terminal.id)
         core.palette.query = ""
+        core.forkQuickAIRoot.retire(reason: .newChat)
         core.quickAICoordinator.startNewChat()
     }
 

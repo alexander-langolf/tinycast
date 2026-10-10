@@ -258,8 +258,30 @@ The action panel and ⌘↵ / ⌃⌘↵ use the same eligibility check; chats re
 excluded. Start Work opens an interactive CLI in the working folder (home when unset or missing),
 logs only handoff metadata, clears the composer and calls `QuickAICoordinator.startNewChat()`.
 Overflow writes revalidate the source chat, draft, attachments, settings and directory before
-launching; a stale result leaves the current chat untouched. Root retirement remains for the
-warm-root lifecycle group.
+launching; a stale result leaves the current chat untouched. Start Work retires the warm root
+with reason `newChat` before starting the next Quick AI chat.
+
+## Quick AI warm root
+
+`AppCore` owns `ForkQuickAIRoot`, wired to `CodexTurnRunner` at startup. The fork-owned state
+machine has a pure reducer and logs warmed, claimed and retired roots through the existing log.
+Retirement forgets the root and invalidates any pending warming result; it deletes no Codex thread.
+Turning the preference off retires the root without changing the runner's normal send path.
+
+Group 3 exposes `CodexTurnRunner.warmQuickAIRoot(for:model:toolServers:)` as an async API only.
+Its caller supplies the selected Codex model and a Quick AI `AIRequest` snapshot carrying the
+current web-search flag, request instructions and system messages, plus the same scoped tool-server
+session a send would use. The runner resolves that session's servers and computes the exact existing
+`developerInstructions(for:hasTools:)` text. It supplies thread creation as a closure to the root;
+the fork never owns or accesses the client. Warming and ordinary sends share one parameter builder,
+including the client's working folder, ephemeral flag, sandbox, approval policy and search config.
+
+Only a fresh Quick AI first send can claim a ready root: identity uses `chats.quickAI.holds(id)`,
+the existing reopened-chat marker excludes history chats, and the request must have no preceding
+non-system messages. Model, web search and complete developer instructions must match. Claiming
+skips thread creation and history injection; later turns use the existing conversation cache.
+A mismatch retires the ready root and falls through to ordinary thread preparation. Automatic
+prewarming, keep-alive, general new-chat retirement and server-exit/relaunch handling remain Group 4.
 
 ## Merge playbook
 
@@ -400,7 +422,8 @@ unless they have an explicit symbol-only allowance. The audit is a static guard,
 | `Tinycast/Features/Settings/SettingsFileSchema.swift` | `// FORK: ai-working-directory` | Bind the mirror with the folder rule. |
 | `Tinycast/Features/Backup/Model/SettingsBackupCoverage.swift` | `// FORK: ai-working-directory` | Keep the folder out of backups. |
 | `Tinycast/Features/Settings/SettingsSearchCatalog.swift` | `// FORK: ai-working-directory` | Make the row searchable. |
-| `Tinycast/App/AppCore.swift` | `// FORK: quick-ai-root` | Own the Quick AI root settings, log and handoff coordinator; start pruning at launch and stop pruning and pending handoffs on termination. |
+| `Tinycast/App/AppCore.swift` | `// FORK: quick-ai-root` | Own the Quick AI root state machine, settings, log and handoff coordinator; wire the root to the runner at startup, start pruning at launch and stop pruning and pending handoffs on termination. |
+| `Tinycast/Features/AI/Service/CodexTurnRunner.swift` | `// FORK: quick-ai-root` | Hold the injected fork root; expose explicit warming with existing developer instructions and runner-owned client effects; share thread-start parameters; claim matching fresh Quick AI roots before ordinary thread creation. |
 | `Tinycast/Features/AI/UI/AIScreen.swift` | `// FORK: quick-ai-root` | Add fork-owned Start Work menu items and secondary/tertiary actions; resolve engines in a view-owned task. |
 | `Tinycast/Features/AI/UI/QuickAICoordinator.swift` | `// FORK: quick-ai-root` | Expose the fork-owned handoff coordinator and mark chats reopened from history as ineligible for Start Work. |
 | `Tinycast/Features/AI/Settings/AISettingsView.swift` | `// FORK: quick-ai-root` | Show the fork-owned Quick AI settings section. |
