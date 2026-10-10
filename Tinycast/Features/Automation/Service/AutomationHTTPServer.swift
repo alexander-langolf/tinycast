@@ -84,6 +84,7 @@ final class AutomationHTTPServer {
 
     private final class Cancellation {
         var action: (@Sendable () -> Void)?
+        var watcher: Task<Void, Never>?
         var requested = false
         func cancel() {
             requested = true
@@ -93,11 +94,7 @@ final class AutomationHTTPServer {
 
     private func serve(_ connection: NetworkConnection<TCP>) async {
         let cancellation = Cancellation()
-        let watcher = Task { @MainActor in
-            _ = try? await connection.receive(atLeast: 1, atMost: 1)
-            cancellation.cancel()
-        }
-        defer { watcher.cancel() }
+        defer { cancellation.watcher?.cancel() }
         let response: AutomationHTTPResponse
         do {
             response = try await respond(on: connection, cancellation: cancellation)
@@ -131,6 +128,11 @@ final class AutomationHTTPServer {
             throw AutomationHTTPRejection(status: 415, reason: "Content-Type must be application/json")
         }
         let body = try await readBody(head, buffer: buffer, from: connection)
+        // Only now: a second reader earlier would swallow the request's own bytes.
+        cancellation.watcher = Task { @MainActor in
+            _ = try? await connection.receive(atLeast: 1, atMost: 1)
+            cancellation.cancel()
+        }
         switch AutomationMCPCall.parse(body: body, headers: head.headers) {
         case .failure(let error):
             return .init(

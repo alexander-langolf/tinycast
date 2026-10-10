@@ -8,7 +8,22 @@ struct AutomationAgentProfile: Codable, Equatable, Sendable {
     /// A bare executable name or an absolute path.
     let command: String
     /// Each may contain `{prompt}`, replaced by the prompt as a single quoted word.
-    var arguments: [String] = []
+    var arguments: [String]
+
+    init(name: String, title: String? = nil, command: String, arguments: [String] = []) {
+        self.name = name
+        self.title = title
+        self.command = command
+        self.arguments = arguments
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        name = try container.decode(String.self, forKey: .name)
+        title = try container.decodeIfPresent(String.self, forKey: .title)
+        command = try container.decode(String.self, forKey: .command)
+        arguments = try container.decodeIfPresent([String].self, forKey: .arguments) ?? []
+    }
 
     static let promptToken = "{prompt}"
 

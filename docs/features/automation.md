@@ -154,3 +154,25 @@ stdio MCP server that POSTs each line to the running app's endpoint:
   characters); the shell line is built with every word single-quoted, and that exact line is what the
   approval dialog shows. A dispatched agent is an ordinary terminal instance: it appears in
   `tinycast://agents` only if the status helper reports it, and nothing links the two ids.
+
+## Registering a client
+
+In Settings → General → Automation, turn automation on and create a client; the row shows its id.
+The tool is `Tinycast Dev.app/Contents/Helpers/tinycast` (Debug builds live under DerivedData:
+`…/Build/Products/Debug/Tinycast Dev.app`).
+
+```sh
+TC="$HOME/Library/Developer/Xcode/DerivedData/<Tinycast-…>/Build/Products/Debug/Tinycast Dev.app/Contents/Helpers/tinycast"
+claude mcp add tinycast -- "$TC" mcp --stdio --client <client id>
+codex mcp add tinycast -- "$TC" mcp --stdio --client <client id>
+```
+
+## Not done
+
+- **Script sessions (R7).** No duplex JSONL channel for scripts, no script-launch grants and no
+  process-group supervision; custom commands still read EOF on stdin.
+- **`clipboard:read`** has a scope and no operation.
+- **Cancel-run** and status ingestion that does not depend on the status helper.
+- **Questions** do not survive a quit; `notifications/cancelled` on HTTP is ignored in favour of
+  connection close.
+- **Tests.** None were written; the harnesses compile no automation source yet.
