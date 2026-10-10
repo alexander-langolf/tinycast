@@ -29,11 +29,6 @@ final class GhosttyGridNSView: NSView {
     private var scrollRemainder: CGFloat = 0
     private var reportedColumns = 0
 
-    private static let regular = TerminalInstanceMetrics.logFont
-    private static let bold = NSFont.monospacedSystemFont(ofSize: 12, weight: .bold)
-    private static let italic = NSFontManager.shared.convert(regular, toHaveTrait: .italicFontMask)
-    private static let boldItalic = NSFontManager.shared.convert(bold, toHaveTrait: .italicFontMask)
-
     override var isFlipped: Bool { true }
     override var acceptsFirstResponder: Bool { true }
     override var isOpaque: Bool { false }
@@ -118,11 +113,12 @@ final class GhosttyGridNSView: NSView {
     }
 
     private static func font(bold isBold: Bool, italic isItalic: Bool) -> NSFont {
-        switch (isBold, isItalic) {
-        case (true, true): boldItalic
-        case (true, false): bold
-        case (false, true): italic
-        case (false, false): regular
+        let faces = TerminalInstanceMetrics.faces
+        return switch (isBold, isItalic) {
+        case (true, true): faces.boldItalic
+        case (true, false): faces.bold
+        case (false, true): faces.italic
+        case (false, false): faces.regular
         }
     }
 

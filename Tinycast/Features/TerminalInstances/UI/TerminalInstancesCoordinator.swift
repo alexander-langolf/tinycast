@@ -10,8 +10,32 @@ final class TerminalInstancesCoordinator {
     private(set) var instances: [TerminalInstance] = []
     @ObservationIgnored private unowned let core: AppCore
 
+    @ObservationIgnored private var isTrackingMonoFont = false
+
     init(core: AppCore) {
         self.core = core
+    }
+
+    /// Settings → Monospaced font: every grid re-measures, tells its pty, and the stack re-heights.
+    private func trackMonoFont() {
+        withObservationTracking {
+            _ = core.forkAppearance.monoFontFamily
+        } onChange: { [weak self] in
+            Task { @MainActor in
+                guard let self else { return }
+                self.trackMonoFont()
+                self.applyMonoFont()
+            }
+        }
+    }
+
+    private func applyMonoFont() {
+        guard GhosttyRenderer.isEnabled else { return }
+        let layout = TerminalInstanceMetrics(metrics: core.settings.interfaceSize.metrics)
+        for instance in instances {
+            instance.session.resizeTerminal(columns: layout.columns, rows: layout.gridRows)
+        }
+        core.terminalInstancesPresenter.restack()
     }
 
     /// The palette closes and the instance takes its place; the command runs at the first prompt.
@@ -27,6 +51,10 @@ final class TerminalInstancesCoordinator {
             columns: layout.columns,
             rowCap: GhosttyRenderer.isEnabled ? layout.gridRows : layout.rowCap)
         instances.insert(instance, at: 0)
+        if !isTrackingMonoFont {
+            isTrackingMonoFont = true
+            trackMonoFont()
+        }
         core.terminalInstancesPresenter.present(instance, anchor: anchor)
         instance.session.start()
         instance.begin(command)

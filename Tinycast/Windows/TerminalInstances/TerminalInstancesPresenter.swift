@@ -67,6 +67,10 @@ final class TerminalInstancesPresenter: NSObject, NSWindowDelegate {
         }
     }
 
+    func restack() {
+        place(animated: true)
+    }
+
     private func place(animated: Bool) {
         guard let anchor else { return }
         let layout = layout

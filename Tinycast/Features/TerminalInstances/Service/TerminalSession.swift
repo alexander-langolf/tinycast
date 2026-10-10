@@ -18,7 +18,7 @@ final class TerminalSession {
     private(set) var grid: GhosttyTerminalGrid?
 
     @ObservationIgnored private let columns: Int
-    @ObservationIgnored private let rowCap: Int
+    @ObservationIgnored private var rowCap: Int
     @ObservationIgnored private var counter: TerminalLineCounter
     @ObservationIgnored private var process: TerminalProcess?
     @ObservationIgnored private var queued: String?
@@ -104,11 +104,13 @@ final class TerminalSession {
         }
     }
 
-    /// The grid's width follows the view; its height is the card's fixed row count.
-    func resizeTerminal(columns: Int) {
-        guard let grid, columns != grid.columns else { return }
-        grid.resize(columns: columns, rows: rowCap)
-        process?.resize(columns: columns, rows: rowCap)
+    /// The grid's width follows the view; its height is the card's fixed row count, which a new font changes.
+    func resizeTerminal(columns: Int, rows: Int? = nil) {
+        let rows = rows ?? rowCap
+        guard let grid, columns != grid.columns || rows != grid.rows else { return }
+        rowCap = rows
+        grid.resize(columns: columns, rows: rows)
+        process?.resize(columns: columns, rows: rows)
         syncRows()
     }
 

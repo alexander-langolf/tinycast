@@ -83,8 +83,11 @@ then scrolls. The log follows its tail while the reader is at the bottom; scroll
 `TerminalLineCounter` estimates rows at the session's fixed pty columns, ignores CSI, handles
 carriage-return redraws and stops at the row cap. It counts printable scalars as one column and
 ignores control characters, so wide glyphs and tabs are not terminal-accurate.
-`TerminalInstanceMetrics` restates `TerminalLogView`'s private 12-point monospaced font and inset;
-keep these in step if the upstream view changes.
+`TerminalInstanceMetrics.faces` resolves the grid's regular, bold, italic and bold-italic 12-point faces
+through `ForkTypography.monoFace`, so they follow Settings → Monospaced font; the cell width and row height
+come from the regular face and are cached per family. When the family changes,
+`TerminalInstancesCoordinator` resizes every grid and its pty to the new columns and rows and re-stacks
+the panels. `logInset` restates `TerminalLogView`'s private inset; keep it in step if the upstream view changes.
 
 | Key | In an instance |
 | --- | --- |

@@ -22,7 +22,8 @@ upstream's icon; changing fork artwork does not require editing upstream assets.
 Choose an interface font and a monospaced font in Settings → General → Appearance. The monospaced
 picker is the same `ForkFontRow` with `kind: .monospaced`, listing only families with a fixed-pitch
 face (`FontCatalog.monospacedFamilies`); `ForkTypography.monoFace` resolves them from the system
-monospaced font so weight and italic carry over. Notes' editor code styles and `TerminalLogView`
+monospaced font so weight and italic carry over. The terminal instance grid follows it live
+(`TerminalInstanceMetrics.faces`, re-measured per family); Notes' editor code styles and `TerminalLogView`
 keep the system monospaced face. `ForkTypography.shared` is a nonisolated,
 Sendable resolver. Its current family, cached faces and font metadata share one
 `OSAllocatedUnfairLock`; lookups preserve font identity across threads. The lock's unchecked
