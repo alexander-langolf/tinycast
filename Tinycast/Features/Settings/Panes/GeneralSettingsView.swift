@@ -87,7 +87,7 @@ struct GeneralSettingsView: View {
 
             // FORK: appearance-pane moved the Appearance section to AppearanceSettingsView.
 
-            AutomationSettingsSection()  // FORK: automation-settings
+            // FORK: automation-settings moved the Automation section to AutomationSettingsView.
 
             Section {
                 Picker(selection: hyperKeySelection) {

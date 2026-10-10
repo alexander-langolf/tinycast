@@ -3,6 +3,7 @@ enum SettingsTab: CaseIterable, Identifiable {
         fallbacks, clipboard, snippets, fileSearch, windowManagement, navigation, notes, calendar, emoji,
         dictation, ai, quickActions, extensions, permissions, backup, about
     case appearance  // FORK: appearance-pane
+    case automation  // FORK: automation-settings
     /// The case, never an index: a selectable `List` flattens section and row IDs together.
     var id: Self { self }
 
@@ -10,6 +11,7 @@ enum SettingsTab: CaseIterable, Identifiable {
         switch self {
         case .general: return "General"
         case .appearance: return "Appearance"  // FORK: appearance-pane
+        case .automation: return "Automation"  // FORK: automation-settings
         case .applications: return "Applications"
         case .systemSettings: return "System Settings"
         case .systemActions: return "System Actions"
@@ -39,6 +41,7 @@ enum SettingsTab: CaseIterable, Identifiable {
         switch self {
         case .general: return "switch.2"
         case .appearance: return "paintbrush"  // FORK: appearance-pane
+        case .automation: return "point.3.connected.trianglepath.dotted"  // FORK: automation-settings
         case .applications: return "square.grid.2x2"
         case .systemSettings: return "gearshape"
         case .systemActions: return "bolt"
@@ -92,7 +95,8 @@ enum SettingsSection: CaseIterable, Identifiable {
             // Everyday tools first; AI and extensions are opt-in extras.
             return [
                 .clipboard, .snippets, .fileSearch, .windowManagement, .navigation, .notes,
-                .calendar, .emoji, .dictation, .ai, .quickActions, .extensions
+                .calendar, .emoji, .dictation, .ai, .quickActions, .extensions,
+                .automation  // FORK: automation-settings
             ]
         case .advanced: return [.backup, .about]
         }

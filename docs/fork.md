@@ -352,7 +352,10 @@ unless they have an explicit symbol-only allowance. The audit is a static guard,
 | `Tinycast/App/AppCore.swift` | `// FORK: terminal-instances` | Lazily own the coordinator and presenter; hang up every session at termination. |
 | `Tinycast/App/AppCore.swift` | `// FORK: palette-chips` | Lazily own the chips coordinator and presenter. |
 | `Tinycast/App/AppCore.swift` | `// FORK: automation` | Lazily own the inbound automation coordinator; start it after MCP, offer it each opened URL first, stop it at termination. |
-| `Tinycast/Features/Settings/Panes/GeneralSettingsView.swift` | `// FORK: automation-settings` | Render the automation clients section. |
+| `Tinycast/Features/Settings/Panes/GeneralSettingsView.swift` | `// FORK: automation-settings` | Marks where the Automation section left for its own pane. |
+| `Tinycast/Features/Settings/SettingsTab.swift` | `// FORK: automation-settings` | The `automation` tab: title, icon, and its place at the end of Features. |
+| `Tinycast/Features/Settings/SettingsDetailView.swift` | `// FORK: automation-settings` | Route the tab to `AutomationSettingsView`. |
+| `Tinycast/Features/Settings/SettingsSearchCatalog.swift` | `// FORK: automation-settings` | Index the pane's entries (`ForkSettingsSearch.automation`). |
 | `Tinycast/App/AppCore.swift` | `// FORK: automation` | Route the automation approval dialog to `DialogController`. |
 | `Tinycast/Windows/Dialog/DialogRequest.swift` | `// FORK: automation` | The `automationApproval` accessory case. |
 | `Tinycast/Windows/Dialog/DialogController.swift` | `// FORK: automation` | `approveAutomation`, its width, and the hook that lets an expired approval close its dialog. |

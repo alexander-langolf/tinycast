@@ -111,7 +111,9 @@ enum SettingsSearchCatalog {
         general + ForkSettingsSearch.appearance  // FORK: appearance-pane
         + applications + systemSettings + systemActions + commands + quicklinks
         + appleShortcuts + fallbacks + clipboard + snippets + fileSearch + windowManagement
-        + navigation + notes + calendar + emoji + ai + quickActions + dictation + extensions + permissions
+        + navigation + notes + calendar + emoji + ai + quickActions + dictation + extensions
+        + ForkSettingsSearch.automation  // FORK: automation-settings
+        + permissions
         + backup + about
 
     private static let general: [SettingsSearchEntry] = [

@@ -51,7 +51,7 @@ Code and Codex both carry both eras and fall back on a 4xx. Spec pages read on 2
   SHA-256 digest in memory, read once off the main thread when the endpoint starts; the endpoint
   listens only after that read. An ad-hoc-signed Dev rebuild changes the code signature, so macOS
   may ask for Keychain access again, and Settings says "Starting…" until it is answered.
-  Create, rotate and revoke are in Settings → General → Automation. Expiry is enforced like a
+  Create, rotate and revoke are in Settings → Automation. Expiry is enforced like a
   revoke while the endpoint runs (re-checked at least hourly and at each expiry instant): the
   client's listen streams end, its questions go and its pending approvals are withdrawn.
   Metadata reads and writes, Keychain access, profile reads, directory checks and audit writes
@@ -70,7 +70,7 @@ Code and Codex both carry both eras and fall back on a 4xx. Spec pages read on 2
 ## HTTP endpoint
 
 `AutomationHTTPServer` listens on `127.0.0.1` only (`NetworkListener`, no dependency): stable
-**43311**, Dev **43312**, Beta **43313**, path `/mcp`, POST only. Settings → General → Automation →
+**43311**, Dev **43312**, Beta **43313**, path `/mcp`, POST only. Settings → Automation →
 Allow automation starts and stops it; it is off by default and the flag is not in backups.
 
 - **Before any body is read:** `Host` must be `127.0.0.1:<port>` or `localhost:<port>`; any `Origin`
@@ -190,14 +190,24 @@ stdio MCP server that POSTs each line to the running app's endpoint:
 
 ## Registering a client
 
-In Settings → General → Automation, turn automation on and create a client; the row shows its id.
-The tool is `Tinycast Dev.app/Contents/Helpers/tinycast` (Debug builds live under DerivedData:
-`…/Build/Products/Debug/Tinycast Dev.app`).
+Settings → Automation (`AutomationSettingsView`, fork-owned) holds it all:
+
+- **Clients:** turn automation on, create a client with its scopes and lifetime, rotate or revoke.
+- **Connect an Agent:** pick a client and an agent (Claude Code, Codex, Cursor, any stdio client, raw
+  HTTP) and copy the exact command or JSON, built by `AutomationClientSetup` from this build's
+  bridge path (`<app>/Contents/Helpers/tinycast`) and the client id. No snippet carries a token; the
+  HTTP one names the Keychain item instead.
+- **What Clients Can Do:** every operation in `AutomationOperationCatalog` with its scope and whether
+  it asks first.
+- **Links:** each link operation with an example to copy, and a Try button that hands it straight to
+  this build's `handleLink`, so it never lands on another installed copy.
+- **Files:** reveals the Automation folder (audit log, agent profiles).
+
+The commands it produces look like this:
 
 ```sh
-TC="$HOME/Library/Developer/Xcode/DerivedData/<Tinycast-…>/Build/Products/Debug/Tinycast Dev.app/Contents/Helpers/tinycast"
-claude mcp add tinycast -- "$TC" mcp --stdio --client <client id>
-codex mcp add tinycast -- "$TC" mcp --stdio --client <client id>
+claude mcp add tinycast -- '<app>/Contents/Helpers/tinycast' mcp --stdio --client <client id>
+codex mcp add tinycast -- '<app>/Contents/Helpers/tinycast' mcp --stdio --client <client id>
 ```
 
 ## Not done

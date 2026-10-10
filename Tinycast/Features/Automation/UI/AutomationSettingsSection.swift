@@ -64,7 +64,7 @@ struct AutomationSettingsSection: View {
                 Text(notice).textSelection(.enabled).foregroundStyle(.secondary)
             }
         } header: {
-            Text("Automation")
+            SettingsSectionHeader(.automationClients)
         } footer: {
             Text(
                 "Each client has its own token, kept in your login Keychain and never in a file. "

@@ -20,6 +20,19 @@ enum ForkSettingsSearch {
             return [group]
                 + component.tokens.map { SettingsSearchEntry(anchor, $0.title, keywords: $0.keywords) }
         }
+
+    /// The Automation pane, its sections and the rows a user would search for by name.
+    static let automation: [SettingsSearchEntry] = [
+        .init(pane: .automation, keywords: ["mcp", "api", "tinycast://", "agent", "integration"]),
+        .init(.automationClients, "Allow automation", keywords: ["mcp", "server", "enable", "listen"]),
+        .init(.automationClients, "Create Client", keywords: ["token", "keychain", "scope", "rotate", "revoke"]),
+        .init(
+            .automationConnect, "Connect an Agent",
+            keywords: ["claude code", "codex", "cursor", "mcp add", "config", "bridge"]),
+        .init(.automationCapabilities, "What Clients Can Do", keywords: ["tools", "resources", "scopes"]),
+        .init(.automationLinks, "Links", keywords: ["url", "url scheme", "deep link", "hud", "palette"]),
+        .init(.automationFiles, "Automation folder", keywords: ["audit", "log", "agent profiles", "finder"])
+    ]
 }
 
 extension SettingsAnchor {

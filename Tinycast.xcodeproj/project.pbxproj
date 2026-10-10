@@ -689,6 +689,7 @@
 		B17B6FE6F8DE23D815E3C5BB /* InstalledCLIProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = E08F20B0B823443E176F1566 /* InstalledCLIProvider.swift */; };
 		B2404EBFB52B8199DC2536F6 /* HotKeyBinding.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85B00A698366E83C7352BC1E /* HotKeyBinding.swift */; };
 		B277075C16A5641C8F3E58C6 /* CameraAccess.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DD86B3ABBB71BC6EA116D85 /* CameraAccess.swift */; };
+		B29685B21380444FB1188C94 /* AutomationSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F33A4F5FAD228E358832525E /* AutomationSettingsView.swift */; };
 		B2CE64B0CE10F23F85B4A1BA /* AutomationScope.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1504AA2AE4A651B04FFEDDB5 /* AutomationScope.swift */; };
 		B2E469739F94CB292841B27C /* AutomationRPCError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B46DDB7FB9F60825679984C /* AutomationRPCError.swift */; };
 		B34A5D2E639E142F535DEF37 /* PalettePresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96B9CD747201ADF005FBBAEE /* PalettePresentation.swift */; };
@@ -824,6 +825,7 @@
 		D5564B285B7B4E3D8E8684D2 /* FileSearchPreviewKind.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EA09837549B2ABC93D59760 /* FileSearchPreviewKind.swift */; };
 		D597CAE37BE32E8BBD089CD3 /* AutomationAuditEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F6DC11BCC9DB09F652F48A1 /* AutomationAuditEvent.swift */; };
 		D5B076EAD09B549E8B1B8155 /* AgentRunCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA862DAF1EB18B45F6B857CD /* AgentRunCard.swift */; };
+		D623D2541F82A5C4188E7D6B /* AutomationClientSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B86756E9C8A3FC90DD05810 /* AutomationClientSetup.swift */; };
 		D68E7585496722BEC72E788C /* AliasStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA0AD89CB2C805C50D2C80E1 /* AliasStore.swift */; };
 		D6D8169527668572F0073F94 /* RelaunchRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = E01488803F8025B0523D44BA /* RelaunchRunner.swift */; };
 		D7293913917ABBCD527EB615 /* CalcToken.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34F2E06B7C8613EB3096B94B /* CalcToken.swift */; };
@@ -1370,6 +1372,7 @@
 		5B1FC5C77AA5F4DD6E2D9B4D /* ExtensionPickerList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtensionPickerList.swift; sourceTree = "<group>"; };
 		5B2DBBB997953D2E50EBB050 /* MCPServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MCPServer.swift; sourceTree = "<group>"; };
 		5B330ABFC83721904159DDF2 /* MeetingEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingEvent.swift; sourceTree = "<group>"; };
+		5B86756E9C8A3FC90DD05810 /* AutomationClientSetup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutomationClientSetup.swift; sourceTree = "<group>"; };
 		5B883E55507FA5BE11A31B54 /* MCPServerConnection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MCPServerConnection.swift; sourceTree = "<group>"; };
 		5BBDB6A6CE9564ADA2D16F53 /* AppDisplayName.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDisplayName.swift; sourceTree = "<group>"; };
 		5BF9DDDFA66005FB142EA603 /* ForkSettingsSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForkSettingsSearch.swift; sourceTree = "<group>"; };
@@ -1929,6 +1932,7 @@
 		F14E45FECBB2FFD208C51E03 /* CommandDuration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandDuration.swift; sourceTree = "<group>"; };
 		F2960A04D852678D8E23895C /* AIModelOption.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIModelOption.swift; sourceTree = "<group>"; };
 		F31FB61E6F6969851D3874FA /* CodexMCPLaunch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexMCPLaunch.swift; sourceTree = "<group>"; };
+		F33A4F5FAD228E358832525E /* AutomationSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutomationSettingsView.swift; sourceTree = "<group>"; };
 		F3CE1A1626264322E8A1192E /* SettingsWindowChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowChrome.swift; sourceTree = "<group>"; };
 		F3F97240A718D95DFD9343DB /* UpcomingWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpcomingWindow.swift; sourceTree = "<group>"; };
 		F42BECB8234FEA49797B68F6 /* WindowSwitchQuery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowSwitchQuery.swift; sourceTree = "<group>"; };
@@ -2440,6 +2444,7 @@
 				E0E5EA5A859E7C3647DA06C9 /* AutomationQuestionPresenter.swift */,
 				344094191B7D5035E87F8F86 /* AutomationQuestionStack.swift */,
 				8367E628065EB78BF18D1653 /* AutomationSettingsSection.swift */,
+				F33A4F5FAD228E358832525E /* AutomationSettingsView.swift */,
 			);
 			path = UI;
 			sourceTree = "<group>";
@@ -3674,6 +3679,7 @@
 				86CB770F2C703394060A168B /* AutomationCall.swift */,
 				C3411B7E420F0671BC9FE70E /* AutomationCaller.swift */,
 				7F56728FC5149E5986618724 /* AutomationClient.swift */,
+				5B86756E9C8A3FC90DD05810 /* AutomationClientSetup.swift */,
 				EC22666F6559ABEC47D6693D /* AutomationEndpoint.swift */,
 				802CC6305709227CD1AC6424 /* AutomationHTTPBody.swift */,
 				F7DD0620F3DDC42AA02A22CA /* AutomationHTTPGate.swift */,
@@ -4609,6 +4615,7 @@
 				D4AAC0EB19F546602D66D69A /* AutomationCall.swift in Sources */,
 				58F4BE7F529FC3F7F5E28D0A /* AutomationCaller.swift in Sources */,
 				95AB7E6E7C335B341892B7EF /* AutomationClient.swift in Sources */,
+				D623D2541F82A5C4188E7D6B /* AutomationClientSetup.swift in Sources */,
 				6AEC47D21C34A0DAF6091B86 /* AutomationClientStore.swift in Sources */,
 				6C76E342A8CC7D1AC1E4208B /* AutomationCoordinator.swift in Sources */,
 				B6ABB18E8E275EE463A106D5 /* AutomationEndpoint.swift in Sources */,
@@ -4641,6 +4648,7 @@
 				ACAE2E465C517E295F94FBC6 /* AutomationSchemaValidator.swift in Sources */,
 				B2CE64B0CE10F23F85B4A1BA /* AutomationScope.swift in Sources */,
 				FF9F1BF6687E8B325ADE782C /* AutomationSettingsSection.swift in Sources */,
+				B29685B21380444FB1188C94 /* AutomationSettingsView.swift in Sources */,
 				5F05DBD925C19918ABC4D087 /* AutomationText.swift in Sources */,
 				3695707BCFF1A12231900F0F /* AutomationURL.swift in Sources */,
 				A0A247FFDB1EA278C0F6F813 /* BackupActions.swift in Sources */,

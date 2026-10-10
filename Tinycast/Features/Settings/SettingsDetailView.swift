@@ -10,6 +10,7 @@ struct SettingsDetailView: View {
             switch navigation.tab {
             case .general: GeneralSettingsView()
             case .appearance: AppearanceSettingsView()  // FORK: appearance-pane
+            case .automation: AutomationSettingsView()  // FORK: automation-settings
             case .applications: ApplicationsSettingsView()
             case .systemSettings: SystemSettingsSettingsView()
             case .systemActions: SystemActionsSettingsView()
