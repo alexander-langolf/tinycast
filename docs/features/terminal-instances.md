@@ -81,7 +81,9 @@ pin, kitty and close controls are compact `BarButton`s like the palette's access
 the leading glyph instead: starting and running a spinner tinted with the accent, a non-zero status a
 neutral `exclamationmark.circle` with the code in its tooltip (a crash signal, 128 + SIGILL/ABRT/FPE/KILL/BUS/SEGV, shows a
 red `xmark.octagon` instead), ended a dimmed `powersleep`, otherwise `$`. The bar matches the compact
-palette's height and full panel width. Output grows beneath a 1-point divider up to `scaled(340)` points,
+palette's height and full panel width. Its height, gutters, corner, divider, grid font size and output
+insets are Terminal Instance theme tokens ([appearance-theme.md](appearance-theme.md)) whose defaults
+are the values stated here. Output grows beneath a 1-point divider up to `scaled(340)` points,
 then scrolls. The log follows its tail while the reader is at the bottom; scrolling up pauses it.
 
 `TerminalLineCounter` estimates rows at the session's fixed pty columns, ignores CSI, handles

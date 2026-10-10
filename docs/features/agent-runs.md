@@ -24,11 +24,12 @@
   snapshot, including other palette modes and the compact bar. Cards never enter `PaletteRowIndex`,
   favorites, search results or keyboard navigation, and never take key status or search focus.
 - **The stack sits below the palette when it fits the screen's visible frame.** It matches the
-  palette width with a 12-point gap. Otherwise it sits top-aligned beside the palette, at 360 points
+  palette width with the Agent Card margin (12 points by default) between them. Otherwise it sits top-aligned beside the palette, at 360 points
   wide: right if that fits, left otherwise. Run changes, palette moves, resizes, screen changes and
   Interface Size changes recompute placement. These dimensions use the shared interface scale.
-- **At most four run cards stack vertically, with transparent 8-point gaps.** Source order is
-  preserved; a smaller `+N more` card counts the rest. Each run card is one launcher row plus vertical padding tall.
+- **At most four run cards stack vertically, with transparent gaps (8 points by default).** Source
+  order is preserved; a smaller `+N more` card counts the rest. Each run card is one launcher row plus
+  vertical padding tall, or taller when larger fonts need it.
   A card without a nonempty `attach` command is display-only.
 - **`Model/` is Foundation-only and pure.** `agent-runs-test` compiles the shipped decoding model.
 - **`AppCore` owns the monitor, coordinator and panel presenter.** There is no feature singleton,
@@ -69,8 +70,10 @@ the left placement is clamped to the screen's visible frame, which can overlap t
 
 Each card uses `PaletteBackground`'s behind-window material, adaptive scrim and edge treatment,
 clipped to the palette's continuous corner radius. The transparent panel supplies native shadows
-around the card silhouettes. `AgentRunsMetrics` keeps the feature's 360-point side width and 6-point
-status dot local, scaled through `InterfaceMetrics.scaled`. Existing Theme tokens and
+around the card silhouettes. `AgentRunsMetrics` keeps the feature's 360-point side width local and
+reads every other card dimension, font size, scrim, border and the model label's colour from the
+Agent Card theme tokens ([appearance-theme.md](appearance-theme.md)); their defaults are the values
+below, scaled through `InterfaceMetrics.scaled`. Existing Theme tokens and
 `InterfaceMetrics` supply the shared typography and geometry:
 run cards are `rowIcon + sm * 2` plus `sm` above and below (48 points at standard size, `AgentRunsMetrics.cardHeight`, shared by the card and the panel frame), and the overflow card is
 `barButtonHeight` (28 points). Working uses the accent dot, blocked uses warning orange, and other

@@ -19,7 +19,7 @@ upstream's icon; changing fork artwork does not require editing upstream assets.
 
 ## Customisation
 
-Choose an interface font and a monospaced font in Settings → General → Appearance. The monospaced
+Choose an interface font and a monospaced font in Settings → Appearance. The monospaced
 picker is the same `ForkFontRow` with `kind: .monospaced`, listing only families with a fixed-pitch
 face (`FontCatalog.monospacedFamilies`); `ForkTypography.monoFace` resolves them from the system
 monospaced font so weight and italic carry over. The terminal instance grid follows it live
@@ -85,11 +85,33 @@ document. This adapts the requested catalog icon to upstream's modern layered ic
 flattening it into an `.appiconset` would change the default appearance. Fork build settings
 live in `project.fork.yml`; regenerate the Xcode project after changing them. The same file defines
 `TinycastPreviews`, a small app target (bundle id `com.tinycast.previews`) that compiles only the
-AgentRuns UI, the terminal-instance card (`TerminalInstanceCard` and its metrics) and the design-system, fork-typography and shell-runner files they read, so Xcode's canvas
+AgentRuns UI, the terminal-instance card (`TerminalInstanceCard` and its metrics) and the design-system, fork-typography, theme-token and shell-runner files they read, so Xcode's canvas
 can preview without libghostty or AppCore. Its entry point is `PreviewsApp/`; run it for a card playground.
 Debug builds sign with upstream's `Tinycast Self-Signed` identity (create it once per `signing.md` §1;
 with OpenSSL 3+, add `-legacy` to `openssl pkcs12 -export` or `security import` fails its MAC check), so
 Accessibility and Keychain grants survive rebuilds. `TinycastPreviews` alone signs ad-hoc.
+
+## Appearance pane and theme tokens
+
+Settings → Appearance is a fork-owned pane (`Tinycast/Fork/Appearance/`) placed right after General.
+It renders General's former Appearance section, unchanged, and the theme tokens: design values for
+the agent card, the terminal instance and the palette, each defaulting to today's value, persisted,
+mirrored as `appearance.tokens` in settings.json and carried in backups. See
+[appearance-theme.md](features/appearance-theme.md) for the token list, keys and seams.
+
+**A fork-owned pane plus small hooks beats editing upstream's General pane inline.** Upstream's
+General keeps everything except the section, which is replaced by one marker line; the two private
+rows it used become internal so the fork pane renders them, and the existing settings keys,
+`settings.json` keys and search entries stay exactly as they were. The `generalAppearance` anchor now
+names the Appearance pane (titled "General" there), so upstream's own search entries follow it with no
+edit. The cost is a merge conflict if upstream edits that section: port the change into
+`AppearanceSettingsView`. Inline editing would have threaded three token sections and their previews
+through an upstream file instead.
+
+Fork components read tokens directly through `ForkTheme.current`. The palette is upstream's, so its
+tokens reach it only through `InterfaceMetrics` (the central seam), the fork-owned
+`PaletteChipsCoordinator.paletteRadius` and `PaletteFrameClip`, and one scrim line in `RootPaletteView`.
+Row padding needed a named metric, `spacing.rowVertical`, adopted by every list row's one padding line.
 
 ## Background agent runs
 
@@ -268,7 +290,7 @@ unless they have an explicit symbol-only allowance. The audit is a static guard,
 | `Tinycast/DesignSystem/Scrolling/OverflowFade.swift` | `// FORK: overflow-double` | Compile fix: explicit `Double` for the fade strengths. |
 | `Scripts/run-tests.sh` | `// FORK: fork-harness` | Register the fork-layer harness. |
 | `Scripts/run-tests.sh` | `// FORK: harness-sources` | Compile affected harnesses with real fork dependencies, including the file-session runner. |
-| `Tinycast/App/AppCore.swift` | `// FORK: appearance-observation` | Refresh AppKit palette geometry after font changes. |
+| `Tinycast/App/AppCore.swift` | `// FORK: appearance-observation` | Refresh AppKit palette geometry after font or theme-token changes. |
 | `Tinycast/App/AppCore.swift` | `// FORK: appearance-owner` | Single AppCore owner. |
 | `Tinycast/App/AppCore.swift` | `// FORK: appearance-start` | Publish the current appearance at startup. |
 | `Tinycast/App/MenuBarItem.swift` | `// FORK: status-icon` | Prefer the fork menu-bar image. |
@@ -312,7 +334,6 @@ unless they have an explicit symbol-only allowance. The audit is a static guard,
 | `Tinycast/Features/QuickActions/UI/QuickActionPanelController.swift` | `// FORK: accent-scope` | Apply the optional accent at a hosting boundary. |
 | `Tinycast/Features/Settings/AppSettingsKey.swift` | `// FORK: font-persistence` | Retain the existing font key and backup exclusion. |
 | `Tinycast/Features/Settings/Model/SettingsFileKey.swift` | `// FORK: font-persistence` | Retain the existing font key and backup exclusion. |
-| `Tinycast/Features/Settings/Panes/GeneralSettingsView.swift` | `// FORK: font-picker` | Render the Fork-owned font preference. |
 | `Tinycast/Features/Settings/Panes/GeneralSettingsView.swift` | `// FORK: named-asset` | Prefer the namespaced fork image, then upstream. |
 | `Tinycast/Features/Settings/SettingsEditorPresenter.swift` | `// FORK: accent-scope` | Apply the optional accent at a hosting boundary. |
 | `Tinycast/Features/Settings/SettingsFileSchema.swift` | `// FORK: font-mirror` | Bind settings.json directly to ForkAppearance. |
@@ -355,6 +376,34 @@ unless they have an explicit symbol-only allowance. The audit is a static guard,
 | `Tinycast/Features/Settings/SettingsFileSchema.swift` | `// FORK: ai-working-directory` | Bind the mirror with the folder rule. |
 | `Tinycast/Features/Backup/Model/SettingsBackupCoverage.swift` | `// FORK: ai-working-directory` | Keep the folder out of backups. |
 | `Tinycast/Features/Settings/SettingsSearchCatalog.swift` | `// FORK: ai-working-directory` | Make the row searchable. |
+| `Tinycast/App/AppCore.swift` | `// FORK: appearance-theme` | Own the theme-token store and publish it at startup. |
+| `Tinycast/DesignSystem/InterfaceMetrics.swift` | `// FORK: appearance-theme` | Palette tokens at the metrics seam: `spacing.rowVertical`, `radius.row`, `size.headerPadding`, `typography.searchFieldSize`. |
+| `Tinycast/Palette/RootPaletteView.swift` | `// FORK: appearance-theme` | Draw the palette scrim from the theme tokens. |
+| `Tinycast/Features/AI/UI/ChatHistoryView.swift` | `// FORK: appearance-theme` | Row vertical padding through `spacing.rowVertical`. |
+| `Tinycast/Features/Calculator/UI/CalculatorHistoryView.swift` | `// FORK: appearance-theme` | Row vertical padding through `spacing.rowVertical`. |
+| `Tinycast/Features/Calendar/UI/ScheduleView.swift` | `// FORK: appearance-theme` | Row vertical padding through `spacing.rowVertical`. |
+| `Tinycast/Features/Clipboard/UI/ClipboardView.swift` | `// FORK: appearance-theme` | Row vertical padding through `spacing.rowVertical`. |
+| `Tinycast/Features/CustomCommands/UI/CustomCommandListView.swift` | `// FORK: appearance-theme` | Row vertical padding through `spacing.rowVertical`. |
+| `Tinycast/Features/Extensions/UI/ExtensionListView.swift` | `// FORK: appearance-theme` | Row vertical padding through `spacing.rowVertical`. |
+| `Tinycast/Features/FileSearch/UI/FileSearchList.swift` | `// FORK: appearance-theme` | Row vertical padding through `spacing.rowVertical`. |
+| `Tinycast/Features/Launcher/UI/LauncherList.swift` | `// FORK: appearance-theme` | Row vertical padding through `spacing.rowVertical`. |
+| `Tinycast/Features/MenuSearch/UI/MenuSearchList.swift` | `// FORK: appearance-theme` | Row vertical padding through `spacing.rowVertical`. |
+| `Tinycast/Features/Quicklinks/UI/QuicklinkListView.swift` | `// FORK: appearance-theme` | Row vertical padding through `spacing.rowVertical`. |
+| `Tinycast/Features/Snippets/UI/SnippetsListView.swift` | `// FORK: appearance-theme` | Row vertical padding through `spacing.rowVertical`. |
+| `Tinycast/Features/Uninstall/UI/UninstallView.swift` | `// FORK: appearance-theme` | Row vertical padding through `spacing.rowVertical`. |
+| `Tinycast/Features/WindowManagement/UI/RoomPickerList.swift` | `// FORK: appearance-theme` | Row vertical padding through `spacing.rowVertical`. |
+| `Tinycast/Features/WindowManagement/UI/RoomsList.swift` | `// FORK: appearance-theme` | Row vertical padding through `spacing.rowVertical`. |
+| `Tinycast/Features/WindowSwitcher/UI/WindowSwitchList.swift` | `// FORK: appearance-theme` | Row vertical padding through `spacing.rowVertical`. |
+| `Tinycast/Features/Settings/AppSettingsKey.swift` | `// FORK: appearance-theme` | Name the `forkTheme` defaults key. |
+| `Tinycast/Features/Settings/Model/SettingsFileKey.swift` | `// FORK: appearance-theme` | Mirror the tokens as `appearance.tokens`. |
+| `Tinycast/Features/Settings/SettingsFileSchema.swift` | `// FORK: appearance-theme` | Bind `appearance.tokens` to the token store. |
+| `Tinycast/Features/Backup/Model/SettingsBackup.swift` | `// FORK: appearance-theme` | Carry `appearanceTokens` in the settings backup and restore it on import. |
+| `Tinycast/Features/Backup/Model/SettingsBackupCoverage.swift` | `// FORK: appearance-theme` | Pair `appearanceTokens` with the `forkTheme` key. |
+| `Tinycast/Features/Settings/SettingsTab.swift` | `// FORK: appearance-pane` | The Appearance tab: case, title, symbol and its sidebar slot after General. |
+| `Tinycast/Features/Settings/SettingsDetailView.swift` | `// FORK: appearance-pane` | Route the tab to `AppearanceSettingsView`. |
+| `Tinycast/Features/Settings/SettingsAnchor.swift` | `// FORK: appearance-pane` | Point `generalAppearance` at the Appearance pane, titled General. |
+| `Tinycast/Features/Settings/SettingsSearchCatalog.swift` | `// FORK: appearance-pane` | List the pane, its sections and every token row. |
+| `Tinycast/Features/Settings/Panes/GeneralSettingsView.swift` | `// FORK: appearance-pane` | Drop the Appearance section; make `WindowModeRow` and `InterfaceSizeRow` internal for the fork pane. |
 
 ## Refactor inventory
 
