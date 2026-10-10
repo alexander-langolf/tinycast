@@ -45,7 +45,8 @@ struct AutomationSettingsSection: View {
             ForEach(automation.clients.clients) { client in
                 clientRow(client)
             }
-            TextField("New client name", text: $label)
+            TextField("New client name", text: $label, prompt: Text("e.g. Claude Code"))
+                .textFieldStyle(.roundedBorder)
             DisclosureGroup("Scopes for the new client") {
                 ForEach(AutomationScope.allCases, id: \.self) { scope in
                     Toggle(scope.title, isOn: binding(for: scope))
@@ -55,7 +56,10 @@ struct AutomationSettingsSection: View {
                 ForEach(Lifetime.allCases) { Text($0.title).tag($0) }
             }
             Button("Create Client") { create() }
-                .disabled(label.trimmingCharacters(in: .whitespaces).isEmpty || scopes.isEmpty)
+                .disabled(createBlocker != nil)
+            if let createBlocker {
+                Text(createBlocker).foregroundStyle(.secondary)
+            }
             if let notice {
                 Text(notice).textSelection(.enabled).foregroundStyle(.secondary)
             }
@@ -65,6 +69,17 @@ struct AutomationSettingsSection: View {
             Text(
                 "Each client has its own token, kept in your login Keychain and never in a file. "
                     + "Commands and agent launches always ask you first.")
+        }
+    }
+
+    /// Why Create Client is disabled, said next to it rather than left for the user to guess.
+    private var createBlocker: String? {
+        let unnamed = label.trimmingCharacters(in: .whitespaces).isEmpty
+        switch (unnamed, scopes.isEmpty) {
+        case (true, true): return "Name the client and choose at least one scope to create it."
+        case (true, false): return "Name the client to create it."
+        case (false, true): return "Choose at least one scope to create the client."
+        case (false, false): return nil
         }
     }
 
