@@ -1,7 +1,5 @@
 import SwiftUI
 
-/// The approval dialog's body: one labelled block per field, never one joined string, so a value
-/// cannot pass for another line of the dialog.
 struct AutomationApprovalFields: View {
     @Environment(\.metrics) private var metrics
     let presentation: AutomationApprovalPresentation

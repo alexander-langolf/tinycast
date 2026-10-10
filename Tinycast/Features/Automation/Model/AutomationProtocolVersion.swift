@@ -1,7 +1,5 @@
 import Foundation
 
-/// The MCP revisions this endpoint speaks: the stateless 2026-07-28 revision, plus the earlier
-/// handshake revisions that Claude Code and Codex fall back to.
 enum AutomationProtocolVersion {
     static let current = "2026-07-28"
     static let legacy = ["2025-11-25", "2025-06-18", "2025-03-26"]

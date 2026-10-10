@@ -1,7 +1,5 @@
 import Foundation
 
-/// A launch grant written by the user: a named command a client may ask to start, and nothing else.
-/// Clients choose the profile and supply the prompt; they never supply the command.
 struct AutomationAgentProfile: Codable, Equatable, Sendable {
     let name: String
     var title: String?

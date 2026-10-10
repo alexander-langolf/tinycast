@@ -1,7 +1,5 @@
 import Foundation
 
-/// Where each channel listens. Fixed per channel so a client's config survives restarts, and
-/// different between channels so a Dev build never answers a stable client.
 enum AutomationEndpoint {
     static let host = "127.0.0.1"
     static let path = "/mcp"

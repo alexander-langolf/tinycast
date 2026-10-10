@@ -1,8 +1,6 @@
 import Foundation
 import Observation
 
-/// Questions agents have put to the user. They live here, not on a connection, so a client that
-/// reconnects finds them, their answers and their expiry. Memory only: they do not survive a quit.
 @MainActor
 @Observable
 final class AutomationQuestionStore {

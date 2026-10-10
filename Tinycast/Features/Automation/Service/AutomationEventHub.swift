@@ -1,7 +1,5 @@
 import Foundation
 
-/// Fan-out for resource-updated notifications. A subscription belongs to one client and names the
-/// resources it wants; nothing here knows what a resource contains.
 @MainActor
 final class AutomationEventHub {
     struct Subscription {

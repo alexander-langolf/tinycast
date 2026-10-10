@@ -1,7 +1,5 @@
 import Foundation
 
-/// The small subset of JSON Schema the registry uses: enough to refuse a malformed call before it
-/// reaches the runner. Returns a message for the first problem, or nil.
 enum AutomationSchemaValidator {
     static func validate(arguments: [String: JSONValue], against schema: JSONValue?) -> String? {
         guard let schema = schema?.objectValue else { return nil }

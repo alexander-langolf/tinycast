@@ -1,7 +1,5 @@
 import SwiftUI
 
-/// What agents are waiting to ask: each card names the client that asked, which is the token's
-/// label and so cannot be claimed by the question's own text.
 struct AutomationQuestionStack: View {
     @Environment(\.metrics) private var metrics
     let store: AutomationQuestionStore

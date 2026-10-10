@@ -1,9 +1,6 @@
 import Foundation
 import Observation
 
-/// Human approval for privileged calls, one request at a time, each shown exactly as it will run.
-/// A request waits here until it is answered, expires or its caller goes away; the last two also
-/// take its dialog down if it is the one on screen.
 @MainActor
 @Observable
 final class AutomationApprovalQueue {

@@ -1,7 +1,5 @@
 import Foundation
 
-/// A question an agent put to the user. Owned by the client that asked; survives reconnects
-/// because it lives here, not on any connection.
 struct AutomationQuestion: Identifiable, Equatable, Sendable {
     enum State: String, Sendable {
         case pending

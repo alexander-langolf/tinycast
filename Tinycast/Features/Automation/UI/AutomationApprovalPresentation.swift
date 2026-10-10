@@ -1,7 +1,5 @@
 import Foundation
 
-/// One approval while it is on screen. The queue holds it to take the dialog down when the request
-/// expires, is cancelled or its client is revoked; the dialog fills in `dismiss` while it shows.
 @MainActor
 final class AutomationApprovalPresentation {
     struct Field: Identifiable {
