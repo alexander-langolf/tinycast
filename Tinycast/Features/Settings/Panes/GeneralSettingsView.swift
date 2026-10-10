@@ -85,33 +85,7 @@ struct GeneralSettingsView: View {
                 SettingsSectionHeader(.generalGeneral)
             }
 
-            Section {
-                Picker(selection: $settings.appearance) {
-                    ForEach(AppAppearance.allCases) { appearance in
-                        Text(appearance.title).tag(appearance)
-                    }
-                } label: {
-                    SettingsRowTitle(.generalAppearance, "Theme")
-                }
-                InterfaceSizeRow()
-                ForkFontRow()  // FORK: font-picker
-                ForkFontRow(kind: .monospaced)  // FORK: font-picker
-                WindowModeRow()
-                Toggle(isOn: $settings.showFavoritesInCompactMode) {
-                    SettingsRowTitle(.generalAppearance, "Show favorites in compact mode")
-                    Text("Launch them with ⌘1–⌘5.")
-                }
-                .settingsEnabled(settings.compactMode)
-                Toggle(isOn: $settings.openOnCursorScreen) {
-                    SettingsRowTitle(.generalAppearance, "Follow the cursor across displays")
-                }
-                Toggle(isOn: $settings.paletteDraggable) {
-                    SettingsRowTitle(.generalAppearance, "Drag to reposition")
-                    Text("Drag the strip above the search field.")
-                }
-            } header: {
-                SettingsSectionHeader(.generalAppearance)
-            }
+            // FORK: appearance-pane moved the Appearance section to AppearanceSettingsView.
 
             AutomationSettingsSection()  // FORK: automation-settings
 
@@ -227,7 +201,7 @@ struct GeneralSettingsView: View {
     }
 }
 
-private struct WindowModeRow: View {
+struct WindowModeRow: View {  // FORK: appearance-pane
     @Environment(AppSettings.self) private var settings
 
     private static let preview = CGSize(width: 135, height: 80)
@@ -297,7 +271,7 @@ private struct WindowModeButtonStyle: ButtonStyle {
 }
 
 /// Three glyph steps read as a legend; a true-to-scale "Aa" would look identical at 1.1.
-private struct InterfaceSizeRow: View {
+struct InterfaceSizeRow: View {  // FORK: appearance-pane
     @Environment(AppSettings.self) private var settings
 
     private static let glyph: [InterfaceSize: CGFloat] = [

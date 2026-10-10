@@ -108,7 +108,8 @@ enum SettingsSearchCatalog {
     // Pane order, then section order within a pane, so this reads as a table of contents.
 
     static let entries: [SettingsSearchEntry] =
-        general + applications + systemSettings + systemActions + commands + quicklinks
+        general + ForkSettingsSearch.appearance  // FORK: appearance-pane
+        + applications + systemSettings + systemActions + commands + quicklinks
         + appleShortcuts + fallbacks + clipboard + snippets + fileSearch + windowManagement
         + navigation + notes + calendar + emoji + ai + quickActions + dictation + extensions + permissions
         + backup + about
