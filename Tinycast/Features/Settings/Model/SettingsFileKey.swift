@@ -52,6 +52,9 @@ enum SettingsFileKey: String, CaseIterable, Sendable {
     case aiNewChatAfter = "ai.newChatAfterMinutes"
     case aiToolRounds = "ai.toolRounds"
     case aiWorkingDirectory = "ai.workingDirectory"  // FORK: ai-working-directory
+    case quickAIWarmRoot = "ai.quickAIWarmRoot"  // FORK: quick-ai-root
+    case quickAIStartWorkEngine = "ai.quickAIStartWorkEngine"  // FORK: quick-ai-root
+    case quickAIRootRetention = "ai.quickAIRootRetention"  // FORK: quick-ai-root
     case aiCommands = "ai.commands"
     case quickActionLanguage = "quickActions.targetLanguage"
     case quickActionCommands = "quickActions.commands"

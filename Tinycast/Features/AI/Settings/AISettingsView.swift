@@ -34,6 +34,7 @@ struct AISettingsView: View {
             Group {
                 defaultModelSection
                 chatSection
+                ForkQuickAIRootSettingsRows(usesCodex: core.quickAIUsesCodex)  // FORK: quick-ai-root
                 conversationsSection
                 systemPromptSection
                 MCPSettingsSection()

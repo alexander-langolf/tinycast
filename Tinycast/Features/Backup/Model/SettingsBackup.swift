@@ -91,6 +91,9 @@ struct SettingsBackup: Codable {
         // Safe to carry: it silences a prompt rather than granting anything.
         var supportReminders: Bool?
         var appearanceTokens: ForkThemeBackup?  // FORK: appearance-theme
+        var quickAIWarmRoot: Bool?  // FORK: quick-ai-root
+        var quickAIStartWorkEngine: String?  // FORK: quick-ai-root
+        var quickAIRootRetention: String?  // FORK: quick-ai-root
     }
 
     /// One entry per bindable action. docs/features/hotkeys.md#persistence
@@ -195,6 +198,7 @@ extension SettingsBackup {
             hideCurrentEvent: s.hideCurrentEvent.rawValue,
             supportReminders: s.supportRemindersEnabled)
         backup.settings?.appearanceTokens = ForkThemeStore.current?.backup  // FORK: appearance-theme
+        backup.settings?.gatherQuickAIRoot(from: core.forkQuickAIRootSettings)  // FORK: quick-ai-root
 
         let hk = core.hotKeys
         var hotkeys = HotkeyBackup()
@@ -302,7 +306,7 @@ extension SettingsBackup {
 
     private func applySettings(_ s: SettingsData, to core: AppCore) -> Int {
         let settings = core.settings
-        var count = 0
+        var count = core.forkQuickAIRootSettings.restore(s)  // FORK: quick-ai-root
         if let flag = s.clipboardEnabled {
             settings.clipboardEnabled = flag
             count += 1

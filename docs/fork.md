@@ -384,6 +384,14 @@ unless they have an explicit symbol-only allowance. The audit is a static guard,
 | `Tinycast/Features/Settings/SettingsFileSchema.swift` | `// FORK: ai-working-directory` | Bind the mirror with the folder rule. |
 | `Tinycast/Features/Backup/Model/SettingsBackupCoverage.swift` | `// FORK: ai-working-directory` | Keep the folder out of backups. |
 | `Tinycast/Features/Settings/SettingsSearchCatalog.swift` | `// FORK: ai-working-directory` | Make the row searchable. |
+| `Tinycast/App/AppCore.swift` | `// FORK: quick-ai-root` | Own the Quick AI root settings and log; start pruning at launch and stop it on termination. |
+| `Tinycast/Features/AI/Settings/AISettingsView.swift` | `// FORK: quick-ai-root` | Show the fork-owned Quick AI settings section. |
+| `Tinycast/Features/Settings/AppSettingsKey.swift` | `// FORK: quick-ai-root` | Name the warm-root, Start Work engine and log-retention defaults keys. |
+| `Tinycast/Features/Settings/Model/SettingsFileKey.swift` | `// FORK: quick-ai-root` | Mirror the three preferences under `ai`. |
+| `Tinycast/Features/Settings/SettingsFileSchema.swift` | `// FORK: quick-ai-root` | Bind the three mirror keys to the fork-owned settings. |
+| `Tinycast/Features/Backup/Model/SettingsBackup.swift` | `// FORK: quick-ai-root` | Carry the three optional preferences; gather and restore them through fork-owned helpers. |
+| `Tinycast/Features/Backup/Model/SettingsBackupCoverage.swift` | `// FORK: quick-ai-root` | Include all three Quick AI root preferences in backups. |
+| `Tinycast/Features/Settings/SettingsSearchCatalog.swift` | `// FORK: quick-ai-root` | Add the fork-owned Quick AI settings search entries. |
 | `Tinycast/App/AppCore.swift` | `// FORK: appearance-theme` | Own the theme-token store and publish it at startup. |
 | `Tinycast/App/AppCore.swift` | `// FORK: color-theme` | A colour theme pins `NSApp.appearance` to its base; re-apply when it changes. |
 | `Tinycast/DesignSystem/InterfaceMetrics.swift` | `// FORK: appearance-theme` | Palette tokens at the metrics seam: `spacing.rowVertical`, `radius.row`, `size.headerPadding`, `typography.searchFieldSize`. |

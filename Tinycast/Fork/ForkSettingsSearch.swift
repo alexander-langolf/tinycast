@@ -1,6 +1,15 @@
 import Foundation
 
 enum ForkSettingsSearch {
+    static let quickAIWarmRootTitle = "Keep a warm root session (Codex)"
+    static let quickAIStartWorkTitle = "Start Work in"
+    static let quickAIRetentionTitle = "Forget the Quick AI log after"
+    static let quickAIRoot: [SettingsSearchEntry] = [
+        .init(.quickAIRoot, quickAIWarmRootTitle, keywords: ["quick ai", "prewarm", "thread"]),
+        .init(.quickAIRoot, quickAIStartWorkTitle, keywords: ["quick ai", "claude", "codex", "handoff"]),
+        .init(.quickAIRoot, quickAIRetentionTitle, keywords: ["retention", "handoff", "history", "prune"])
+    ]
+
     static let entry = SettingsSearchEntry(
         .generalAppearance, "Interface font", keywords: ["font", "typeface", "family"])
     static let monoEntry = SettingsSearchEntry(
@@ -47,6 +56,7 @@ enum ForkSettingsSearch {
 }
 
 extension SettingsAnchor {
+    static let quickAIRoot = Self(tab: .ai, title: "Quick AI")
     static let appearanceColors = Self(tab: .appearance, title: "Colours")
     static let appearanceAgentCard = Self(tab: .appearance, title: "Agent Card")
     static let appearanceTerminalInstance = Self(tab: .appearance, title: "Terminal Instance")

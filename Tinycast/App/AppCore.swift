@@ -81,6 +81,9 @@ final class AppCore {
     let chatGPTSubscription = ChatGPTSubscriptionManager()
     let installedAI = InstalledAIManager()
     let forkAIWorkingDirectory = ForkAIWorkingDirectory()  // FORK: ai-working-directory
+    let forkQuickAIRootSettings = ForkQuickAIRootSettings()  // FORK: quick-ai-root
+    @ObservationIgnored private(set) lazy var forkQuickAIRootLog = ForkQuickAIRootLog(
+        settings: forkQuickAIRootSettings)  // FORK: quick-ai-root
     @ObservationIgnored private var appliedLaunchRevisions: [InstalledAIKind: Int] = [:]
 
     /// Set when a layout editor should open with Settings; the pane consumes it.
@@ -292,6 +295,7 @@ final class AppCore {
         forkAppearance.start()  // FORK: appearance-start
         forkTheme.start()  // FORK: appearance-theme
         startForkAIWorkingDirectory()  // FORK: ai-working-directory
+        startForkQuickAIRoot()  // FORK: quick-ai-root
         // FORK: appearance-observation
         track(
             forkAppearance, { _ = $0.fontFamily; _ = $0.monoFontFamily; _ = ForkTheme.current },
@@ -573,6 +577,7 @@ final class AppCore {
     }
 
     func prepareForTermination() {
+        forkQuickAIRootLog.stop()  // FORK: quick-ai-root
         if settings.dictationEnabled { dictationCoordinator.prepareForTermination() }
         settingsFile?.flush()
         agentRunsCoordinator.stop()  // FORK: agent-runs

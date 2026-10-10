@@ -48,23 +48,23 @@ Results are in the spec's *Spike results*.
 
 ## Group 1: Settings and the log
 
-- [ ] **1.1** Create `Tinycast/Fork/QuickAIRoot/ForkQuickAIRootSettings.swift`, holding:
+- [x] **1.1** Create `Tinycast/Fork/QuickAIRoot/ForkQuickAIRootSettings.swift`, holding:
       - `warmRoot: Bool`, default false;
       - `startWorkEngine: off | claude | codex`, default `claude`;
       - `retention: hour | day | week`, default `day`.
 
       They're stored through the fork's settings pattern.
-- [ ] **1.2** Add hooks so all three reach `AppSettingsKey`, `SettingsFileKey`/schema,
+- [x] **1.2** Add hooks so all three reach `AppSettingsKey`, `SettingsFileKey`/schema,
       `SettingsBackup`/coverage and `ForkSettingsSearch`, mirroring how the appearance tokens were
       wired (`// FORK: quick-ai-root`).
-- [ ] **1.3** In the Quick AI section of `AISettingsView`
+- [x] **1.3** In the Quick AI section of `AISettingsView`
       (`Tinycast/Features/AI/Settings/AISettingsView.swift:~143`), add a one-line hook to a
       fork-owned `ForkQuickAIRootSettingsRows`:
       - the toggle "Keep a warm root session (Codex)", disabled with a note when the provider isn't
         Codex;
       - the "Start Work in" picker, with engines that aren't installed disabled;
       - the "Forget the Quick AI log after" picker.
-- [ ] **1.4** Create `Tinycast/Fork/QuickAIRoot/ForkQuickAIRootLog.swift`:
+- [x] **1.4** Create `Tinycast/Fork/QuickAIRoot/ForkQuickAIRootLog.swift`:
       - an append-only JSONL at `<Application Support>/QuickAIRoot/log.jsonl`;
       - events `warmed | claimed | retired | handedOff | fellBack`;
       - fields `at`, `event`, and optional `root`, `chat`, `engine`, `terminal`, `reason`;
@@ -72,7 +72,7 @@ Results are in the spec's *Spike results*.
       - a pure `prune(lines:olderThan:)`, plus `pruneFiles(olderThan:)` for handoff files.
 
       The log never holds message text.
-- [ ] **1.5** Prune at launch and once an hour (a timer owned by the fork), using the retention
+- [x] **1.5** Prune at launch and once an hour (a timer owned by the fork), using the retention
       setting.
 
 **Done when:**
