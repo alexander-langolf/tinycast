@@ -914,6 +914,11 @@ final class AppCore {
             confirmRole: confirmRole, dismissTitle: dismissTitle)
     }
 
+    // FORK: automation
+    func approveAutomation(_ approval: AutomationApprovalPresentation) async -> Bool {
+        await dialogs.approveAutomation(approval)
+    }
+
     /// A question with more than two answers; the returned index is into `options`.
     func choose(
         title: String, message: String?, symbol: String?, options: [DialogAction],

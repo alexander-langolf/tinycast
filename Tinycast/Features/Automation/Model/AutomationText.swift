@@ -33,6 +33,41 @@ enum AutomationText {
         }
     }
 
+    /// For an approval: every scalar kept, but anything that breaks, reorders or hides text is
+    /// shown as a visible token, so a value cannot fake a line or a field of the dialog.
+    static func visible(_ text: String, limit: Int) -> String {
+        var shown = ""
+        var count = 0
+        var hidden = 0
+        for scalar in text.unicodeScalars {
+            let token = visibleToken(for: scalar)
+            if count >= limit {
+                hidden += 1
+                continue
+            }
+            shown += token
+            count += 1
+        }
+        return hidden == 0 ? shown : shown + "…(\(hidden) more chars)"
+    }
+
+    private static func visibleToken(for scalar: Unicode.Scalar) -> String {
+        switch scalar {
+        case "\n": return "␊"
+        case "\r": return "␍"
+        case "\t": return "␉"
+        case " ": return " "
+        default: break
+        }
+        switch scalar.properties.generalCategory {
+        case .control, .format, .lineSeparator, .paragraphSeparator, .spaceSeparator,
+            .surrogate, .privateUse, .unassigned:
+            return "⟨U+\(String(scalar.value, radix: 16, uppercase: true))⟩"
+        default:
+            return String(scalar)
+        }
+    }
+
     /// For the audit log: enough to recognise the argument, never the whole of it.
     static func redacted(_ text: String, limit: Int = 120) -> String {
         let flat = displaySafe(text, limit: Int.max)

@@ -35,8 +35,13 @@ Code and Codex both carry both eras and fall back on a 4xx. Spec pages read on 2
 
 - **Approvals are per request.** `AutomationApprovalQueue` keys each request by its own id and shows
   one at a time through Tinycast's own dialog (default button: Deny), with the exact command and
-  folder. Requests expire after 60 seconds, a revoked client's requests are cancelled, and the
-  router rechecks the caller's authority after the wait. At most 8 are pending (3 per client) and a
+  folder. Each field (requester, command, folder) is its own labelled block, never one joined
+  string, and its value is shown with line breaks as `␊`/`␍`/`␉` and any control, format
+  (bidirectional, zero-width), separator or private-use character as `⟨U+XXXX⟩`, so a command
+  cannot draw a fake `Folder:` line; a value past 1,200 shown characters ends `…(N more chars)`.
+  Every request expires 60 seconds after it was made, whether queued or on screen; expiry, the
+  caller closing its connection, and revoking or expiry of its client each settle the request and
+  take its dialog down if it is showing. The router rechecks the caller's authority after the wait. At most 8 are pending (3 per client) and a
   client gets 6 prompts a minute. A command over 1,000 characters is refused rather than shown cut.
   The dialog waits while another Tinycast dialog is open instead of being swallowed by it.
 - **Per-client tokens live only in the login Keychain.** Service

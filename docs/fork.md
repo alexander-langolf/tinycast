@@ -284,6 +284,10 @@ unless they have an explicit symbol-only allowance. The audit is a static guard,
 | `Tinycast/App/AppCore.swift` | `// FORK: palette-chips` | Lazily own the chips coordinator and presenter. |
 | `Tinycast/App/AppCore.swift` | `// FORK: automation` | Lazily own the inbound automation coordinator; start it after MCP, offer it each opened URL first, stop it at termination. |
 | `Tinycast/Features/Settings/Panes/GeneralSettingsView.swift` | `// FORK: automation-settings` | Render the automation clients section. |
+| `Tinycast/App/AppCore.swift` | `// FORK: automation` | Route the automation approval dialog to `DialogController`. |
+| `Tinycast/Windows/Dialog/DialogRequest.swift` | `// FORK: automation` | The `automationApproval` accessory case. |
+| `Tinycast/Windows/Dialog/DialogController.swift` | `// FORK: automation` | `approveAutomation`, its width, and the hook that lets an expired approval close its dialog. |
+| `Tinycast/Windows/Dialog/DialogView.swift` | `// FORK: automation` | Render the approval's labelled fields. |
 | `Tinycast/Info.plist` | `FORK: automation` (XML comment) | Claim the bundle id as a second URL scheme so automation links reach one channel. |
 | `Tinycast/Palette/RootPaletteView.swift` | `// FORK: terminal-instances` | Route standalone `$` launcher queries to the terminal command screen. |
 | `Tinycast/Palette/RootPaletteView.swift` | `// FORK: palette-chips` | Toggle chips with Tab in the collapsed bar; handle empty-query Escape; set pill radius, show the `⌘1–4` hint and hide compact favourites. |

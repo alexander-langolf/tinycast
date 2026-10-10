@@ -36,7 +36,7 @@ final class AutomationCoordinator {
         self.clients = clients
         let approvals = AutomationApprovalQueue(
             isBusy: { [unowned core] in core.isShowingDialog },
-            present: { [unowned core] request in await Self.ask(request, core: core) })
+            present: { [unowned core] approval in await core.approveAutomation(approval) })
         self.approvals = approvals
         router = AutomationRouter(
             runner: AutomationRunner(
@@ -159,15 +159,5 @@ final class AutomationCoordinator {
                 id: UUID(), request: UUID(), at: now, kind: .denied, transport: "mcp-http",
                 callerRequestID: nil, caller: "unauthenticated", client: nil,
                 operation: "authenticate", arguments: nil, detail: reason))
-    }
-
-    /// Tinycast's own dialog, defaulting to Deny so a stray return never approves.
-    private static func ask(_ request: AutomationApprovalRequest, core: AppCore) async -> Bool {
-        let message = request.details.map { "\($0.label): \($0.value)" }.joined(separator: "\n")
-        let choice = await core.choose(
-            title: request.title, message: message, symbol: "terminal",
-            options: [DialogAction(title: "Allow"), DialogAction(title: "Deny", role: .cancel)],
-            defaultIndex: 1, tone: .danger)
-        return choice == 0
     }
 }
