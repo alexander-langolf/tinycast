@@ -177,6 +177,14 @@ scopes ordinary results to Applications or Shortcuts, preserving pinned command 
 With chip mode off, these hooks retain upstream behaviour. The
 [feature doc](features/terminal-instances.md#tab-chips) describes navigation and placement.
 
+## Palette presentation
+
+A palette screen declares how the expanded window presents it: a fork-owned `PalettePresentation`
+(`Tinycast/Fork/Palette/`) with a height (`.standard`, or `.fitted(rows:)`: the bar plus exactly its
+rows, capped at the standard height) and a footer policy (`.shown`, or `.hidden` with ↵ still
+acting). `PalettePresentationResolver` maps the active mode and query to one; the `$` terminal
+command declares `.fitted` with a hidden footer. See [palette-presentation.md](features/palette-presentation.md).
+
 ## AI working directory
 
 The [AI working directory](features/ai-working-directory.md) lets Quick AI and AI Chat start installed
@@ -304,6 +312,8 @@ unless they have an explicit symbol-only allowance. The audit is a static guard,
 | `Tinycast/Palette/RootPaletteView.swift` | `// FORK: palette-chips` | Toggle chips with Tab in the collapsed bar; handle empty-query Escape; set pill radius, show the `⌘1–4` hint and hide compact favourites. |
 | `Tinycast/Palette/PaletteWindowController.swift` | `// FORK: palette-chips` | Route number-row favourite slots to active chips and consume unused slots; set collapsed pill width. |
 | `Tinycast/Features/Launcher/UI/LauncherScreen.swift` | `// FORK: palette-chips` | Scope ordinary launcher results to Applications or Shortcuts while preserving pinned command results. |
+| `Tinycast/Palette/PaletteWindowController.swift` | `// FORK: palette-presentation` | Ask the active presentation for the expanded window height. |
+| `Tinycast/Palette/RootPaletteView.swift` | `// FORK: palette-presentation` | Resolve the presentation, hide the footer when it says so and resize the window when it changes. |
 | `Tinycast/App/AppCore.swift` | `// FORK: ai-working-directory` | Own the working-directory setting and wire it at startup. |
 | `Tinycast/Features/AI/Service/InstalledCLIProvider.swift` | `// FORK: ai-working-directory` | Widen the runner and its `workspace` for the fork's `cwd`; use `cwd` for the process and directory flags. |
 | `Tinycast/Features/AI/Service/CodexAppServerClient.swift` | `// FORK: ai-working-directory` | Use the fork's `cwd` for the app-server and `mcp list`; `workspace` stays scratch. |
