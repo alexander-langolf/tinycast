@@ -55,6 +55,16 @@ final class GhosttyGridNSView: NSView {
             x: TerminalInstanceMetrics.logInset.width, y: TerminalInstanceMetrics.logInset.height)
         let defaultInk = NSColor(Theme.Colors.textPrimary)
         let isRunning = session.phase == .running
+        let scale = window?.backingScaleFactor ?? 2
+        /// Edges snap to device pixels, so fractional cell widths share edges instead of leaving seams.
+        func pixelRect(column: Int, row: Int) -> CGRect {
+            func snap(_ value: CGFloat) -> CGFloat { (value * scale).rounded() / scale }
+            let left = snap(origin.x + CGFloat(column) * cellWidth)
+            let right = snap(origin.x + CGFloat(column + 1) * cellWidth)
+            let top = snap(origin.y + CGFloat(row) * rowHeight)
+            let bottom = snap(origin.y + CGFloat(row + 1) * rowHeight)
+            return CGRect(x: left, y: top, width: right - left, height: bottom - top)
+        }
         effectiveAppearance.performAsCurrentDrawingAppearance {
             for (y, row) in snapshot.rows.enumerated() {
                 let top = origin.y + CGFloat(y) * rowHeight
@@ -71,7 +81,7 @@ final class GhosttyGridNSView: NSView {
                     if cell.faint { ink = ink.withAlphaComponent(0.55) }
                     if let fill {
                         fill.setFill()
-                        rect.fill()
+                        pixelRect(column: x, row: y).fill()
                     }
                     guard !cell.text.isEmpty, cell.text != " " else { continue }
                     var attributes: [NSAttributedString.Key: Any] = [
@@ -85,9 +95,7 @@ final class GhosttyGridNSView: NSView {
                 }
             }
             if isRunning, snapshot.cursorVisible, let cursor = snapshot.cursor {
-                let rect = CGRect(
-                    x: origin.x + CGFloat(cursor.x) * cellWidth, y: origin.y + CGFloat(cursor.y) * rowHeight,
-                    width: cellWidth, height: rowHeight)
+                let rect = pixelRect(column: cursor.x, row: cursor.y)
                 NSColor.controlAccentColor.withAlphaComponent(0.6).setFill()
                 rect.fill()
             }
