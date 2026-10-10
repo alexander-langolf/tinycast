@@ -142,6 +142,8 @@ final class Bridge: @unchecked Sendable {
     private let session: URLSession
     private let lock = NSLock()
     private var inFlight: [String: Task<Void, Never>] = [:]
+    private var listening: [String: Task<Void, Never>] = [:]
+    private var unanswered: [UUID: Task<Void, Never>] = [:]
     private var legacyVersion: String?
     private let appName: String
 
@@ -167,7 +169,16 @@ final class Bridge: @unchecked Sendable {
         } catch {
             warn("stdin failed: \(error.localizedDescription)")
         }
-        lock.withLock { for task in inFlight.values { task.cancel() } }
+        await drain()
+    }
+
+    /// A piped client closes stdin right after writing, so what it already sent is still answered.
+    private func drain() async {
+        let (streams, pending) = lock.withLock {
+            (Array(listening.values), Array(inFlight.values) + Array(unanswered.values))
+        }
+        for stream in streams { stream.cancel() }
+        for task in pending { await task.value }
     }
 
     private func dispatch(_ line: String) {
@@ -190,20 +201,35 @@ final class Bridge: @unchecked Sendable {
             return
         }
         let request = Request(body: data, method: method, params: object["params"] as? [String: Any])
+        // Registered under the lock before the task can finish and remove itself.
+        lock.lock()
+        defer { lock.unlock() }
         guard let id else {
-            Task { await self.post(request, id: nil) }
+            let token = UUID()
+            unanswered[token] = Task { [self] in
+                await post(request, id: nil)
+                _ = lock.withLock { unanswered.removeValue(forKey: token) }
+            }
             return
         }
         let identifier = key(of: id)
-        let task = Task { [self] in
-            await post(request, id: id)
-            _ = lock.withLock { inFlight.removeValue(forKey: identifier) }
+        guard method == "subscriptions/listen" else {
+            inFlight[identifier] = Task { [self] in
+                await post(request, id: id)
+                _ = lock.withLock { inFlight.removeValue(forKey: identifier) }
+            }
+            return
         }
-        lock.withLock { inFlight[identifier] = task }
+        listening[identifier] = Task { [self] in
+            await post(request, id: id)
+            _ = lock.withLock { listening.removeValue(forKey: identifier) }
+        }
     }
 
     private func cancel(_ identifier: String) {
-        lock.withLock { inFlight.removeValue(forKey: identifier) }?.cancel()
+        lock.withLock {
+            inFlight.removeValue(forKey: identifier) ?? listening.removeValue(forKey: identifier)
+        }?.cancel()
     }
 
     private func key(of id: Any) -> String {

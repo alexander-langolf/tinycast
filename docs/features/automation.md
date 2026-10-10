@@ -117,7 +117,9 @@ stdio MCP server that POSTs each line to the running app's endpoint:
   line per event, so `subscriptions/listen` notifications flow. A JSON-RPC error that arrives with a
   null id gets the request's id.
 - **Cancellation.** `notifications/cancelled` cancels that request's HTTP exchange, which closes its
-  connection; the app treats that as cancellation. Closing stdin cancels everything and exits.
+  connection; the app treats that as cancellation. Closing stdin stops reading: requests already
+  sent are still answered (a piped client closes stdin right after writing), `subscriptions/listen`
+  streams are closed, and the bridge exits once the last answer is written.
 - **Logs** go to stderr only; stdout carries nothing but MCP messages. If the app is not listening
   the request fails with a JSON-RPC error saying where to turn automation on.
 
