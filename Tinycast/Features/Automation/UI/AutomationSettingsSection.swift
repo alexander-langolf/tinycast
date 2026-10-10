@@ -56,7 +56,7 @@ struct AutomationSettingsSection: View {
                 ForEach(Lifetime.allCases) { Text($0.title).tag($0) }
             }
             Button("Create Client") { Task { await create() } }
-                .disabled(createBlocker != nil)
+                .settingsEnabled(createBlocker == nil)
             if let createBlocker {
                 Text(createBlocker).foregroundStyle(.secondary)
             }
