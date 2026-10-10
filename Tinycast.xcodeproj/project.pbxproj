@@ -268,6 +268,7 @@
 		462F69AFB4D5BD7CF4FEAD18 /* TerminalLineCounter.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCD45DAAF322DC499631E1E3 /* TerminalLineCounter.swift */; };
 		4640C7CC8DCA6E6FA49394A8 /* CommandsSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D303E193CFEFE455778C150 /* CommandsSettingsView.swift */; };
 		464F93E1F16A3242396F32F9 /* SearchScopes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E4A7E45F7D1CC5FB8868715 /* SearchScopes.swift */; };
+		46E4495B7FE6A15851E05089 /* ForkColorThemePreset+Kitty.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF9D56DC62E730C7A479AB7E /* ForkColorThemePreset+Kitty.swift */; };
 		46F5D522E6F5470D3694A218 /* RaycastImportReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CD7591D273A6484DD48018A /* RaycastImportReader.swift */; };
 		4756BD8CEF9FC57A0C016555 /* AIConnectionEditorPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87C6479121B0371B3491FA8A /* AIConnectionEditorPanel.swift */; };
 		478500C6465327947EBD9D61 /* RaycastSnippetImport.swift in Sources */ = {isa = PBXBuildFile; fileRef = C80806A442BADAC390ECD993 /* RaycastSnippetImport.swift */; };
@@ -970,6 +971,7 @@
 		F93CD1542844003929AB1BDB /* DialogChip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CFA4726A74C5CCA6E301665 /* DialogChip.swift */; };
 		F9750CE5EC2E7E541F740A15 /* QuickActionSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3C83D437500107168E12647 /* QuickActionSettings.swift */; };
 		FA05D882203673A9FEE5F421 /* UninstallCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AAFBFA70EF62B67F7357E0E /* UninstallCoordinator.swift */; };
+		FA0A0456BEC0630EA19AFC05 /* ForkColorThemePreset+Kitty.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF9D56DC62E730C7A479AB7E /* ForkColorThemePreset+Kitty.swift */; };
 		FA386C9B6DA24481565D506D /* ExtensionPackageManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0ADFFB5180991764FB13FE0B /* ExtensionPackageManager.swift */; };
 		FA93B008A17CEC503CFD7E2E /* ExtensionMenuBarSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3111655F925234368AA7EE31 /* ExtensionMenuBarSnapshot.swift */; };
 		FAD4B4B7A3B39591C73C3BAD /* MenuSearchSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = C42ACB4D70CA089A6E948069 /* MenuSearchSession.swift */; };
@@ -1822,6 +1824,7 @@
 		CF2A1ECA5667B8FD1B1F9FD8 /* UpdateCheckStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateCheckStore.swift; sourceTree = "<group>"; };
 		CF64F5FCB3872996AE57FDBB /* FileSearchCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileSearchCoordinator.swift; sourceTree = "<group>"; };
 		CF97196F61F969186646E35C /* TerminalInstancesPreviewData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalInstancesPreviewData.swift; sourceTree = "<group>"; };
+		CF9D56DC62E730C7A479AB7E /* ForkColorThemePreset+Kitty.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ForkColorThemePreset+Kitty.swift"; sourceTree = "<group>"; };
 		CFAA41293EC14813A47E9B82 /* AutomationMCPHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutomationMCPHandler.swift; sourceTree = "<group>"; };
 		CFBF31AF26A4786B234ABB64 /* ExtensionAnimatedImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtensionAnimatedImage.swift; sourceTree = "<group>"; };
 		D03E3DB2E1E28057B98FC1DF /* ExtensionFieldHint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtensionFieldHint.swift; sourceTree = "<group>"; };
@@ -3737,6 +3740,7 @@
 				FB182154FFBEB36EF9129450 /* ForkColorPalette.swift */,
 				3CB63688CFFEFE4856900967 /* ForkColorTheme.swift */,
 				41CEE4C085481B16234FFF10 /* ForkColorThemePreset.swift */,
+				CF9D56DC62E730C7A479AB7E /* ForkColorThemePreset+Kitty.swift */,
 				90C98E3765FC20DF9D904018 /* ForkInk.swift */,
 				E3E5C0FF7B5C96C3350E4E10 /* ForkTheme.swift */,
 				2914C165B98A78162B185BC8 /* ForkThemeBackup.swift */,
@@ -4989,6 +4993,7 @@
 				8B68D619DA040F7AA14A8289 /* ForkColorPalette.swift in Sources */,
 				21AF84668FE1795C02C062F0 /* ForkColorSlotRow.swift in Sources */,
 				E6E98E6A05A47929DB5D65CD /* ForkColorTheme.swift in Sources */,
+				46E4495B7FE6A15851E05089 /* ForkColorThemePreset+Kitty.swift in Sources */,
 				444A31F3558131A2676C2D13 /* ForkColorThemePreset.swift in Sources */,
 				166C8E779A386B568512F4BF /* ForkColorThemePreview.swift in Sources */,
 				AF777834A2C53F8B949EE0FA /* ForkColorThemeSection.swift in Sources */,
@@ -5495,6 +5500,7 @@
 				77E6C92491240F7923E7809D /* CommandRun.swift in Sources */,
 				9EF17BC251D498C5E6DBDF2F /* ForkColorPalette.swift in Sources */,
 				56BC1030AA6DF9E12BEE12BD /* ForkColorTheme.swift in Sources */,
+				FA0A0456BEC0630EA19AFC05 /* ForkColorThemePreset+Kitty.swift in Sources */,
 				153B836EE33342684DE250A4 /* ForkColorThemePreset.swift in Sources */,
 				2F6A698EEA24FB1EDF40FEC8 /* ForkColors.swift in Sources */,
 				376E37B76C703FC8BB926EB8 /* ForkInk.swift in Sources */,

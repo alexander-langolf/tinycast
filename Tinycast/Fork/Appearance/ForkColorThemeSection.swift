@@ -19,8 +19,12 @@ struct ForkColorThemeSection: View {
         Section {
             Picker(selection: presetKey) {
                 Text("Tinycast (default)").tag(Self.tinycastKey)
-                ForEach(ForkColorThemePreset.all) { preset in
-                    Text(preset.name).tag(preset.id)
+                ForEach(ForkColorThemePreset.Group.allCases, id: \.self) { group in
+                    Section(group.title) {
+                        ForEach(ForkColorThemePreset.all.filter { $0.group == group }) { preset in
+                            Text(preset.name).tag(preset.id)
+                        }
+                    }
                 }
                 if draft?.presetID == ForkColorTheme.customID {
                     Text("Custom").tag(ForkColorTheme.customID)

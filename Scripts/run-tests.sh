@@ -91,7 +91,7 @@ run() {
             set -- "$@" Tinycast/Fork/ForkAppearance.swift Tinycast/Fork/ForkTypography.swift \
                 Tinycast/Fork/ForkColors.swift Tinycast/Fork/ForkAssets.swift Tinycast/Fork/ForkAppearanceScope.swift \
                 Tinycast/Fork/Theme/ForkColorPalette.swift Tinycast/Fork/Theme/ForkColorTheme.swift \
-                Tinycast/Fork/Theme/ForkColorThemePreset.swift Tinycast/Fork/Theme/ForkThemeValue.swift \
+                Tinycast/Fork/Theme/ForkColorThemePreset.swift "Tinycast/Fork/Theme/ForkColorThemePreset+Kitty.swift" Tinycast/Fork/Theme/ForkThemeValue.swift \
                 Tinycast/Fork/Theme/ForkThemeToken.swift
             ;;
     esac
@@ -111,7 +111,7 @@ run() {
     case " $* " in
         *"/SettingsSearchCatalog.swift "*)
             set -- "$@" Tinycast/Fork/ForkSettingsSearch.swift Tinycast/Fork/Theme/ForkThemeToken.swift \
-                Tinycast/Fork/Theme/ForkColorTheme.swift Tinycast/Fork/Theme/ForkColorThemePreset.swift \
+                Tinycast/Fork/Theme/ForkColorTheme.swift Tinycast/Fork/Theme/ForkColorThemePreset.swift "Tinycast/Fork/Theme/ForkColorThemePreset+Kitty.swift" \
                 Tinycast/Fork/Theme/ForkColorPalette.swift Tinycast/Fork/Theme/ForkThemeValue.swift
             ;;
     esac

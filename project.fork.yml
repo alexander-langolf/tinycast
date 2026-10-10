@@ -66,6 +66,7 @@ targets:
           - Fork/Theme/ForkInk.swift
           - Fork/Theme/ForkColorTheme.swift
           - Fork/Theme/ForkColorThemePreset.swift
+          - Fork/Theme/ForkColorThemePreset+Kitty.swift
           - Fork/Theme/ForkColorPalette.swift
           - Platform/Appearance.swift
           - Features/CustomCommands/UI/CommandDuration.swift

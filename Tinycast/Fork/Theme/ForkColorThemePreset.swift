@@ -1,22 +1,39 @@
 import Foundation
 
-/// A built-in theme, mapped by `ForkVSCodeTheme` from its official file; sources are in docs.
+/// A built-in theme, mapped from its official file; sources are in docs.
 struct ForkColorThemePreset: Identifiable, Sendable {
+    /// Where a preset comes from, which is also how the picker groups them.
+    enum Group: CaseIterable, Sendable {
+        case editors, kitty, inverted
+
+        var title: String {
+            switch self {
+            case .editors: "Editors"
+            case .kitty: "kitty"
+            case .inverted: "kitty, inverted"
+            }
+        }
+    }
+
     let id: String
     let name: String
+    let group: Group
     let slots: [ForkColorTheme.Slot: ForkThemeValue.Color]
     /// Normal then bright: black, red, green, yellow, blue, magenta, cyan, white.
     let ansi: [ForkThemeValue.Color]
 
-    private init(_ id: String, _ name: String, slots: [UInt32], ansi: [UInt32]) {
+    init(_ id: String, _ name: String, group: Group = .editors, slots: [UInt32], ansi: [UInt32]) {
         self.id = id
         self.name = name
+        self.group = group
         self.slots = Dictionary(
             uniqueKeysWithValues: zip(ForkColorTheme.Slot.allCases, slots.map(ForkThemeValue.Color.hex)))
         self.ansi = ansi.map(ForkThemeValue.Color.hex)
     }
 
-    static let all: [ForkColorThemePreset] = [
+    static let all: [ForkColorThemePreset] = editors + kitty + kittyInverted
+
+    static let editors: [ForkColorThemePreset] = [
         // Marketplace GitHub.github-vscode-theme 6.3.5, themes/dark-default.json
         .init(
             "github-dark", "GitHub Dark",
