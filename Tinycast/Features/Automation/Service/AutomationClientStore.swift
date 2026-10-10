@@ -51,17 +51,24 @@ final class AutomationClientStore {
         clients = stored
     }
 
-    /// Reads every client's token once, so requests are checked without touching the Keychain.
-    func loadDigests() {
+    /// Reads every client's token once, off the main actor: the read can wait on a Keychain prompt.
+    func loadDigests() async {
         loadMetadata()
-        digests = [:]
-        for client in clients {
-            guard let token = try? keychain.secret(for: client.id) else {
-                Self.logger.error("No Keychain token for client \(client.id, privacy: .public)")
-                continue
+        let keychain = keychain
+        let ids = clients.map(\.id)
+        let found = await Task.detached {
+            var found: [UUID: SHA256.Digest] = [:]
+            for id in ids {
+                guard let token = try? keychain.secret(for: id) else {
+                    Self.logger.error("No Keychain token for client \(id, privacy: .public)")
+                    continue
+                }
+                found[id] = SHA256.hash(data: Data(token.utf8))
             }
-            digests[client.id] = SHA256.hash(data: Data(token.utf8))
-        }
+            return found
+        }.value
+        let live = Set(clients.map(\.id))
+        digests = found.filter { live.contains($0.key) }.merging(digests) { _, current in current }
     }
 
     /// The caller identity for this bearer, or nil: unknown, revoked, expired or not a token.

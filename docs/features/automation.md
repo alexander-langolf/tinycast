@@ -43,7 +43,10 @@ Code and Codex both carry both eras and fall back on a 4xx. Spec pages read on 2
   `<bundle id>.automation-clients`, account = the client's UUID, so Dev and stable never share a
   token. `~/Library/Application Support/<bundle id>/Automation/clients.json` holds labels, scopes and
   expiry (0600), never a token. Tokens look like `tcn_<client id>.<secret>`; the server keeps only a
-  SHA-256 digest in memory. Create, rotate and revoke are in Settings → General → Automation.
+  SHA-256 digest in memory, read once off the main thread when the endpoint starts; the endpoint
+  listens only after that read. An ad-hoc-signed Dev rebuild changes the code signature, so macOS
+  may ask for Keychain access again, and Settings says "Starting…" until it is answered.
+  Create, rotate and revoke are in Settings → General → Automation.
   Bearer tokens are a deliberate departure from MCP's OAuth profile: this is a local, per-user
   endpoint with manually provisioned clients.
 - **Audit.** `Automation/audit.jsonl` (0600, folder 0700) is append-only, serialized under a lock and

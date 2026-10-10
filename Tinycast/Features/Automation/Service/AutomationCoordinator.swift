@@ -107,7 +107,6 @@ final class AutomationCoordinator {
             return
         }
         guard server == nil else { return }
-        clients.loadDigests()
         let handler = AutomationMCPHandler(
             router: router, hub: hub,
             serverVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0")
@@ -117,7 +116,11 @@ final class AutomationCoordinator {
             authenticate: { [clients] in clients.authenticate(bearer: $0) },
             onRefused: { [weak self] in self?.recordRefusal($0) })
         self.server = server
-        server.start()
+        Task { [weak self] in
+            await self?.clients.loadDigests()
+            guard let self, self.server === server else { return }
+            server.start()
+        }
         questionPresenter.start()
         observationGeneration += 1
         observe(AutomationOperationCatalog.agents.name, generation: observationGeneration) { [core] in
