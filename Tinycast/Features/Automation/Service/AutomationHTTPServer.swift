@@ -25,6 +25,7 @@ final class AutomationHTTPServer {
     @ObservationIgnored private let authenticate: (String) -> AutomationClient?
     @ObservationIgnored private let onRefused: (String) -> Void
     @ObservationIgnored private var failedAuth = AutomationRateLimiter(capacity: 10, perSecond: 1)
+    @ObservationIgnored private var openConnections = 0
     private nonisolated static let logger = Logger(subsystem: "com.tinycast", category: "Automation")
 
     init(
@@ -52,7 +53,6 @@ final class AutomationHTTPServer {
             status = .failed("Could not listen on port \(port)")
             return
         }
-        listener.newConnectionLimit = Self.maximumConnections
         status = .listening(port)
         task = Task { [weak self] in
             do {
@@ -60,13 +60,17 @@ final class AutomationHTTPServer {
                     switch state {
                     case .waiting, .failed:
                         self?.status = .failed("Port \(self?.port ?? 0) is unavailable")
+                    case .cancelled:
+                        self?.status = .failed("The listener stopped")
                     case .ready:
                         self?.status = .listening(self?.port ?? 0)
                     default: break
                     }
                 }.run { [weak self] connection in
-                    await self?.serve(connection)
+                    await self?.accept(connection)
                 }
+                guard !Task.isCancelled else { return }
+                self?.status = .failed("The listener stopped")
             } catch {
                 guard !Task.isCancelled else { return }
                 self?.status = .failed("The listener stopped: \(error.localizedDescription)")
@@ -90,6 +94,20 @@ final class AutomationHTTPServer {
             requested = true
             action?()
         }
+    }
+
+    /// A cap on connections open at once; `newConnectionLimit` would count every one ever accepted.
+    private func accept(_ connection: NetworkConnection<TCP>) async {
+        guard openConnections < Self.maximumConnections else {
+            let busy = AutomationHTTPResponse.rejected(
+                AutomationHTTPRejection(
+                    status: 503, reason: "Too many open connections", headers: ["Retry-After": "1"]))
+            try? await write(busy, to: connection, cancellation: Cancellation())
+            return
+        }
+        openConnections += 1
+        defer { openConnections -= 1 }
+        await serve(connection)
     }
 
     private func serve(_ connection: NetworkConnection<TCP>) async {

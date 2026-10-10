@@ -63,8 +63,10 @@ Allow automation starts and stops it; it is off by default and the flag is not i
   method but POST 405 with `Allow: POST`; no CORS headers and no preflight answer.
 - **Then:** `Authorization: Bearer …` on every request (never a cookie or a URL parameter; 401, and
   429 after ten failures in a burst), `Content-Type: application/json`, one JSON-RPC message per POST.
-- **Bounds:** 16 KiB of headers, 256 KiB of body, no `Transfer-Encoding`, 16 connections, 10 s to
-  read a request, 180 s for a handler, 4 listen streams per client.
+- **Bounds:** 16 KiB of headers, 256 KiB of body, no `Transfer-Encoding`, 16 connections open at
+  once (one more is answered 503 with `Retry-After: 1` and closed), 10 s to read the headers and
+  another 10 s for the body, 180 s for a handler, 4 listen streams per client. Settings shows a
+  listener that has failed or stopped instead of "Listening".
 - **Era:** a body with `_meta["io.modelcontextprotocol/protocolVersion"]` must carry matching
   `MCP-Protocol-Version`, `Mcp-Method` and (for `tools/call`, `resources/read`) `Mcp-Name` headers or
   it is `-32020`; an unsupported version is `-32022` listing what is supported. Anything else is a
