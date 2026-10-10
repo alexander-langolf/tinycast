@@ -27,8 +27,8 @@ targets:
       configs:
         Debug:
           CODE_SIGN_IDENTITY: "-"
-  # Preview host: only the AgentRuns UI and the shared design-system files it reads, so Xcode's canvas
-  # (whose JIT linker cannot take libghostty-vt) has a target it can preview in. No AppCore.
+  # Preview host: only the AgentRuns and terminal card UI and the design-system files they read, so
+  # Xcode's canvas (whose JIT linker cannot take libghostty-vt) has a target to preview in. No AppCore.
   TinycastPreviews:
     type: application
     platform: macOS
@@ -38,6 +38,12 @@ targets:
         includes:
           - Features/AgentRuns/Model
           - Features/AgentRuns/UI
+          - Features/TerminalInstances/UI/TerminalInstanceCard.swift
+          - Features/TerminalInstances/UI/TerminalInstanceMetrics.swift
+          - Features/TerminalInstances/UI/TerminalInstancesPreviewData.swift
+          - Features/TerminalInstances/Model/TerminalSessionPhase.swift
+          - Features/TerminalInstances/Model/TerminalMarkParser.swift
+          - Features/TerminalInstances/Model/TerminalInstanceStack.swift
           - Features/AgentRuns/Service/AgentRunsMonitor.swift
           - Features/AgentRuns/Service/AgentRunLauncher.swift
           - DesignSystem/InterfaceMetrics.swift
