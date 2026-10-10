@@ -37,15 +37,15 @@ hidden `claude attach` PTY, and builds the reply from hook events plus the trans
 Scratch scripts in the session scratchpad, with the environment stripped and trivial prompts. Test
 sessions are stopped and removed afterwards.
 
-- [ ] **0.1** Two `claude attach` clients on one session: do both see output, can both type, or does
+- [x] **0.1** Two `claude attach` clients on one session: do both see output, can both type, or does
       the second take over? This decides whether the writer must detach while Attach is open.
-- [ ] **0.2** Hook stdin: one JSON line per event or not (sample every event type, including a long
+- [x] **0.2** Hook stdin: one JSON line per event or not (sample every event type, including a long
       prompt with newlines). This decides between a `cat >>` hook command and a fork-owned helper.
-- [ ] **0.3** `claude --bg --resume <session id>` on a stopped session: same id, or a copy?
-- [ ] **0.4** `<pasted_content>` wrapping: at what size or speed it happens, and its exact form, for
+- [x] **0.3** `claude --bg --resume <session id>` on a stopped session: same id, or a copy?
+- [x] **0.4** `<pasted_content>` wrapping: at what size or speed it happens, and its exact form, for
       delivery matching.
 
-Record the answers in the spec's "Spike first" section. **Gate:** if 0.1 shows that two clients
+Record the answers in the spec's "Spike first" section. **Done 2026-10-11:** two clients share the session; stdin is one JSON line (`cat >>`); resume continues the same id; the wrapper form is recorded. **Gate:** if 0.1 shows that two clients
 corrupt the session, Group 3's Attach closes the hidden writer before it opens the terminal. That
 changes the design but doesn't stop it.
 

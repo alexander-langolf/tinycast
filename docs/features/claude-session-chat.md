@@ -158,17 +158,24 @@ through a Tinycast restart, and `claude attach <id>` opens it in any terminal.
 
 ## Spike first (Group 0 of the plan)
 
-Already verified on 2026-10-11: `--bg` hosting, input through attach, live hooks, the transcript
-filling in during a turn, `PermissionRequest` timing, the session surviving the client, and
-`--settings` merging with the user's hooks. Still open:
+Verified on 2026-10-11 (Claude Code 2.1.296): `--bg` hosting, input through attach, live hooks, the
+transcript filling in during a turn, `PermissionRequest` timing, the session surviving the client,
+and `--settings` merging with the user's hooks. Group 0 answered the four open questions:
 
-1. Two `claude attach` clients on one session (the hidden writer plus an Attach terminal): allowed,
-   refused, or does one take over?
-2. Is each hook's stdin a single JSON line, so a plain `cat >>` can append it? If not, the hook
-   command is a small fork-owned helper.
-3. `claude --bg --resume <session id>` on a stopped session: does it continue under the same id or
-   start a copy?
-4. Is `<pasted_content>` wrapping deterministic (by size?), so delivery matching can rely on it?
+1. **Two `claude attach` clients share one session.** Both see all output, and either can type:
+   a message typed in A showed in B, and the reverse. So Attach doesn't need to detach the hidden
+   writer. The write guard still pauses it while an Attach terminal is open, so the two never type
+   over each other.
+2. **Hook stdin is one JSON line plus a trailing newline** (SessionStart, UserPromptSubmit, Stop;
+   earlier runs parsed PreToolUse, PostToolUse, PermissionRequest and Notification the same way).
+   The hook command can be a plain append: `cat >> '<events file>'`.
+3. **`claude --bg --resume <session id>` on a stopped session continues it under the same short id
+   and session id**, with its history. It doesn't start a copy.
+4. **Claude Code wraps pastes from somewhere between 130 and 830 characters up** (one earlier
+   2,843-character paste wasn't wrapped, so size isn't the only trigger). The form is:
+   `\n\n<pasted_content id="caa1">\n` + text + `\n</pasted_content id="caa1">\n`. Delivery matching strips
+   that wrapper when present. A short single-line message can be typed without a paste and arrives
+   exactly. Multi-line text has to be pasted, because a typed newline would submit.
 
 ## Not in scope
 
