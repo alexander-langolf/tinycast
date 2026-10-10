@@ -129,6 +129,8 @@ final class AppCore {
     @ObservationIgnored private(set) lazy var terminalInstances = TerminalInstancesCoordinator(core: self)
     @ObservationIgnored private(set) lazy var terminalInstancesPresenter =
         TerminalInstancesPresenter(core: self)
+    // FORK: automation
+    @ObservationIgnored private(set) lazy var automation = AutomationCoordinator(core: self)
     // FORK: palette-chips
     @ObservationIgnored private(set) lazy var paletteChips = PaletteChipsCoordinator(core: self)
     @ObservationIgnored private(set) lazy var paletteChipsPresenter = PaletteChipsPresenter(core: self)
