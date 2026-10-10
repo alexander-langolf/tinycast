@@ -44,6 +44,15 @@ targets:
           - Features/TerminalInstances/Model/TerminalSessionPhase.swift
           - Features/TerminalInstances/Model/TerminalMarkParser.swift
           - Features/TerminalInstances/Model/TerminalInstanceStack.swift
+          # Experiment (revert this block, the settings below and TerminalInstancesGhosttyPreview.swift):
+          # the real libghostty grid in one preview.
+          - Features/TerminalInstances/UI/TerminalInstancesGhosttyPreview.swift
+          - Features/TerminalInstances/Ghostty
+          - Features/TerminalInstances/Model/TerminalLineCounter.swift
+          - Features/TerminalInstances/Service/TerminalSession.swift
+          - Features/TerminalInstances/Service/TerminalProcess.swift
+          - Features/TerminalInstances/Service/TerminalShellShim.swift
+          - Features/CustomCommands/UI/CommandRun.swift
           - Features/AgentRuns/Service/AgentRunsMonitor.swift
           - Features/AgentRuns/Service/AgentRunLauncher.swift
           - DesignSystem/InterfaceMetrics.swift
@@ -67,6 +76,11 @@ targets:
         ENABLE_HARDENED_RUNTIME: NO
         ENABLE_PREVIEWS: YES
         COMBINE_HIDPI_IMAGES: YES
+        # Experiment: libghostty-vt, as on the Tinycast target.
+        HEADER_SEARCH_PATHS: "$(inherited) $(SRCROOT)/.tools/libghostty/ghostty-vt.xcframework/macos-arm64_x86_64/Headers"
+        SWIFT_INCLUDE_PATHS: "$(inherited) $(SRCROOT)/.tools/libghostty/ghostty-vt.xcframework/macos-arm64_x86_64/Headers"
+        LIBRARY_SEARCH_PATHS: "$(inherited) $(SRCROOT)/.tools/libghostty/ghostty-vt.xcframework/macos-arm64_x86_64"
+        OTHER_LDFLAGS: "$(inherited) -lghostty-vt"
       configs:
         Debug:
           CODE_SIGN_IDENTITY: "-"

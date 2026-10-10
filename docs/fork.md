@@ -250,6 +250,7 @@ unless they have an explicit symbol-only allowance. The audit is a static guard,
 | `Tinycast/Features/Camera/UI/CameraStage.swift` | `// FORK: typography` | Route non-Settings token reads through metrics; symbols stay system. |
 | `Tinycast/Features/Clipboard/UI/ClipDrag.swift` | `// FORK: prose-font` | Route AppKit or explicit-size prose through fork typography. |
 | `Tinycast/Features/CustomCommands/UI/CommandOutputView.swift` | `// FORK: command-duration` | `CommandDuration` lives in its own file so the preview target compiles it alone. |
+| `Tinycast/Features/CustomCommands/UI/CommandOutputPresenter.swift` | `// FORK: command-run` | `CommandOutcome` and `CommandRun` live in their own file so the preview target compiles them alone. |
 | `Tinycast/Features/CustomCommands/UI/CommandOutputView.swift` | `// FORK: typography` | Route non-Settings token reads through metrics; symbols stay system. |
 | `Tinycast/Features/Dictation/UI/DictationPanel.swift` | `// FORK: accent-scope` | Apply the optional accent at a hosting boundary. |
 | `Tinycast/Features/Extensions/UI/ExtensionDetailView.swift` | `// FORK: prose-font` | Route AppKit or explicit-size prose through fork typography. |
