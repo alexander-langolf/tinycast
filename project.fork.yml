@@ -27,3 +27,39 @@ targets:
       configs:
         Debug:
           CODE_SIGN_IDENTITY: "-"
+  # Preview host: only the AgentRuns UI and the shared design-system files it reads, so Xcode's canvas
+  # (whose JIT linker cannot take libghostty-vt) has a target it can preview in. No AppCore.
+  TinycastPreviews:
+    type: application
+    platform: macOS
+    sources:
+      - path: PreviewsApp
+      - path: Tinycast
+        includes:
+          - Features/AgentRuns/Model
+          - Features/AgentRuns/UI
+          - Features/AgentRuns/Service/AgentRunsMonitor.swift
+          - Features/AgentRuns/Service/AgentRunLauncher.swift
+          - DesignSystem/InterfaceMetrics.swift
+          - DesignSystem/Theme.swift
+          - DesignSystem/GlassEffectView.swift
+          - Features/CustomCommands/Service/ShellCommandRunner.swift
+          - Fork/ForkColors.swift
+          - Fork/ForkTypography.swift
+          - Platform/Appearance.swift
+          - Features/CustomCommands/UI/CommandDuration.swift
+          - Platform/ProcessExit.swift
+          - Platform/PseudoTerminal.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.tinycast.previews
+        PRODUCT_NAME: TinycastPreviews
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_NSPrincipalClass: NSApplication
+        CODE_SIGN_ENTITLEMENTS: ""
+        ENABLE_HARDENED_RUNTIME: NO
+        ENABLE_PREVIEWS: YES
+        COMBINE_HIDPI_IMAGES: YES
+      configs:
+        Debug:
+          CODE_SIGN_IDENTITY: "-"

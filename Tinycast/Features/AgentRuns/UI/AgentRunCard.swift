@@ -38,7 +38,7 @@ struct AgentRunCard: View {
                 content
             }
         }
-        .armedHover($hovered)
+        .agentRunHover($hovered)
     }
 
     private var content: some View {

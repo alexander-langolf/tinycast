@@ -96,14 +96,20 @@ focus through card mouse-down until attachment activates kitty.
 
 ## Editing the cards visually
 
-Open `Tinycast.xcodeproj` in Xcode, open `Features/AgentRuns/UI/AgentRunsPreviewData.swift` (the
-canvas shows only the open file's previews), and open the canvas with ⌥⌘↩. Pin a preview to keep it
-visible while editing `AgentRunCard.swift`. The previews are `#if DEBUG`, so none of it ships
-in Release: one card per state (working, blocked, done), Codex and no-model runs, a long title and
-detail line, and a four-card stack. They need no AppCore: the cards read only the default
-`InterfaceMetrics`, and the stack gets a coordinator over a fixed `AgentRunsMonitor(previewRuns:)`.
-Edit sizes in `AgentRunsMetrics` or the card and watch the canvas update. After adding a Swift file on
-disk, run `xcodegen generate` so the project picks it up.
+Xcode's canvas cannot preview inside the Tinycast app target (its JIT linker fails on the static
+libghostty-vt and the app has only menu-bar scenes), so the fork has a small `TinycastPreviews` target
+that compiles just the AgentRuns UI and the shared files it reads. In Xcode:
+
+1. Open `Tinycast.xcodeproj` and choose the **TinycastPreviews** scheme.
+2. Open `Features/AgentRuns/UI/AgentRunCard.swift` (or `AgentRunsPreviewData.swift`).
+3. Open the canvas with ⌥⌘↩. Edit sizes in `AgentRunsMetrics` or the card and watch it update.
+
+⌘R on the same scheme opens a plain window with the four-card stack. The `#Preview`s live in
+`AgentRunsPreviewData.swift` (`#if DEBUG`): one card per state, Codex and no-model runs, a long title
+and detail, and the stack. The cards need no AppCore: they read the default `InterfaceMetrics`, hover
+arming comes from `AgentRunHoverArming` (always lit unless the panel injects the palette's), and the
+stack's coordinator wraps `AgentRunsMonitor(previewRuns:)`. A Swift file added to the target must be
+listed in `project.fork.yml` (or sit in a listed folder); then run `xcodegen generate` with Xcode closed.
 
 ## Fork ownership
 

@@ -45,7 +45,9 @@ final class AgentRunsPanelPresenter {
         if let agentRunsPanel {
             child = agentRunsPanel
         } else {
-            child = AgentRunsPanel(rootView: AgentRunsStack().paletteEnvironment(core))
+            child = AgentRunsPanel(
+                rootView: AgentRunsStack().environment(\.agentRunHoverArming, .palette(core.palette))
+                    .paletteEnvironment(core))
             child.paletteState = core.palette
             agentRunsPanel = child
         }
@@ -83,5 +85,12 @@ final class AgentRunsPanelPresenter {
         child.invalidateShadow()
         if child.parent !== panel { panel.addChildWindow(child, ordered: .above) }
         child.orderFront(nil)
+    }
+}
+
+extension AgentRunHoverArming {
+    /// The launcher's own arming: cards light only while the pointer moves deliberately.
+    @MainActor static func palette(_ state: PaletteState) -> AgentRunHoverArming {
+        AgentRunHoverArming(isArmed: { state.hoverHighlightArmed }, disarmToken: { state.hoverDisarmToken })
     }
 }

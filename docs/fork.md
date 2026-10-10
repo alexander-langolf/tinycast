@@ -82,7 +82,10 @@ because a SwiftUI font token cannot restyle an existing attributed text buffer o
 The app icon uses `Tinycast/Fork/ForkAppIcon.icon`, copied from upstream's Icon Composer
 document. This adapts the requested catalog icon to upstream's modern layered icon format:
 flattening it into an `.appiconset` would change the default appearance. Fork build settings
-live in `project.fork.yml`; regenerate the Xcode project after changing them.
+live in `project.fork.yml`; regenerate the Xcode project after changing them. The same file defines
+`TinycastPreviews`, a small app target (bundle id `com.tinycast.previews`) that compiles only the
+AgentRuns UI and the design-system, fork-typography and shell-runner files they read, so Xcode's canvas
+can preview without libghostty or AppCore. Its entry point is `PreviewsApp/`; run it for a card playground.
 Debug builds of all three targets sign "Sign to Run Locally" (`CODE_SIGN_IDENTITY: "-"`), so Xcode
 builds without the `Tinycast Self-Signed` identity; Release keeps upstream's identity.
 
@@ -244,6 +247,7 @@ unless they have an explicit symbol-only allowance. The audit is a static guard,
 | `Tinycast/Features/Camera/UI/CameraCoordinator.swift` | `// FORK: accent-scope` | Apply the optional accent at a hosting boundary. |
 | `Tinycast/Features/Camera/UI/CameraStage.swift` | `// FORK: typography` | Route non-Settings token reads through metrics; symbols stay system. |
 | `Tinycast/Features/Clipboard/UI/ClipDrag.swift` | `// FORK: prose-font` | Route AppKit or explicit-size prose through fork typography. |
+| `Tinycast/Features/CustomCommands/UI/CommandOutputView.swift` | `// FORK: command-duration` | `CommandDuration` lives in its own file so the preview target compiles it alone. |
 | `Tinycast/Features/CustomCommands/UI/CommandOutputView.swift` | `// FORK: typography` | Route non-Settings token reads through metrics; symbols stay system. |
 | `Tinycast/Features/Dictation/UI/DictationPanel.swift` | `// FORK: accent-scope` | Apply the optional accent at a hosting boundary. |
 | `Tinycast/Features/Extensions/UI/ExtensionDetailView.swift` | `// FORK: prose-font` | Route AppKit or explicit-size prose through fork typography. |
@@ -314,7 +318,7 @@ and removed lines, not net lines. New Fork-owned files are excluded from the ups
 | `Tinycast/Features/Camera/UI/CameraCoordinator.swift` | `accent-scope` | 2 | 1 |
 | `Tinycast/Features/Camera/UI/CameraStage.swift` | `typography` | 2 | 1 |
 | `Tinycast/Features/Clipboard/UI/ClipDrag.swift` | `prose-font` | 2 | 1 |
-| `Tinycast/Features/CustomCommands/UI/CommandOutputView.swift` | `typography` | 5 | 3 |
+| `Tinycast/Features/CustomCommands/UI/CommandOutputView.swift` | `command-duration`, `typography` | 7 | 13 |
 | `Tinycast/Features/Dictation/UI/DictationPanel.swift` | `accent-scope` | 4 | 1 |
 | `Tinycast/Features/Extensions/UI/ExtensionDetailView.swift` | `prose-font` | 5 | 1 |
 | `Tinycast/Features/Extensions/UI/ExtensionListPanel.swift` | `accent-scope` | 1 | 0 |
