@@ -24,7 +24,8 @@ final class TerminalInstancesCoordinator {
         let layout = TerminalInstanceMetrics(metrics: core.settings.interfaceSize.metrics)
         let instance = TerminalInstance(
             command: command, directory: FileManager.default.homeDirectoryForCurrentUser.path,
-            columns: layout.columns, rowCap: layout.rowCap)
+            columns: layout.columns,
+            rowCap: GhosttyRenderer.isEnabled ? layout.gridRows : layout.rowCap)
         instances.insert(instance, at: 0)
         core.terminalInstancesPresenter.present(instance, anchor: anchor)
         instance.session.start()
@@ -97,6 +98,10 @@ final class TerminalInstancesCoordinator {
             return true
         }
         if flags.isEmpty, Int(event.keyCode) == kVK_Escape {
+            // FORK: libghostty prototype. A full-screen program owns Escape.
+            if instance.session.phase == .running, instance.session.grid?.isAlternateScreen == true {
+                return false
+            }
             toggleExpanded(instance)
             return true
         }

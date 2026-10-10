@@ -14,6 +14,8 @@ final class TerminalSession {
     /// Display rows of `run`, capped at what the card can show.
     private(set) var rows = 0
     private(set) var startupNotice: String?
+    /// FORK: libghostty prototype. The terminal emulator behind the card; nil keeps `TerminalLogView`.
+    private(set) var grid: GhosttyTerminalGrid?
 
     @ObservationIgnored private let columns: Int
     @ObservationIgnored private let rowCap: Int
@@ -21,6 +23,7 @@ final class TerminalSession {
     @ObservationIgnored private var process: TerminalProcess?
     @ObservationIgnored private var queued: String?
     @ObservationIgnored private var reader: Task<Void, Never>?
+    @ObservationIgnored private var rawReader: Task<Void, Never>?
     @ObservationIgnored private var startupTimeout: Task<Void, Never>?
     @ObservationIgnored private var isTerminated = false
     /// Whether the current command reached zsh (its C mark); a ⌃C before that can strand zsh mid-line.
@@ -35,6 +38,7 @@ final class TerminalSession {
         self.columns = columns
         self.rowCap = rowCap
         counter = TerminalLineCounter(columns: columns, cap: rowCap)
+        if GhosttyRenderer.isEnabled { grid = GhosttyTerminalGrid(columns: columns, rows: rowCap) }
     }
 
     func start() {
@@ -51,9 +55,10 @@ final class TerminalSession {
         }
         let directory = directory
         let columns = columns
+        let rows = rowCap
         reader = Task { [weak self] in
             let spawned = await Task.detached(priority: .userInitiated) {
-                TerminalProcess.spawn(directory: directory, columns: columns)
+                TerminalProcess.spawn(directory: directory, columns: columns, rows: rows)
             }.value
             guard let process = spawned else {
                 self?.phase = .ended
@@ -65,6 +70,7 @@ final class TerminalSession {
                 return
             }
             self.process = process
+            self.attachGrid(to: process)
             for await event in process.events {
                 self.handle(event)
             }
@@ -98,8 +104,23 @@ final class TerminalSession {
         }
     }
 
+    /// The grid's width follows the view; its height is the card's fixed row count.
+    func resizeTerminal(columns: Int) {
+        guard let grid, columns != grid.columns else { return }
+        grid.resize(columns: columns, rows: rowCap)
+        process?.resize(columns: columns, rows: rowCap)
+        syncRows()
+    }
+
+    /// Keys for the running program, already encoded.
+    func sendInput(_ bytes: [UInt8]) {
+        guard grid != nil, phase == .running, !isTerminated else { return }
+        process?.send(bytes: bytes)
+    }
+
     func terminate() {
         isTerminated = true
+        rawReader?.cancel()
         interruptFollowUp?.cancel()
         clearStartupNotice()
         queued = nil
@@ -112,6 +133,7 @@ final class TerminalSession {
             startedAt: Date())
         counter = TerminalLineCounter(columns: columns, cap: rowCap)
         rows = 0
+        grid?.reset()
         isFullScreen = false
         phase = .running
         commandStarted = false
@@ -145,13 +167,34 @@ final class TerminalSession {
         case .workingDirectory(let path):
             directory = path
         case .alternateScreen(let entered):
-            if entered, phase == .running { isFullScreen = true }
+            if entered, phase == .running, grid == nil { isFullScreen = true }
         case .output(let text):
-            guard !isFullScreen else { return }
+            guard grid == nil, !isFullScreen else { return }
             append(text)
         case .commandStarted:
             commandStarted = true
         }
+    }
+
+    /// Raw command output goes to ghostty; its replies to queries go back to the pty.
+    private func attachGrid(to process: TerminalProcess) {
+        guard let grid else { return }
+        grid.writeToPty = { [weak process] bytes in process?.send(bytes: bytes) }
+        rawReader = Task { [weak self] in
+            for await bytes in process.rawOutput {
+                guard let self else { return }
+                grid.feed(bytes)
+                self.syncRows()
+            }
+        }
+    }
+
+    /// The card shows the used rows, or the whole viewport once it scrolls or a full-screen program runs.
+    private func syncRows() {
+        guard let grid, run != nil else { return }
+        let full = grid.isAlternateScreen || grid.scrollbar.total > grid.scrollbar.len
+        let next = full ? grid.rows : grid.snapshot.contentRows
+        if next != rows { rows = next }
     }
 
     private func clearStartupNotice() {

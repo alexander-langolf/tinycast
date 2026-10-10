@@ -50,7 +50,7 @@ final class TerminalInstancesPresenter: NSObject, NSWindowDelegate {
     }
 
     func applyPin(_ instance: TerminalInstance) {
-        panels[instance.id]?.level = instance.isPinned ? .floating : .normal
+        panels[instance.id]?.setPinned(instance.isPinned)
     }
 
     /// Heights follow the output; any change re-stacks, animated.
