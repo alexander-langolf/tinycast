@@ -32,6 +32,15 @@
 				<string>com.raycast</string>
 			</array>
 		</dict>
+		<!-- FORK: automation. Every channel claims tinycast://, so links also take the bundle id. -->
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>Tinycast channel automation links</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+			</array>
+		</dict>
 	</array>
 	<!-- Exported, but deliberately no CFBundleDocumentTypes: claiming the type would make a
 	     double-clicked .tinycast launch straight into writing over someone's data. The identifier

@@ -77,7 +77,8 @@ final class AutomationCoordinator {
     /// True when the URL is an automation link and has been handled, whatever the router decided.
     /// A disabled feature claims nothing, so the URL falls through to the extension handler.
     func handleLink(_ url: URL) -> Bool {
-        guard isEnabled, let request = AutomationURL.parse(url) else { return false }
+        guard isEnabled, let request = AutomationURL.parse(url, channelScheme: Bundle.main.bundleIdentifier)
+        else { return false }
         let router = router
         Task {
             _ = await router.route(

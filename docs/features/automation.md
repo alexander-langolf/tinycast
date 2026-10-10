@@ -90,14 +90,21 @@ deep-link handler. A URL is claimed only when automation is on and its host name
 or any other tool (so an attempt such as `tinycast://terminal_run?command=…` is refused and audited
 instead of falling through). `tinycast://extensions/…` is untouched.
 
+Every installed channel (stable, Beta, each Dev build) registers `tinycast://`, and macOS hands it
+to whichever Launch Services picks, often not the build you are testing. Each channel therefore
+also claims its bundle id as a scheme, served by the same hosts: `com.tinycast.app.dev://hud?text=…`
+reaches only Dev (`com.tinycast.app.beta://`, `com.tinycast.app://` likewise).
+`open -b <bundle id> 'tinycast://…'` works too.
+
 | Link | Effect |
 | --- | --- |
 | `tinycast://palette?query=…` | Opens the launcher with the query typed in; nothing is activated. |
 | `tinycast://hud?text=…` | Shows a message pill prefixed `tinycast:// link:`, so it cannot pass for an agent. |
 
 Links share one rate limit (burst of 3, then one every two seconds), return nothing to the caller,
-and hold no scopes. Text is stripped of control and bidirectional-override characters and cut to
-120 characters (message) or 200 (query).
+and hold no scopes. Text is checked against the tool's schema like any other call, so a message over
+120 characters or a query over 200 is refused (and audited as denied), not cut; what is shown has
+control and bidirectional-override characters stripped.
 
 ## The `tinycast` bridge
 
