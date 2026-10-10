@@ -581,6 +581,7 @@ final class AppCore {
     }
 
     func prepareForTermination() {
+        forkQuickAIRoot.stop()  // FORK: quick-ai-root
         forkQuickAIHandoff.stop()  // FORK: quick-ai-root
         forkQuickAIRootLog.stop()  // FORK: quick-ai-root
         if settings.dictationEnabled { dictationCoordinator.prepareForTermination() }

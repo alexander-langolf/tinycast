@@ -33,6 +33,7 @@ final class ForkQuickAIRoot {
         case failed(String)
         case claim(Parameters, chat: UUID)
         case retire(ForkQuickAIRootLog.Reason)
+        case unavailable(ForkQuickAIRootLog.Reason)
     }
 
     enum Effect: Sendable {
@@ -40,6 +41,7 @@ final class ForkQuickAIRoot {
         case warmed(Root)
         case claimed(Root, chat: UUID)
         case retired(Root, chat: UUID?, reason: ForkQuickAIRootLog.Reason)
+        case fellBack(root: Root?, chat: UUID?, reason: ForkQuickAIRootLog.Reason)
     }
 
     private(set) var state: State = .off
@@ -47,6 +49,10 @@ final class ForkQuickAIRoot {
     private let log: ForkQuickAIRootLog
     private let identifiesQuickAI: @MainActor (UUID) -> Bool
     private var warmingOperation: UUID?
+    private var prewarmTask: Task<Void, Never>?
+    private var prewarmOperation: UUID?
+
+    isolated deinit { prewarmTask?.cancel() }
 
     init(
         settings: ForkQuickAIRootSettings, log: ForkQuickAIRootLog,
@@ -72,6 +78,7 @@ final class ForkQuickAIRoot {
 
     func warm(
         model: String, webSearch: Bool, instructions: String,
+        isCurrent: @MainActor () -> Bool = { true },
         startThread: @MainActor (Parameters) async throws -> String
     ) async {
         guard settings.warmRoot, !Task.isCancelled else { return }
@@ -84,6 +91,10 @@ final class ForkQuickAIRoot {
             let threadID = try await startThread(parameters)
             try Task.checkCancellation()
             guard warmingOperation == operation else { return }
+            guard isCurrent() else {
+                retire(reason: .mismatch)
+                return
+            }
             guard settings.warmRoot else {
                 retire(reason: .disabled)
                 return
@@ -95,7 +106,7 @@ final class ForkQuickAIRoot {
         } catch {
             guard warmingOperation == operation else { return }
             warmingOperation = nil
-            apply(.failed("The warm Codex thread is unavailable."))
+            apply(.unavailable(.unavailable))
         }
     }
 
@@ -111,8 +122,50 @@ final class ForkQuickAIRoot {
     }
 
     func retire(reason: ForkQuickAIRootLog.Reason) {
+        cancelPrewarm()
         warmingOperation = nil
         apply(.retire(reason))
+    }
+
+    func prewarm(_ operation: @escaping @MainActor () async -> Void) {
+        guard canWarm, prewarmTask == nil else { return }
+        let identity = UUID()
+        prewarmOperation = identity
+        prewarmTask = Task { [weak self] in
+            await operation()
+            guard let self, self.prewarmOperation == identity else { return }
+            self.prewarmTask = nil
+            self.prewarmOperation = nil
+        }
+    }
+
+    func stop() {
+        cancelPrewarm()
+        warmingOperation = nil
+    }
+
+    func prewarmFailed() {
+        guard canWarm else { return }
+        log.append(.fellBack, reason: .unavailable)
+        apply(.unavailable(.unavailable))
+    }
+
+    func serverUnavailable(reason: ForkQuickAIRootLog.Reason) {
+        guard settings.warmRoot else { return }
+        switch state {
+        case .ready, .inUse, .warming:
+            cancelPrewarm()
+        case .off, .unavailable:
+            break
+        }
+        warmingOperation = nil
+        apply(.unavailable(reason))
+    }
+
+    private func cancelPrewarm() {
+        prewarmTask?.cancel()
+        prewarmTask = nil
+        prewarmOperation = nil
     }
 
     func settingsChanged() {
@@ -140,6 +193,25 @@ final class ForkQuickAIRoot {
                 return (.off, [.retired(root, chat: nil, reason: .mismatch)])
             }
             return (.inUse(root, chat: chat), [.claimed(root, chat: chat)])
+        case .unavailable(let reason):
+            switch state {
+            case .ready(let root):
+                return (.unavailable(reason: reason.rawValue), [
+                    .retired(root, chat: nil, reason: reason),
+                    .fellBack(root: root, chat: nil, reason: reason)
+                ])
+            case .inUse(let root, let chat):
+                return (.unavailable(reason: reason.rawValue), [
+                    .retired(root, chat: chat, reason: reason),
+                    .fellBack(root: root, chat: chat, reason: reason)
+                ])
+            case .warming:
+                return (.unavailable(reason: reason.rawValue), [
+                    .fellBack(root: nil, chat: nil, reason: reason)
+                ])
+            case .off, .unavailable:
+                return (.unavailable(reason: reason.rawValue), [])
+            }
         case .retire(let reason):
             switch state {
             case .ready(let root):
@@ -166,6 +238,8 @@ final class ForkQuickAIRoot {
                 log.append(.claimed, root: root.threadID, chat: chat)
             case .retired(let root, let chat, let reason):
                 log.append(.retired, root: root.threadID, chat: chat, reason: reason)
+            case .fellBack(let root, let chat, let reason):
+                log.append(.fellBack, root: root?.threadID, chat: chat, reason: reason)
             }
         }
         return transition.effects

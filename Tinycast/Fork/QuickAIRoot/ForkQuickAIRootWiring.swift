@@ -12,13 +12,41 @@ extension AppCore {
         }
     }
 
+    func retireQuickAIRootForNewChat() {
+        guard forkQuickAIRootSettings.warmRoot else { return }
+        forkQuickAIRoot.retire(reason: .newChat)
+    }
+
+    func prewarmQuickAIRoot() {
+        let chat = aiChats.quickAI
+        guard settings.aiEnabled, forkQuickAIRoot.canWarm, !chat.isStreaming,
+            !forkQuickAIHandoff.isReopened(chatID: chat.session.id),
+            let snapshot = aiChatCoordinator.forkRootSnapshot(in: chat, composer: palette.query)
+        else { return }
+        let chatID = chat.session.id
+        forkQuickAIRoot.prewarm { [weak self, weak chat] in
+            guard self != nil, chat != nil else { return }
+            await snapshot.provider.turns.warmQuickAIRoot(
+                for: snapshot.request, model: snapshot.provider.model,
+                toolServers: snapshot.provider.toolServers
+            ) { [weak self, weak chat] in
+                guard let self, let chat else { return false }
+                return self.settings.aiEnabled && self.aiChats.quickAI === chat
+                    && chat.session.id == chatID && !chat.isStreaming
+            }
+        }
+    }
+
     func startForkQuickAIRoot() {
         forkQuickAIRootSettings.start()
         forkQuickAIRootLog.start()
         chatGPTSubscription.turns.forkQuickAIRoot = forkQuickAIRoot
+        chatGPTSubscription.forkKeepsRootWarm = forkQuickAIRootSettings.warmRoot
         forkQuickAIRootSettings.onChange = { [weak self] in
-            self?.forkQuickAIRoot.settingsChanged()
-            self?.forkQuickAIRootLog.settingsChanged()
+            guard let self else { return }
+            self.forkQuickAIRoot.settingsChanged()
+            self.chatGPTSubscription.forkKeepsRootWarm = self.forkQuickAIRootSettings.warmRoot
+            self.forkQuickAIRootLog.settingsChanged()
         }
     }
 }

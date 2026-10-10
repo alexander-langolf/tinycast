@@ -79,13 +79,21 @@ final class AIChatState {
         return true
     }
 
-    private func startReply(
-        using provider: any AIProvider, webSearch: Bool, instructions: String?, contextBudget: Int
-    ) {
-        let request = AIRequest(
+    // FORK: quick-ai-root
+    func forkRequestSnapshot(
+        webSearch: Bool, instructions: String?, contextBudget: Int
+    ) -> AIRequest {
+        AIRequest(
             instructions: instructions,
             messages: session.requestMessages(textBudget: contextBudget), webSearch: webSearch,
             conversationID: session.id)
+    }
+
+    private func startReply(
+        using provider: any AIProvider, webSearch: Bool, instructions: String?, contextBudget: Int
+    ) {
+        let request = forkRequestSnapshot(  // FORK: quick-ai-root
+            webSearch: webSearch, instructions: instructions, contextBudget: contextBudget)
         session.append(ChatMessage(role: .assistant, text: "", state: .streaming))
         isStreaming = true
         isThinking = false

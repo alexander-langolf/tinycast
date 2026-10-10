@@ -72,7 +72,10 @@ final class CodexTurnRunner {
         client.onElicitation = { [weak self] elicitation in
             await self?.consent(to: elicitation) ?? false
         }
-        client.onRelaunch = { [weak self] in self?.endStrandedTurns() }
+        client.onRelaunch = { [weak self] in
+            self?.forkQuickAIRoot?.serverUnavailable(reason: .serverRelaunched)  // FORK: quick-ai-root
+            self?.endStrandedTurns()
+        }
     }
 
     var isActive: Bool { !turns.isEmpty }
@@ -101,6 +104,7 @@ final class CodexTurnRunner {
     }
 
     func reset() {
+        forkQuickAIRoot?.serverUnavailable(reason: .unavailable)  // FORK: quick-ai-root
         conversations.removeAll()
         for (key, turn) in turns { interrupt(turn, key: key) }
     }
@@ -331,27 +335,40 @@ final class CodexTurnRunner {
 
     // FORK: quick-ai-root
     func warmQuickAIRoot(
-        for request: AIRequest, model: String, toolServers: AIToolServerSession? = nil
+        for request: AIRequest, model: String, toolServers: AIToolServerSession? = nil,
+        isCurrent: @MainActor () -> Bool = { true }
     ) async {
         guard let root = forkQuickAIRoot, root.canWarm else { return }
         let servers = await toolServers?.servers() ?? []
-        let instructions = developerInstructions(for: request, hasTools: !servers.isEmpty)
-        await root.warm(model: model, webSearch: request.webSearch, instructions: instructions) { parameters in
+        guard !Task.isCancelled, isCurrent() else { return }
+        do {
             let models = try await connect?(servers) ?? []
             try Task.checkCancellation()
+            guard root.canWarm, isCurrent() else { return }
             guard !model.isEmpty, models.isEmpty || models.contains(where: { $0.id == model }) else {
                 throw AIProviderError.unavailable("No matching Codex model is available.")
             }
-            let response = try await client.request(
-                method: "thread/start",
-                params: threadStartParameters(
-                    model: parameters.model, webSearch: parameters.webSearch,
-                    instructions: parameters.instructions, hasTools: !servers.isEmpty))
-            guard let threadID = response["thread"]?.objectValue?["id"]?.stringValue else {
-                throw CodexAppServerClient.ClientError.requestFailed(
-                    "Codex returned no generation thread.")
+            let instructions = developerInstructions(for: request, hasTools: !servers.isEmpty)
+            await root.warm(
+                model: model, webSearch: request.webSearch, instructions: instructions,
+                isCurrent: isCurrent
+            ) { parameters in
+                let response = try await client.request(
+                    method: "thread/start",
+                    params: threadStartParameters(
+                        model: parameters.model, webSearch: parameters.webSearch,
+                        instructions: parameters.instructions, hasTools: !servers.isEmpty))
+                guard let threadID = response["thread"]?.objectValue?["id"]?.stringValue else {
+                    throw CodexAppServerClient.ClientError.requestFailed(
+                        "Codex returned no generation thread.")
+                }
+                return threadID
             }
-            return threadID
+        } catch is CancellationError {
+            return
+        } catch {
+            guard !Task.isCancelled, isCurrent() else { return }
+            root.prewarmFailed()
         }
     }
 

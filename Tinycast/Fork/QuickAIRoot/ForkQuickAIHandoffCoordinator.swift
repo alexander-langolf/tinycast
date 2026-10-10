@@ -143,11 +143,11 @@ final class ForkQuickAIHandoffCoordinator {
             core.showMessage("Couldn’t open the work terminal.", tone: .danger)
             return
         }
+        terminal.displayTitle = "\(engine.title) · Start Work"
         core.forkQuickAIRootLog.append(
             .handedOff, chat: chatID, engine: engine == .claude ? .claude : .codex,
             terminal: terminal.id)
         core.palette.query = ""
-        core.forkQuickAIRoot.retire(reason: .newChat)
         core.quickAICoordinator.startNewChat()
     }
 

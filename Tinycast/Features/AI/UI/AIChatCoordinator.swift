@@ -300,6 +300,20 @@ final class AIChatCoordinator {
         }
     }
 
+    // FORK: quick-ai-root
+    func forkRootSnapshot(in chat: AIChatState, composer: String)
+        -> (request: AIRequest, provider: CodexInstalledProvider)?
+    {
+        guard settings.aiEnabled, case .codex? = model(for: chat) else { return nil }
+        let address = MCPComposerAddress.parse(composer, slugs: core.mcpCoordinator.slugs)
+        guard let route = try? provider(for: chat, scopedTo: address.slug),
+            let provider = route as? CodexInstalledProvider else { return nil }
+        return (
+            chat.forkRequestSnapshot(
+                webSearch: webSearch(for: chat), instructions: instructions,
+                contextBudget: contextBudget(for: chat)), provider)
+    }
+
     private func webSearch(for chat: AIChatState) -> Bool {
         core.aiSettings.webSearchEnabled && capabilities(for: chat).webSearch
     }

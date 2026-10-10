@@ -16,6 +16,15 @@ final class ChatGPTSubscriptionManager {
         set { client.launchSettings = newValue }
     }
 
+    // FORK: quick-ai-root
+    @ObservationIgnored var forkKeepsRootWarm = false {
+        didSet {
+            guard forkKeepsRootWarm != oldValue else { return }
+            idleTask?.cancel()
+            if !forkKeepsRootWarm { scheduleIdleShutdown() }
+        }
+    }
+
     private(set) var phase = ChatGPTSubscription.Phase.idle
     private(set) var access: ChatGPTSubscription.Access?
     private(set) var models: [ChatGPTSubscription.Model] = []
@@ -135,6 +144,7 @@ final class ChatGPTSubscriptionManager {
     /// The server stays resident only while it is being used; a stopped one restarts on demand.
     private func scheduleIdleShutdown() {
         idleTask?.cancel()
+        guard !forkKeepsRootWarm else { return }  // FORK: quick-ai-root
         idleTask = Task { [weak self] in
             try? await Task.sleep(for: Self.idleShutdown)
             guard !Task.isCancelled, let self, !self.turns.isActive else { return }

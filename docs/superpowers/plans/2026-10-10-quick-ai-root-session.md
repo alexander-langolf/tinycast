@@ -155,15 +155,23 @@ other lifecycle hooks remain Group 4. Compilation and manual acceptance remain u
 
 ## Group 4: Keep-alive, prewarm, retire
 
-- [ ] **4.1** Hook `ChatGPTSubscriptionManager.scheduleIdleShutdown` (`:136`): while the warm root
+- [x] **4.1** Hook `ChatGPTSubscriptionManager.scheduleIdleShutdown` (`:136`): while the warm root
       is on, don't schedule the shutdown. Turning it off re-arms it.
-- [ ] **4.2** Hook `QuickAICoordinator.show` (`:26`): when the root is on and isn't `ready` or
+- [x] **4.2** Hook `QuickAICoordinator.show` (`:26`): when the root is on and isn't `ready` or
       `inUse`, start warming in the background, so showing the palette is never blocked.
-- [ ] **4.3** Hook `QuickAICoordinator.startNewChat` (`:96`), and the `.startNew` path at `:84`:
+- [x] **4.3** Hook `QuickAICoordinator.startNewChat` (`:96`), and the `.startNew` path at `:84`:
       retire the current root (`retired(reason: newChat)`) and warm the next one.
-- [ ] **4.4** App-server exit or relaunch (`CodexAppServerClient.onExit` / `onRelaunch`): the root
+- [x] **4.4** App-server exit or relaunch (`CodexAppServerClient.onExit` / `onRelaunch`): the root
       goes `unavailable`, and the current chat falls back to today's path (`fellBack`). The next
       `show` warms again.
+
+**Implementation note:** Group 4 source is implemented. Prewarming shares the send snapshot and
+provider/tool-session selection, runs in a root-owned cancellable task, and connects before starting
+the warm transition so a tool-list relaunch cannot invalidate its own new thread. New-chat paths
+retire once; Start Work delegates retirement to `startNewChat`. Resets and relaunches invalidate the
+root while the existing runner cleanup drops dead conversation handles. Keep-alive follows the
+warm-root preference and disabling it restores the original idle timer. No builds, tests, formatters,
+project generation or git operations were run; compilation and acceptance criteria remain unverified.
 
 **Done when:** spec acceptance criteria 1, 2, 3, 8 and 9 pass by hand.
 

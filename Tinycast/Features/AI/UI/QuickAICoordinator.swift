@@ -34,6 +34,7 @@ final class QuickAICoordinator {
         }
         applyOpenPolicy()
         paletteCoordinator.showPalette(mode: .ai)
+        core.prewarmQuickAIRoot()  // FORK: quick-ai-root
     }
 
     /// ⇥ and the AI fallback: a fresh chat that carries the question, already asked.
@@ -44,6 +45,7 @@ final class QuickAICoordinator {
             show()
             return
         }
+        core.retireQuickAIRootForNewChat()  // FORK: quick-ai-root
         chat.startNewChat()
         paletteCoordinator.showPalette(mode: .ai)
         send(prompt)
@@ -87,6 +89,7 @@ final class QuickAICoordinator {
         case .startNew:
             // An empty chat is already new; resetting it would only drop what is staged in it.
             guard hasTranscript else { return }
+            core.retireQuickAIRootForNewChat()  // FORK: quick-ai-root
             chat.startNewChat()
         }
     }
@@ -97,9 +100,11 @@ final class QuickAICoordinator {
     }
 
     func startNewChat() {
+        core.retireQuickAIRootForNewChat()  // FORK: quick-ai-root
         chat.startNewChat()
         // A fresh conversation, not a fresh root: whatever opened chat is still behind it.
         palette.replace(mode: .ai)
+        core.prewarmQuickAIRoot()  // FORK: quick-ai-root
     }
 
     func showHistory() {
