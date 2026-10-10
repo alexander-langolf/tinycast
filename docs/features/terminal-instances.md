@@ -23,10 +23,11 @@
 - **Full-screen programs are not rendered.** Entering alternate-screen mode 1049, 1047 or 47
   suppresses further output until a command-finished mark and shows “Full-screen program · ⌘O opens
   kitty”. Ordinary typing is not forwarded to running programs; `PAGER` and `GIT_PAGER` are `cat`.
-- **Instances outlive the palette.** Each is a top-level, key-capable, non-activating panel that
-  stays visible on deactivation. It starts pinned at `.floating`, below the palette's `.palette`
-  level; unpinning changes it to `.normal`, where a click raises that panel alone above other apps'
-  windows and gives it key focus. Sessions and panel positions are not persisted.
+- **Instances outlive the palette.** Each is a top-level, key-capable panel that stays visible on
+  deactivation. It starts pinned: non-activating at `.floating`, below the palette's `.palette`
+  level, on all Spaces. Unpinning makes it an ordinary managed window at `.normal` that can activate
+  Tinycast and become main, so a click, Mission Control or the Dock brings it to the front with key
+  focus; re-pinning restores the floating setup. Sessions and panel positions are not persisted.
 - **Models have no AppKit or SwiftUI dependency.** They use Foundation and, for geometry,
   CoreGraphics, with environment facts passed as parameters. Harnesses compile the shipped models.
 - **`AppCore` owns both coordinators and both presenters as lazy properties.** There are no
