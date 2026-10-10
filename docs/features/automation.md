@@ -96,3 +96,25 @@ instead of falling through). `tinycast://extensions/…` is untouched.
 Links share one rate limit (burst of 3, then one every two seconds), return nothing to the caller,
 and hold no scopes. Text is stripped of control and bidirectional-override characters and cut to
 120 characters (message) or 200 (query).
+
+## The `tinycast` bridge
+
+`TinycastCLI/` builds a small tool, embedded at `Tinycast.app/Contents/Helpers/tinycast` (target
+added in `project.fork.yml`; it is not part of the app's own sources). `tinycast mcp --stdio` is a
+stdio MCP server that POSTs each line to the running app's endpoint:
+
+- **Credentials** are read from the login Keychain (service `<bundle id>.automation-clients`,
+  account = client id) and sent as the bearer. `--client <id>` (or `TINYCAST_CLIENT`) picks the
+  client; with exactly one client it is optional. The first read by this binary makes the Keychain
+  ask for permission once. Nothing is read from a file or an environment token.
+- **Channel** (`--channel dev|stable|beta`, `TINYCAST_CHANNEL`; Debug builds default to dev) picks the
+  bundle id, Keychain service and port, so a Dev token never reaches the stable app.
+- **Bridging.** Modern requests get `MCP-Protocol-Version`, `Mcp-Method` and `Mcp-Name` (Base64
+  sentinel when not plain ASCII) mirrored from the body. Handshake-era requests get the version the
+  server returned from `initialize`. A JSON reply becomes one stdout line; an SSE reply becomes one
+  line per event, so `subscriptions/listen` notifications flow. A JSON-RPC error that arrives with a
+  null id gets the request's id.
+- **Cancellation.** `notifications/cancelled` cancels that request's HTTP exchange, which closes its
+  connection; the app treats that as cancellation. Closing stdin cancels everything and exits.
+- **Logs** go to stderr only; stdout carries nothing but MCP messages. If the app is not listening
+  the request fails with a JSON-RPC error saying where to turn automation on.

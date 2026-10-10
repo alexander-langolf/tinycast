@@ -91,7 +91,9 @@ Polling runs only while the palette is visible and retains the last snapshot whe
 
 The [automation feature](features/automation.md) is fork-owned under `Tinycast/Features/Automation/`.
 `AppCore` lazily owns `AutomationCoordinator`, which owns the router, runner and (as they land) the
-audit log, client store, approval queue and HTTP endpoint. It is separate from the MCP client.
+audit log, client store, approval queue and HTTP endpoint. It is separate from the MCP client. The
+`tinycast` stdio bridge is its own target in `project.fork.yml`, sources in `TinycastCLI/`, embedded
+in the app's `Contents/Helpers`.
 
 ## Search
 

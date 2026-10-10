@@ -245,6 +245,7 @@
 		490729CFD28033431962367B /* ArmedHover.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81E2A3F7C4FCA7120A3F6EF5 /* ArmedHover.swift */; };
 		4963DF703487FA79850C2DF3 /* DictationSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61C82CFE8F650EAD34CA1CB9 /* DictationSettingsView.swift */; };
 		4A09D85BDD4A75B1FF1BABA5 /* CameraSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBD42AFBAB42DB5BF5FE1BCE /* CameraSession.swift */; };
+		4B38EAA86BA5C7B1B889F299 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38F74165C0B3C1EFFD6FAD62 /* main.swift */; };
 		4B620FDA1C82B18ECD978B33 /* TerminalInstancesCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD9952DBD3D36FB12A92F3F0 /* TerminalInstancesCoordinator.swift */; };
 		4C1787D99E49A84C0647C5D8 /* BackupCategorySelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7945C129A685FC29FBA70EE4 /* BackupCategorySelection.swift */; };
 		4C62146D3E345F256342B701 /* ClipboardTextExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D7D18BE38D2CD54CE6AB6DC /* ClipboardTextExtractor.swift */; };
@@ -506,6 +507,7 @@
 		939F3944AE8D36A8C337D46F /* Signposts.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9044F107ADD5896746DBC35 /* Signposts.swift */; };
 		9409180A8D8B307685542C11 /* TerminalSessionPhase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 169CD39D2278AF3A602F1FB9 /* TerminalSessionPhase.swift */; };
 		943B767858B07EE75B1C8915 /* ExtensionGitHubSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B583DC6E33E1BF3AC1E22B5 /* ExtensionGitHubSource.swift */; };
+		946798CF0C06FA126677AD98 /* TinycastCLI in Embed Dependencies */ = {isa = PBXBuildFile; fileRef = 0D5982592AEBBA50630EF863 /* TinycastCLI */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		94887F8E18AB2C08A8273897 /* Permissions.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA7B3EB88881CEEFCE71448D /* Permissions.swift */; };
 		94A1ED3C3F04FC266AF0F63E /* ExtensionMenuBarHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2858A6BD41085BF9C1679259 /* ExtensionMenuBarHost.swift */; };
 		94E62234828A0945CFCFE764 /* RevealableSecureField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36DEEF228EF1398B421C89B2 /* RevealableSecureField.swift */; };
@@ -879,6 +881,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		CCB0013624AC87176429D0A9 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = ADDC0DAB183B80B8B278C7BA /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = F82EB2037536120B286DEDC6;
+			remoteInfo = TinycastCLI;
+		};
 		D8D2878E41110CAB71C371B6 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = ADDC0DAB183B80B8B278C7BA /* Project object */;
@@ -902,6 +911,7 @@
 			dstPath = Contents/Helpers;
 			dstSubfolderSpec = 1;
 			files = (
+				946798CF0C06FA126677AD98 /* TinycastCLI in Embed Dependencies */,
 				9CB6AE756ECD2CB3A976A40E /* $(DICTATION_EXECUTABLE_NAME).app in Embed Dependencies */,
 				0A6FDD413D8FEDDA413B69A6 /* ClipboardTextHelper in Embed Dependencies */,
 			);
@@ -954,6 +964,7 @@
 		0C3F123266ED0DA4BC9616B9 /* NoteMarkdownParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteMarkdownParser.swift; sourceTree = "<group>"; };
 		0CFA4726A74C5CCA6E301665 /* DialogChip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DialogChip.swift; sourceTree = "<group>"; };
 		0D4F22647E4E1BA19F0FC520 /* AppVersion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppVersion.swift; sourceTree = "<group>"; };
+		0D5982592AEBBA50630EF863 /* TinycastCLI */ = {isa = PBXFileReference; includeInIndex = 0; path = TinycastCLI; sourceTree = BUILT_PRODUCTS_DIR; };
 		0DD7A98B63B9043D67012E39 /* AIThinkTagDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIThinkTagDecoder.swift; sourceTree = "<group>"; };
 		0DE505A8B3E665C2C1382B48 /* ExecutablePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExecutablePicker.swift; sourceTree = "<group>"; };
 		0DFEBE220187043060F7F286 /* ToolRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolRunner.swift; sourceTree = "<group>"; };
@@ -1121,6 +1132,7 @@
 		38DF0C0265A061253B2CB455 /* AutomationRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutomationRouter.swift; sourceTree = "<group>"; };
 		38E3CA42F43048630718292B /* TerminalSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalSession.swift; sourceTree = "<group>"; };
 		38F41CCCC45DEC05CF48F77D /* NoteBlockDecoration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteBlockDecoration.swift; sourceTree = "<group>"; };
+		38F74165C0B3C1EFFD6FAD62 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		391B8024E8719506361B45F7 /* FileSearchQuery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileSearchQuery.swift; sourceTree = "<group>"; };
 		39B8982F3CFB63CAAB0520E3 /* RoomLayoutKind.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomLayoutKind.swift; sourceTree = "<group>"; };
 		39CF2441F177EC9A457F035C /* PaletteChipsLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaletteChipsLayout.swift; sourceTree = "<group>"; };
@@ -1944,6 +1956,7 @@
 				CEE5FA2E56073002C2DA6D6A /* ClipboardTextHelper */,
 				42BF5FF516A29ABBECBF576D /* DictationHelper.app */,
 				5392500F86E23C099D33561D /* Tinycast.app */,
+				0D5982592AEBBA50630EF863 /* TinycastCLI */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -3927,6 +3940,14 @@
 			path = UI;
 			sourceTree = "<group>";
 		};
+		F1A4A08ECD9975AECB91CCCA /* TinycastCLI */ = {
+			isa = PBXGroup;
+			children = (
+				38F74165C0B3C1EFFD6FAD62 /* main.swift */,
+			);
+			path = TinycastCLI;
+			sourceTree = "<group>";
+		};
 		F3BA01A8501CA18CF7435DBB /* Settings */ = {
 			isa = PBXGroup;
 			children = (
@@ -3979,6 +4000,7 @@
 			isa = PBXGroup;
 			children = (
 				BB6DB69437E85BCDB2530225 /* Tinycast */,
+				F1A4A08ECD9975AECB91CCCA /* TinycastCLI */,
 				B36FACE26406FD2205FEF03E /* NOTICE.md */,
 				F08B4248AC57E676F79FC1D5 /* Frameworks */,
 				114270CAA80F01D311693B63 /* Products */,
@@ -4068,6 +4090,7 @@
 			buildRules = (
 			);
 			dependencies = (
+				F9F12FCE760189E8C5F54A4F /* PBXTargetDependency */,
 				90A950AEA8C96CE6747EB74E /* PBXTargetDependency */,
 				47E8DAE6EA7BBB14E1B3C25D /* PBXTargetDependency */,
 			);
@@ -4077,6 +4100,23 @@
 			productName = Tinycast;
 			productReference = 5392500F86E23C099D33561D /* Tinycast.app */;
 			productType = "com.apple.product-type.application";
+		};
+		F82EB2037536120B286DEDC6 /* TinycastCLI */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 13B79EC6275D871F5A8C186B /* Build configuration list for PBXNativeTarget "TinycastCLI" */;
+			buildPhases = (
+				9F2DE1D135BC96ACBC6F2185 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = TinycastCLI;
+			packageProductDependencies = (
+			);
+			productName = TinycastCLI;
+			productReference = 0D5982592AEBBA50630EF863 /* TinycastCLI */;
+			productType = "com.apple.product-type.tool";
 		};
 /* End PBXNativeTarget section */
 
@@ -4099,6 +4139,10 @@
 						DevelopmentTeam = "";
 						ProvisioningStyle = Manual;
 					};
+					F82EB2037536120B286DEDC6 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Manual;
+					};
 				};
 			};
 			buildConfigurationList = 30A6EA6EDF1D9E18B33C229C /* Build configuration list for PBXProject "Tinycast" */;
@@ -4116,6 +4160,7 @@
 			projectRoot = "";
 			targets = (
 				51DBA6947AFD8275A0DF8DA0 /* Tinycast */,
+				F82EB2037536120B286DEDC6 /* TinycastCLI */,
 				0832DCD58DEA01602328CCE7 /* ClipboardTextHelper */,
 				3B118E1B50944BA60113B8CF /* DictationHelper */,
 			);
@@ -5021,6 +5066,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		9F2DE1D135BC96ACBC6F2185 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4B38EAA86BA5C7B1B889F299 /* main.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -5033,6 +5086,11 @@
 			isa = PBXTargetDependency;
 			target = 3B118E1B50944BA60113B8CF /* DictationHelper */;
 			targetProxy = F2817B9F89B36FC1E6BDCFD6 /* PBXContainerItemProxy */;
+		};
+		F9F12FCE760189E8C5F54A4F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = F82EB2037536120B286DEDC6 /* TinycastCLI */;
+			targetProxy = CCB0013624AC87176429D0A9 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -5284,6 +5342,24 @@
 			};
 			name = Release;
 		};
+		D4729015EC36E08F845F8E01 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				EXECUTABLE_NAME = tinycast;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.tinycast.TinycastCLI;
+				PRODUCT_MODULE_NAME = TinycastCLI;
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
 		D8C6CAC15EBCF3A29913F5C8 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -5300,9 +5376,36 @@
 			};
 			name = Debug;
 		};
+		E33F4B69B289637FBD4477A1 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				EXECUTABLE_NAME = tinycast;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.tinycast.TinycastCLI;
+				PRODUCT_MODULE_NAME = TinycastCLI;
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		13B79EC6275D871F5A8C186B /* Build configuration list for PBXNativeTarget "TinycastCLI" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E33F4B69B289637FBD4477A1 /* Debug */,
+				D4729015EC36E08F845F8E01 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		30A6EA6EDF1D9E18B33C229C /* Build configuration list for PBXProject "Tinycast" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
