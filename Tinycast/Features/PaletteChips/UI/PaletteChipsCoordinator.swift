@@ -9,6 +9,8 @@ final class PaletteChipsCoordinator {
     @ObservationIgnored private unowned let core: AppCore
 
     static let slotHint = "1–4"
+    /// Off since 2026-10-10 (Sasha): Tab and ⌘1–4 fall through to upstream; flip to bring the chips back.
+    static let isEnabled = false
 
     init(core: AppCore) {
         self.core = core
@@ -76,6 +78,7 @@ final class PaletteChipsCoordinator {
 
     @discardableResult
     private func send(_ event: PaletteChipsEvent) -> Bool {
+        guard Self.isEnabled else { return false }
         let transition = PaletteChipsMachine.reduce(state, event, available: available)
         guard transition.state != state || !transition.effects.isEmpty else { return transition.handled }
         state = transition.state

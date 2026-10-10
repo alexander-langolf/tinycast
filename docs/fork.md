@@ -164,7 +164,9 @@ initially pinned panel running the feature's own persistent `forkpty` zsh sessio
 
 ## Palette chips
 
-Tab in the collapsed compact launcher toggles a pill with Applications, Files, Shortcuts and
+**Disabled** (`PaletteChipsCoordinator.isEnabled = false`, 2026-10-10): the code and hooks stay, but
+every event is unhandled, so Tab, Escape and ⌘1–4 behave as upstream. When enabled, Tab in the collapsed
+compact launcher toggles a pill with Applications, Files, Shortcuts and
 Clipboard chips in a separate non-key child panel. The feature is fork-owned under
 `Tinycast/Features/PaletteChips/` and `Tinycast/Windows/PaletteChips/`, with
 `Tests/palette-chips-test.swift`; `AppCore` lazily owns its coordinator and presenter.
