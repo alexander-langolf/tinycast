@@ -80,3 +80,19 @@ Allow automation starts and stops it; it is off by default and the flag is not i
   `notifications/resources/updated` for the subscribed resource URIs the client's scopes allow, a
   keep-alive comment every 15 s, and a graceful completion if the client is revoked. There is no GET
   stream and no `Mcp-Session-Id`.
+
+## Links
+
+`AppCore.handleOpenURL` offers each URL to `AutomationCoordinator.handleLink` before the extension
+deep-link handler. A URL is claimed only when automation is on and its host names a link operation
+or any other tool (so an attempt such as `tinycast://terminal_run?command=…` is refused and audited
+instead of falling through). `tinycast://extensions/…` is untouched.
+
+| Link | Effect |
+| --- | --- |
+| `tinycast://palette?query=…` | Opens the launcher with the query typed in; nothing is activated. |
+| `tinycast://hud?text=…` | Shows a message pill prefixed `tinycast:// link:`, so it cannot pass for an agent. |
+
+Links share one rate limit (burst of 3, then one every two seconds), return nothing to the caller,
+and hold no scopes. Text is stripped of control and bidirectional-override characters and cut to
+120 characters (message) or 200 (query).

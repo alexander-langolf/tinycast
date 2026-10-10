@@ -487,6 +487,7 @@ final class AppCore {
     }
 
     func handleOpenURL(_ url: URL) {
+        if automation.handleLink(url) { return }  // FORK: automation
         switch ExtensionOAuthSession.handleCallbackURL(url) {
         case .delivered:
             paletteCoordinator.showPalette(mode: .extensionCommand, restoreAnyMode: true)
