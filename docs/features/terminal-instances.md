@@ -25,7 +25,8 @@
   kitty”. Ordinary typing is not forwarded to running programs; `PAGER` and `GIT_PAGER` are `cat`.
 - **Instances outlive the palette.** Each is a top-level, key-capable, non-activating panel that
   stays visible on deactivation. It starts pinned at `.floating`, below the palette's `.palette`
-  level; unpinning changes it to `.normal`. Sessions and panel positions are not persisted.
+  level; unpinning changes it to `.normal`, where a click raises that panel alone above other apps'
+  windows and gives it key focus. Sessions and panel positions are not persisted.
 - **Models have no AppKit or SwiftUI dependency.** They use Foundation and, for geometry,
   CoreGraphics, with environment facts passed as parameters. Harnesses compile the shipped models.
 - **`AppCore` owns both coordinators and both presenters as lazy properties.** There are no

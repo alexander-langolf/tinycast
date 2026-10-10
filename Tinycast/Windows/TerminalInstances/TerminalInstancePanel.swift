@@ -30,8 +30,19 @@ final class TerminalInstancePanel: NSPanel {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
 
+    /// A non-activating panel never activates Tinycast, so at `.normal` AppKit leaves it behind the
+    /// frontmost app's windows. Unpinned, a press raises just this panel, without activating the
+    /// app, which would bring the palette and the other instances forward with it.
+    private func raiseAsOrdinaryWindow() {
+        orderFrontRegardless()
+        if !isKeyWindow { makeKey() }
+    }
+
     override func sendEvent(_ event: NSEvent) {
         if event.type == .keyDown, onKey?(event) == true { return }
+        if event.type == .leftMouseDown || event.type == .rightMouseDown, level == .normal {
+            raiseAsOrdinaryWindow()
+        }
         super.sendEvent(event)
     }
 }
