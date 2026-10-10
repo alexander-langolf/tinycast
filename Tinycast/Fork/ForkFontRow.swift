@@ -3,7 +3,6 @@ import SwiftUI
 /// Each family previews in its own face, so the list is the specimen sheet as well as the picker.
 struct ForkFontRow: View {
     private var appearance: ForkAppearance { ForkAppearance.current! }
-    @State private var families: [String] = []
     @State private var isPicking = false
 
     var body: some View {
@@ -28,12 +27,11 @@ struct ForkFontRow: View {
             }
             .buttonStyle(.bordered)
             .popover(isPresented: $isPicking, arrowEdge: .bottom) {
-                FontPickerPopover(families: families, selection: appearance.fontFamily) {
+                FontPickerPopover(selection: appearance.fontFamily) {
                     appearance.fontFamily = $0
                     isPicking = false
                 }
             }
-            .onAppear { families = FontCatalog.installedFamilies() }
         }
     }
 
@@ -50,11 +48,12 @@ struct ForkFontRow: View {
 
 /// Its own popover rather than a `Picker`: a few hundred families need a filter to be usable.
 private struct FontPickerPopover: View {
-    let families: [String]
     let selection: String?
     let onSelect: (String?) -> Void
 
     @State private var query = ""
+    /// Read when the popover opens, not when the row appears: the row's `onAppear` was unreliable.
+    @State private var families = FontCatalog.installedFamilies()
 
     private static let systemTitle = "System"
 
