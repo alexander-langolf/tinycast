@@ -84,7 +84,7 @@ struct TerminalInstanceCard<Output: View>: View {
                 .fixedSize(horizontal: false, vertical: true)
         case .starting, .running:
             Text(command)
-                .font(metrics.typography.searchField.monospaced())
+                .font(metrics.typography.searchField)
                 .foregroundStyle(Theme.Colors.textPrimary)
                 .lineLimit(1)
                 .truncationMode(.middle)
@@ -93,10 +93,21 @@ struct TerminalInstanceCard<Output: View>: View {
                 .font(metrics.typography.searchField)
                 .foregroundStyle(Theme.Colors.textSecondary)
         case .idle:
-            TextField("Next command", text: $input)
+            TextField("", text: $input)
                 .textFieldStyle(.plain)
-                .font(metrics.typography.searchField.monospaced())
+                .font(metrics.typography.searchField)
+                .tint(Theme.Colors.textPrimary)
                 .focused($fieldFocused)
+                .background(alignment: .leading) {
+                    if input.isEmpty {
+                        Text("Next command")
+                            .font(metrics.typography.searchField)
+                            .foregroundStyle(Theme.Colors.textTertiary)
+                            .lineLimit(1)
+                            .allowsHitTesting(false)
+                    }
+                }
+                .accessibilityLabel(Text("Next command"))
                 .onSubmit { actions.submit() }
         }
     }

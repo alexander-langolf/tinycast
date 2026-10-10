@@ -28,6 +28,7 @@
             var isFullScreen = false
             var isPinned = true
             var lines: [String] = []
+            var typed = ""
             @State private var input = ""
             @Environment(\.metrics) private var metrics
 
@@ -40,6 +41,7 @@
                 ) {
                     OutputPlaceholder(lines: lines)
                 }
+                .onAppear { input = typed }
                 .frame(
                     width: layout.width,
                     height: TerminalInstanceStack.cardHeight(
@@ -96,6 +98,16 @@
 
     #Preview("Idle · before the first command") {
         TerminalInstancesPreviewData.Canvas { TerminalInstancesPreviewData.Card() }
+    }
+
+    #Preview("Idle · typing a short command") {
+        TerminalInstancesPreviewData.Canvas { TerminalInstancesPreviewData.Card(typed: "git status") }
+    }
+
+    #Preview("Idle · typing a long command") {
+        TerminalInstancesPreviewData.Canvas {
+            TerminalInstancesPreviewData.Card(typed: TerminalInstancesPreviewData.longCommand)
+        }
     }
 
     #Preview("Running · with output") {
