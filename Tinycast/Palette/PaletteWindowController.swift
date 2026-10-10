@@ -19,6 +19,7 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
     /// Live only between mouse-down and mouse-up on a drag handle; nil means a move was ours.
     private var drag: DragSession?
     private let dropGuides = PaletteDropGuideController()
+    private let frameAnimator = PaletteFrameAnimator()  // FORK: palette-motion
     /// ⌘V: `Edit ▸ Paste` claims it before `sendEvent` whenever the board also carries text.
     private var pasteMonitor: Any?
     /// ⌘⎋: the window server claims it, so no keystroke is left for the responder chain to see.
@@ -380,7 +381,7 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
 
     private func ensurePanel() -> PalettePanel {
         if let panel { return panel }
-        let root = RootPaletteView().paletteEnvironment(core)
+        let root = RootPaletteView().paletteEnvironment(core).environment(frameAnimator)  // FORK: palette-motion
         let panel = PalettePanel(rootView: root)
         panel.delegate = self
         panel.paletteState = core.palette
@@ -515,7 +516,10 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
             x: anchor.x, y: anchor.y - height,
             width: core.paletteChips.paletteWidth(collapsed: collapsed, metrics: metrics),
             height: height)
-        panel.setFrame(frame, display: true)
+        // FORK: palette-motion
+        frameAnimator.move(
+            panel, to: frame,
+            radius: core.paletteChips.paletteRadius(collapsed: collapsed, metrics: metrics))
         core.agentRunsPresenter.update(panel, metrics: metrics)  // FORK: agent-runs
     }
 

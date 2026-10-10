@@ -322,16 +322,17 @@ struct RootPaletteView: View {
             stateObservers(
                 Group {
                     // FORK: palette-presentation
-                    if isCollapsed || !presentation.showsRows {
-                        Color.clear
-                    } else {
+                    PaletteRevealSlot(  // FORK: palette-motion
+                        .body, isPresented: !isCollapsed && presentation.showsRows, key: vm.mode,
+                        fills: true
+                    ) {
                         screen.body(selection: sel, scroll: scroll)
                     }
                 }
                 .safeAreaInset(edge: .top, spacing: 0) { header }
                 .safeAreaInset(edge: .bottom, spacing: 0) {
                     // FORK: palette-presentation
-                    if !isCollapsed, presentation.showsFooter {
+                    PaletteRevealSlot(.footer, isPresented: !isCollapsed && presentation.showsFooter) {  // FORK: palette-motion
                         bottomBar(
                             pillLabel: screen.primaryActionTitle, showActionGroup: showActionGroup,
                             formPrimaryShortcut: screen.hidesSearchField && screen.actsWithoutRows,
@@ -348,6 +349,7 @@ struct RootPaletteView: View {
                         installHeaderArrowHandler(in: $0)
                     }
                 )
+                .paletteFrameLayout()  // FORK: palette-motion
                 // The window's frame is the size source, so the glass and clip stay matched.
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 .background(Theme.Colors.panelScrim)
@@ -364,11 +366,8 @@ struct RootPaletteView: View {
                     value: core.isDimmingPaletteForDialog
                 )
                 // FORK: palette-chips
-                .clipShape(
-                    RoundedRectangle(
-                        cornerRadius: core.paletteChips.paletteRadius(
-                            collapsed: isCollapsed, metrics: metrics),
-                        style: .continuous))),
+                .paletteFrameClip(  // FORK: palette-motion
+                    radius: core.paletteChips.paletteRadius(collapsed: isCollapsed, metrics: metrics))),
             selection: sel)
     }
 
@@ -704,7 +703,7 @@ struct RootPaletteView: View {
             headerGutter(width: metrics.spacing.md * 2)
             // Every sub-screen leaves the same way, so the slot reads the same on all of them.
             if vm.mode != .launcher {
-                HeaderBackButton(help: backHelp, action: goBack)
+                HeaderBackButton(help: backHelp, action: goBack).paletteReveal(.glyph)  // FORK: palette-motion
             } else {
                 Image(systemName: vm.mode.systemImage)
                     .font(metrics.typography.headerIcon)
@@ -712,6 +711,7 @@ struct RootPaletteView: View {
                     .foregroundStyle(.secondary)
                     .frame(width: metrics.size.headerIconSlot)
                     .windowDraggable(settings.paletteDraggable, onBegan: beginDrag, onEnded: endDrag)
+                    .paletteReveal(.glyph)  // FORK: palette-motion
             }
             // slot + xl equals a row's icon + lg, so the query starts where the row titles do.
             headerGutter(width: metrics.spacing.xl)
@@ -755,13 +755,15 @@ struct RootPaletteView: View {
                     title: core.aiChatCoordinator.selectedModelTitle(for: quickAI),
                     icon: core.aiChatCoordinator.selectedModelIcon(for: quickAI),
                     isOpen: openMenu == .aiModel,
-                    action: toggleAIModel)
+                    action: toggleAIModel
+                ).paletteReveal(.accessory)  // FORK: palette-motion
                 if !core.aiChatCoordinator.reasoningEfforts(for: quickAI).isEmpty {
                     headerGutter(width: metrics.spacing.md)
                     AIReasoningButton(
                         title: core.aiChatCoordinator.selectedReasoningTitle(for: quickAI),
                         isOpen: openMenu == .aiReasoning,
-                        action: toggleAIReasoning)
+                        action: toggleAIReasoning
+                    ).paletteReveal(.accessory)  // FORK: palette-motion
                 }
             }
             // FORK: palette-chips
@@ -916,6 +918,7 @@ struct RootPaletteView: View {
                         .lineLimit(1)
                         // Never a click target: tapping the placeholder must still land the caret.
                         .allowsHitTesting(false)
+                        .paletteReveal(.glyph, on: searchPrompt)  // FORK: palette-motion
                 }
             }
             // The prompt used to carry this; without it the field would be unlabelled.
