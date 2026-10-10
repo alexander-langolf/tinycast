@@ -87,6 +87,8 @@ final class AIChatCoordinator {
     var history: ChatHistoryStore { core.chatHistory }
     var aiSettings: AISettingsStore { core.aiSettings }
     var dictation: DictationCoordinator { core.dictationCoordinator }
+    // FORK: claude-session-chat
+    var forkClaudeSessions: ForkClaudeSessionCoordinator { core.forkClaudeSessions }
 
     func focusExisting() -> Bool {
         window.focus()
@@ -272,6 +274,8 @@ final class AIChatCoordinator {
     @discardableResult
     func send(_ input: String, in chat: AIChatState) -> Bool {
         guard settings.aiEnabled else { return false }
+        // FORK: claude-session-chat
+        if let sent = forkClaudeSessions.send(input, in: chat) { return sent }
         do {
             let address = MCPComposerAddress.parse(input, slugs: core.mcpCoordinator.slugs)
             let sent = chat.send(
@@ -291,6 +295,8 @@ final class AIChatCoordinator {
     /// The same question, asked of whichever model is selected now, of the server it named.
     func regenerate(in chat: AIChatState) {
         guard settings.aiEnabled else { return }
+        // FORK: claude-session-chat
+        guard forkClaudeSessions.entry(chatID: chat.session.id) == nil else { return }
         let scope = chat.session.messages.last { $0.role == .user }?.toolScope
         do {
             chat.regenerate(
@@ -409,6 +415,8 @@ final class AIChatCoordinator {
 
     /// What the chat's model can take; the composer offers only what applies.
     func capabilities(for chat: AIChatState) -> AIModelCapabilities {
+        // FORK: claude-session-chat
+        if forkClaudeSessions.entry(chatID: chat.session.id) != nil { return .none }
         switch model(for: chat) {
         case .appleIntelligence?: return .appleIntelligence
         case .codex?: return .codex
@@ -453,6 +461,8 @@ final class AIChatCoordinator {
 
     /// ⌘V stages a file, read off-main; false hands the chord back to the field editor.
     func attachPastedFile(files: [URL], to chat: AIChatState) -> Bool {
+        // FORK: claude-session-chat
+        guard forkClaudeSessions.entry(chatID: chat.session.id) == nil else { return false }
         let pasteboard = NSPasteboard.general
         // A copied text selection often carries a TIFF too; only a board with no string is a picture.
         let pasted =
@@ -474,6 +484,8 @@ final class AIChatCoordinator {
 
     /// A drop or the paperclip: the same refusals as a paste, since the route is what decides.
     func attach(files: [URL], to chat: AIChatState) {
+        // FORK: claude-session-chat
+        guard forkClaudeSessions.entry(chatID: chat.session.id) == nil else { return }
         let files = files.filter(\.isFileURL)
         guard !files.isEmpty else { return }
         if let refusal = unattachable(files, in: chat) {
@@ -706,6 +718,10 @@ final class AIChatCoordinator {
     }
 
     func availability(for chat: AIChatState) -> String? {
+        // FORK: claude-session-chat
+        if forkClaudeSessions.entry(chatID: chat.session.id) != nil {
+            return forkClaudeSessions.isEnded(chatID: chat.session.id) ? "Session ended" : nil
+        }
         do {
             _ = try provider(for: chat)
             return nil

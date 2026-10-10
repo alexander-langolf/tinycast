@@ -11,7 +11,7 @@ Two separate parts:
 - **Warm root (Codex):** Quick AI answers from a Codex thread that's already prepared, so a question
   never waits for a cold start. Each new chat gets a fresh one.
 - **Start Work:** when a request needs real work, Sasha moves the conversation into a full
-  interactive session (Claude Code or Codex) in a visible terminal instance. That session has its
+  interactive session: Claude Code in AI Chat, or Codex in a visible terminal instance. That session has its
   normal tools, hooks and approvals. Quick AI then starts a new chat.
 
 Start Work moves the conversation **as text**. It isn't an engine fork: the new session's first
@@ -93,18 +93,17 @@ Quick AI a fast launcher for real work.
   and is never sent to Quick AI.
 - **What it does:**
   1. Builds the handoff prompt (below).
-  2. Opens a terminal instance (`TerminalInstancesCoordinator.open`) in the working folder (home if
-     none is set) running the engine's interactive CLI with the prompt as its first message:
+  2. Claude starts a background interactive session in the working folder (home if none is set),
+     registers it, and moves the conversation into AI Chat. The first reply arrives from that
+     session without resending the handoff prompt. See [Claude session chat](claude-session-chat.md).
+     A start failure shows Claude's message and falls back to a visible terminal instance, where
+     Sasha can accept folder trust. Codex keeps the visible terminal path:
 
      ```sh
-     '<claude path>' --dangerously-skip-permissions -- '<handoff prompt>'
      '<codex path>' --dangerously-bypass-approvals-and-sandbox --dangerously-bypass-hook-trust -- '<handoff prompt>'
      ```
 
-     The path is the executable Tinycast already resolves for that engine
-     (`ExecutableLocator.locate` with the kind's extra paths), so the terminal's `PATH` can't pick a
-     different install. Each argument is ANSI-C quoted (`$'…'`), so the command is a single
-     line: the terminal types it into zsh followed by Return.
+     Both use the configured executable. Visible launches ANSI-C quote each argument (`$'…'`).
   3. Writes `handedOff` to the log, retires the root if there is one, and Quick AI starts a new
      chat.
 - **Approvals are bypassed** (Sasha's choice, 2026-10-11): Claude Code runs with

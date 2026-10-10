@@ -863,6 +863,7 @@
 		D736A0FE574A343AA0FD3911 /* AppIndex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E58EBB08450BA3426DF0565 /* AppIndex.swift */; };
 		D7C49F8AC18CB80B58E4FEAA /* RoomLayoutKind.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39B8982F3CFB63CAAB0520E3 /* RoomLayoutKind.swift */; };
 		D84BDE5860BFD7A6201AFF68 /* AutomationHTTPRejection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13E2FB8D2C709EE12B5FD8D2 /* AutomationHTTPRejection.swift */; };
+		D90B2F5F27988ECB9AE54D97 /* ForkClaudeSessionControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB10DAFA28D62A14E64F8393 /* ForkClaudeSessionControls.swift */; };
 		D9113113F828FD6983715D6B /* UninstallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62F2B0F5FDD503E6BB739A47 /* UninstallView.swift */; };
 		D91AF8196D9B88A85D3A9504 /* CommandDuration.swift in Sources */ = {isa = PBXBuildFile; fileRef = F14E45FECBB2FFD208C51E03 /* CommandDuration.swift */; };
 		D929CEAC227F3C88BBC134BF /* AIModelMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 539938F5D4D2AFEE587113D3 /* AIModelMenu.swift */; };
@@ -1777,6 +1778,7 @@
 		B9F568F2F6EF857274F1A9D8 /* ExtensionIconCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtensionIconCache.swift; sourceTree = "<group>"; };
 		BA90C7C0B97C4745B8F94C4B /* ExtensionListKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtensionListKey.swift; sourceTree = "<group>"; };
 		BA9F3FA9925873D25EAF7D03 /* PalettePanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PalettePanel.swift; sourceTree = "<group>"; };
+		BB10DAFA28D62A14E64F8393 /* ForkClaudeSessionControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForkClaudeSessionControls.swift; sourceTree = "<group>"; };
 		BB68DFBD782D32B5633EC4A7 /* SettingsFileIssue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsFileIssue.swift; sourceTree = "<group>"; };
 		BBE8149D018E44AD3E13F642 /* SteadySegmentedPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SteadySegmentedPicker.swift; sourceTree = "<group>"; };
 		BC0AA95CA13E86370661D01C /* CalendarSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarSettingsView.swift; sourceTree = "<group>"; };
@@ -4394,6 +4396,7 @@
 			isa = PBXGroup;
 			children = (
 				0F0483F781CDAED83BDAD3D8 /* ForkAIExecutableResolver.swift */,
+				BB10DAFA28D62A14E64F8393 /* ForkClaudeSessionControls.swift */,
 				5AA51A5FFB78F4F223DD860C /* ForkClaudeSessionCoordinator.swift */,
 				37F1955AEBF04364CED9214D /* ForkClaudeSessionDebug.swift */,
 				F064FB752068DC34DA94A001 /* ForkClaudeSessionHooks.swift */,
@@ -5067,6 +5070,7 @@
 				B949C1F8876C3E6FBDBA88A1 /* ForkAppearance.swift in Sources */,
 				5BF773277810AC519D7F4A17 /* ForkAppearanceScope.swift in Sources */,
 				9CCB74DAB331D3320693744F /* ForkAssets.swift in Sources */,
+				D90B2F5F27988ECB9AE54D97 /* ForkClaudeSessionControls.swift in Sources */,
 				0D136E9868F946E9BE2930ED /* ForkClaudeSessionCoordinator.swift in Sources */,
 				8E824B29972D55DF462AB8FF /* ForkClaudeSessionDebug.swift in Sources */,
 				24EEFFFC633D9878F4CFB498 /* ForkClaudeSessionHooks.swift in Sources */,

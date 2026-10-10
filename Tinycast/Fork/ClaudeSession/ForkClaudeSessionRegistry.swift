@@ -8,6 +8,7 @@ final class ForkClaudeSessionRegistry: Sendable {
         let transcriptPath: String
         let folder: String
         var readOffset: UInt64 = 0
+        var ended: Bool? = nil
     }
 
     private let cache: Mutex<Result<[String: Entry], Error>>
@@ -49,11 +50,15 @@ final class ForkClaudeSessionRegistry: Sendable {
         try await mutate { $0[chatID.uuidString] = entry }
     }
 
-    func updateReadOffset(chatID: UUID, offset: UInt64) async throws {
+    func updateReadOffset(
+        chatID: UUID, offset: UInt64, sessionID: String, transcriptPath: String
+    ) async throws {
         try await mutate { entries in
             guard var entry = entries[chatID.uuidString] else {
                 throw CocoaError(.fileReadNoSuchFile)
             }
+            guard entry.sessionID == sessionID, entry.transcriptPath == transcriptPath,
+                entry.ended != true else { return }
             entry.readOffset = offset
             entries[chatID.uuidString] = entry
         }

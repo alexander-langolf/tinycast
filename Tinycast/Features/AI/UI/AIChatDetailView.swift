@@ -24,6 +24,8 @@ struct AIChatDetailView: View {
         }
         .animation(.easeOut(duration: Theme.Duration.tooltip), value: showsContext)
         .dropDestination(for: URL.self) { files, _ in
+            // FORK: claude-session-chat
+            guard !coordinator.forkClaudeSessions.isEnded(chatID: chat.session.id) else { return false }
             coordinator.attach(files: files, to: chat)
             return true
         } isTargeted: {
@@ -54,14 +56,23 @@ struct AIChatDetailView: View {
                     }
                 }
             VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-                if !suggestions.isEmpty, chat.draft.isEmpty {
+                // FORK: claude-session-chat
+                if !suggestions.isEmpty, chat.draft.isEmpty,
+                    !coordinator.forkClaudeSessions.isEnded(chatID: chat.session.id)
+                {
                     ChatSuggestionChips(choices: suggestions) { coordinator.send($0, in: chat) }
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
-                AIChatComposer(
-                    chat: chat, coordinator: coordinator, settings: coordinator.aiSettings,
-                    maximumTextHeight: composerHeight, showsContext: $showsContext,
-                    isDropTargeted: $isDropTargeted)
+                // FORK: claude-session-chat
+                if coordinator.forkClaudeSessions.isEnded(chatID: chat.session.id) {
+                    ForkClaudeSessionControls.EndedComposer(
+                        sessions: coordinator.forkClaudeSessions, chatID: chat.session.id)
+                } else {
+                    AIChatComposer(
+                        chat: chat, coordinator: coordinator, settings: coordinator.aiSettings,
+                        maximumTextHeight: composerHeight, showsContext: $showsContext,
+                        isDropTargeted: $isDropTargeted)
+                }
             }
             .frame(maxWidth: Theme.Size.aiChatReadingWidth)
             .padding(.horizontal, Theme.Spacing.xxl)
@@ -85,7 +96,10 @@ struct AIChatDetailView: View {
             ChatTranscriptView(
                 messages: chat.session.messages, status: chat.liveStatus, usage: chat.usage,
                 surface: .window,
-                onRegenerate: chat.isStreaming ? nil : { coordinator.regenerate(in: chat) },
+                // FORK: claude-session-chat
+                onRegenerate: chat.isStreaming
+                    || coordinator.forkClaudeSessions.entry(chatID: chat.session.id) != nil
+                    ? nil : { coordinator.regenerate(in: chat) },
                 find: find.isSearching
                     ? ChatFindHighlight(
                         query: find.needle, matches: Set(occurrences.map(\.messageID)),
@@ -137,6 +151,9 @@ private struct AIChatComposer: View {
     var body: some View {
         @Bindable var chat = chat
         VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+            // FORK: claude-session-chat
+            ForkClaudeSessionControls.ApprovalNotice(
+                sessions: coordinator.forkClaudeSessions, chatID: chat.session.id)
             if !chat.session.messages.isEmpty, let notice = chat.notice {
                 Label(notice, systemImage: "exclamationmark.triangle")
                     .font(.callout)
@@ -206,11 +223,18 @@ private struct AIChatComposer: View {
                     .transition(.opacity.combined(with: .scale(scale: 0.9)))
             }
             Spacer(minLength: Theme.Spacing.md)
-            AIModelPicker(chat: chat, selected: coordinator.model(for: chat), coordinator: coordinator)
-                .layoutPriority(-1)
-            AIReasoningPicker(chat: chat, coordinator: coordinator)
-            ContextGauge(
-                report: coordinator.contextReport(for: chat, detailed: false), hovered: $showsContext)
+            // FORK: claude-session-chat
+            if let entry = coordinator.forkClaudeSessions.entry(chatID: chat.session.id) {
+                ForkClaudeSessionControls.SessionLabel(
+                    sessions: coordinator.forkClaudeSessions, chatID: chat.session.id, folder: entry.folder)
+                    .layoutPriority(-1)
+            } else {
+                AIModelPicker(chat: chat, selected: coordinator.model(for: chat), coordinator: coordinator)
+                    .layoutPriority(-1)
+                AIReasoningPicker(chat: chat, coordinator: coordinator)
+                ContextGauge(
+                    report: coordinator.contextReport(for: chat, detailed: false), hovered: $showsContext)
+            }
             if coordinator.dictation.isEnabled {
                 DictationButton(
                     dictation: coordinator.dictation, editor: editor,

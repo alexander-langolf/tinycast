@@ -1,18 +1,39 @@
 import Foundation
 
-struct ForkClaudeSessionProvider: AIProvider {
+@MainActor
+final class ForkClaudeSessionProvider: AIProvider {
     private let reader: ForkClaudeSessionReader
     private let writer: ForkClaudeSessionWriter
 
-    @MainActor
-    init(reader: ForkClaudeSessionReader, writer: ForkClaudeSessionWriter) {
+    private var initialReply: (token: UUID, events: AIProviderStream)?
+
+    init(
+        reader: ForkClaudeSessionReader, writer: ForkClaudeSessionWriter, initialPrompt: String? = nil
+    ) {
         self.reader = reader
         self.writer = writer
+        if let initialPrompt {
+            let token = UUID()
+            initialReply = (token, reader.events(token: token))
+            reader.armInitial(token: token, text: initialPrompt)
+        }
     }
 
-    func stream(_ request: AIRequest) -> AIProviderStream {
+    nonisolated func stream(_ request: AIRequest) -> AIProviderStream {
         AIProviderStream { continuation in
-            let task = Task { @MainActor in
+            let task = Task { @MainActor [self] in
+                if let initial = initialReply {
+                    initialReply = nil
+                    defer { reader.release(token: initial.token) }
+                    do {
+                        for try await event in initial.events {
+                            try Task.checkCancellation()
+                            continuation.yield(event)
+                        }
+                        continuation.finish()
+                    } catch { continuation.finish(throwing: error) }
+                    return
+                }
                 guard let message = request.messages.last(where: { $0.role == .user }),
                     !message.text.isEmpty else {
                     continuation.finish(throwing: AIProviderError.unavailable(

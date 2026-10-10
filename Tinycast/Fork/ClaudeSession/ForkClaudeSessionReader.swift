@@ -7,6 +7,7 @@ final class ForkClaudeSessionReader {
         let token: UUID
         let text: String
         var consumed = false
+        var ownsFirstTurn = false
     }
 
     private struct Turn {
@@ -21,6 +22,7 @@ final class ForkClaudeSessionReader {
     private(set) var isTurnRunning = false
     private(set) var isApprovalWaiting = false
     var foreignTurn: (@MainActor (String, String) -> Void)?
+    var approvalChanged: (@MainActor (String?) -> Void)?
     var onFailure: (@MainActor (Error) -> Void)?
     var hasPendingForeignTurns: (@MainActor () -> Bool)?
 
@@ -34,6 +36,8 @@ final class ForkClaudeSessionReader {
     private var stopped = false
     private var pendingForeignOffset: UInt64?
     private var failure: Error?
+    private var approvalTool: String?
+    private var requestedTool: String?
     private var turn: Turn?
     private var submission: Submission?
     private var confirmed: Set<UUID> = []
@@ -108,6 +112,11 @@ final class ForkClaudeSessionReader {
         submission = Submission(token: token, text: text)
     }
 
+    func armInitial(token: UUID, text: String) {
+        arm(token: token, text: text)
+        submission?.ownsFirstTurn = true
+    }
+
     var hasQueuedChatTurn: Bool {
         streams.keys.contains { $0 != submission?.token || submission?.consumed != true }
     }
@@ -154,7 +163,9 @@ final class ForkClaudeSessionReader {
             savedOffset = min(savedOffset, pendingForeignOffset)
         } else { pendingForeignOffset = nil }
         if savedOffset != persistedOffset {
-            try await registry.updateReadOffset(chatID: chatID, offset: savedOffset)
+            try await registry.updateReadOffset(
+                chatID: chatID, offset: savedOffset, sessionID: entry.sessionID,
+                transcriptPath: entry.transcriptPath)
             try Task.checkCancellation()
             persistedOffset = savedOffset
         }
@@ -164,7 +175,7 @@ final class ForkClaudeSessionReader {
         switch hook.name {
         case "UserPromptSubmit":
             isTurnRunning = true
-            isApprovalWaiting = false
+            setApproval(nil)
             stopDeadline = nil
             stopTask?.cancel()
             stopTask = nil
@@ -172,14 +183,17 @@ final class ForkClaudeSessionReader {
                 ForkClaudeSessionTranscript.promptText(prompt) == submission.text {
                 confirmed.insert(submission.token)
             }
-        case "PreToolUse": isTurnRunning = true
+        case "PreToolUse":
+            isTurnRunning = true
+            requestedTool = hook.tool
         case "PermissionRequest":
             isTurnRunning = true
-            isApprovalWaiting = true
-        case "Notification" where hook.permissionPrompt: isApprovalWaiting = true
-        case "PostToolUse": isApprovalWaiting = false
+            setApproval(hook.tool ?? requestedTool ?? "tool")
+        case "Notification" where hook.permissionPrompt:
+            setApproval(hook.tool ?? requestedTool ?? "tool")
+        case "PostToolUse": setApproval(nil)
         case "Stop":
-            isApprovalWaiting = false
+            setApproval(nil)
             stopDeadline = ContinuousClock.now.advanced(by: .seconds(2))
             stopTask?.cancel()
             stopTask = Task { [weak self] in
@@ -198,7 +212,9 @@ final class ForkClaudeSessionReader {
         switch record {
         case .user(let user, let offset):
             if turn != nil { finishTurn(clearStop: false) }
-            let owner = submission.flatMap { !$0.consumed && $0.text == user ? $0.token : nil }
+            let owner = submission.flatMap {
+                !$0.consumed && ($0.ownsFirstTurn || $0.text == user) ? $0.token : nil
+            }
             if owner != nil { submission?.consumed = true }
             turn = Turn(user: user, owner: owner, readOffset: offset)
             isTurnRunning = true
@@ -237,11 +253,18 @@ final class ForkClaudeSessionReader {
         turn = nil
         if clearStop {
             isTurnRunning = false
-            isApprovalWaiting = false
+            setApproval(nil)
             stopDeadline = nil
             stopTask?.cancel()
             stopTask = nil
         }
+    }
+
+    private func setApproval(_ tool: String?) {
+        isApprovalWaiting = tool != nil
+        guard approvalTool != tool else { return }
+        approvalTool = tool
+        approvalChanged?(tool)
     }
 
     private func fail(_ error: Error) {

@@ -87,12 +87,6 @@ final class ForkQuickAIHandoffCoordinator {
                 role: .user, text: composer, images: attachments.compactMap(\.image),
                 documents: attachments.compactMap(\.document))
         let handoff = ForkQuickAIHandoff.prompt(messages: messages, pending: pending)
-        guard let overflow = handoff.overflow else {
-            launch(
-                engine: engine, executable: executable, prompt: handoff.text, directory: directory,
-                chatID: chatID)
-            return true
-        }
         isHandingOff = true
         handoffTask = Task { [weak self] in
             guard let self else { return }
@@ -100,28 +94,77 @@ final class ForkQuickAIHandoffCoordinator {
                 self.isHandingOff = false
                 self.handoffTask = nil
             }
-            do {
-                let file = try await self.core.forkQuickAIRootLog.writeHandoff(
-                    chat: chatID, text: overflow)
-                try Task.checkCancellation()
-                guard self.core.aiChats.quickAI === chat, chat.session.id == chatID,
-                    chatID != self.reopenedChatID,
-                    chat.session.messages == messages, chat.pendingAttachments == attachments,
-                    self.core.palette.mode == .ai, self.core.palette.query == composer,
-                    self.core.settings.aiEnabled, !chat.isStreaming,
-                    self.settings.startWorkEngine == defaultEngine,
-                    self.core.aiSettings.override(for: kind).commandPath == commandPath,
-                    self.executable(for: engine) == executable,
-                    (self.core.forkAIWorkingDirectory.url?.path
+            @MainActor func isCurrent() -> Bool {
+                self.core.aiChats.quickAI === chat && chat.session.id == chatID
+                    && chatID != self.reopenedChatID
+                    && chat.session.messages == messages && chat.pendingAttachments == attachments
+                    && self.core.palette.mode == .ai && self.core.palette.query == composer
+                    && self.core.settings.aiEnabled && !chat.isStreaming
+                    && self.settings.startWorkEngine == defaultEngine
+                    && self.core.aiSettings.override(for: kind).commandPath == commandPath
+                    && self.executable(for: engine) == executable
+                    && (self.core.forkAIWorkingDirectory.url?.path
                         ?? FileManager.default.homeDirectoryForCurrentUser.path) == directory
-                else { return }
-                self.launch(
-                    engine: engine, executable: executable, prompt: handoff.text(handoffPath: file.path),
-                    directory: directory, chatID: chatID)
+            }
+            do {
+                let prompt: String
+                if let overflow = handoff.overflow {
+                    let file = try await self.core.forkQuickAIRootLog.writeHandoff(
+                        chat: chatID, text: overflow)
+                    prompt = handoff.text(handoffPath: file.path)
+                } else { prompt = handoff.text }
+                try Task.checkCancellation()
+                guard isCurrent() else { return }
+                if engine == .claude {
+                    let handle: ForkClaudeSessionHost.Handle
+                    do {
+                        handle = try await self.core.forkClaudeSessionHost.start(
+                            prompt: prompt, directory: URL(fileURLWithPath: directory))
+                    } catch is CancellationError {
+                        return
+                    } catch {
+                        guard isCurrent() else { return }
+                        self.core.showMessage(error.localizedDescription, tone: .danger)
+                        self.launch(
+                            engine: engine, executable: executable, prompt: prompt,
+                            directory: directory, chatID: chatID)
+                        return
+                    }
+                    guard let transcript = handle.transcriptPath else {
+                        throw ForkClaudeSessionHost.Failure.transcriptMissing(handle.id)
+                    }
+                    try Task.checkCancellation()
+                    guard isCurrent() else {
+                        self.core.showMessage("Claude session \(handle.id) started; the Quick AI chat changed.")
+                        return
+                    }
+                    try await self.core.forkClaudeSessionRegistry.register(
+                        chatID: chatID,
+                        entry: .init(
+                            shortID: handle.id, sessionID: handle.sessionID,
+                            transcriptPath: transcript, folder: directory))
+                    try Task.checkCancellation()
+                    guard isCurrent() else {
+                        self.core.showMessage(
+                            "Claude session \(handle.id) started; the Quick AI chat changed. Open it in Terminal.")
+                        return
+                    }
+                    guard let provider = try self.core.forkClaudeSessions.provider(
+                        chatID: chatID, initialPrompt: prompt) else { return }
+                    chat.forkStartClaudeReply(pending: pending, using: provider)
+                    self.core.palette.query = ""
+                    self.core.quickAICoordinator.continueInChat()
+                    self.core.forkQuickAIRootLog.append(.handedOff, chat: chatID, engine: .claude)
+                    self.core.quickAICoordinator.startNewChat()
+                } else {
+                    self.launch(
+                        engine: engine, executable: executable, prompt: prompt,
+                        directory: directory, chatID: chatID)
+                }
             } catch is CancellationError {
                 return
             } catch {
-                self.core.showMessage("Couldn’t write the Quick AI handoff.", tone: .danger)
+                self.core.showMessage(error.localizedDescription, tone: .danger)
             }
         }
         return true

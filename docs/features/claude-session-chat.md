@@ -1,7 +1,7 @@
 # Claude session chat: specification
 
 **Status:** Group 1 (host, hooks, registry) built; Group 2 (reader, writer, provider and chat hook)
-implemented, unverified; Groups 3–5 to do.
+built; Group 3 implemented, unverified; Groups 4–5 to do.
 It's an experiment, and it extends Quick AI's Start Work
 (`docs/features/quick-ai-root-session.md`). Evidence comes from the vault note *Tinycast Agent Hub —
 Design & Plan*, section "Spike results: background Claude (2026-10-11)".
@@ -126,7 +126,7 @@ through a Tinycast restart, and `claude attach <id>` opens it in any terminal.
 - **Deleting the chat** asks whether to stop the session too. It never runs `claude rm` without
   that answer.
 - The registry is a fork-owned JSON file (`ClaudeSessions/registry.json`). It holds chat id, short
-  id, session id, transcript path, working folder and read offset, and no message text: the chat
+  id, session id, transcript path, working folder, read offset and an optional ended flag, and no message text: the chat
   history already holds that, as for any chat.
 
 ## Code layout

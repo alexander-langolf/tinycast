@@ -43,7 +43,9 @@ final class TerminalInstancesCoordinator {
     /// The palette closes and the instance takes its place; the command runs at the first prompt.
     @discardableResult
     func open(
-        command: String, directory: String = FileManager.default.homeDirectoryForCurrentUser.path
+        command: String, directory: String = FileManager.default.homeDirectoryForCurrentUser.path,
+        executable: TerminalSession.Executable? = nil, displayTitle: String? = nil,
+        onClose: (@MainActor () -> Void)? = nil
     ) -> TerminalInstance? {
         let command = command.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !command.isEmpty else { return nil }
@@ -62,8 +64,10 @@ final class TerminalInstancesCoordinator {
             trackMonoFont()
         }
         core.terminalInstancesPresenter.present(instance, anchor: anchor)
-        instance.session.start()
-        instance.begin(command)
+        instance.session.onClose = onClose
+        instance.session.start(executable: executable, command: command)
+        if executable == nil { instance.begin(command) }
+        instance.displayTitle = displayTitle
         return instance
     }
 

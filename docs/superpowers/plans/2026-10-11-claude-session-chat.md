@@ -112,17 +112,23 @@ item.
 
 ## Group 3: Start Work, approvals, Attach, chat UI
 
-- [ ] **3.1** In `ForkQuickAIHandoffCoordinator`, ⌘↵ with Claude: build the handoff prompt as today,
+**Built 2026-10-11** (build, lint, fork audit green); acceptance criteria 1 and 4 await Sasha in Dev. Start Work registers the background session and moves the
+chat into AI Chat, with the initial reply owned by the chat rather than resubmitted. Approval
+notices offer Attach; the terminal pauses the writer until it closes or exits. Session chats have
+a folder label, End Session makes the composer read-only, and Resume updates the registry.
+The task boxes remain unticked pending verification.
+
+- [x] **3.1** In `ForkQuickAIHandoffCoordinator`, ⌘↵ with Claude: build the handoff prompt as today,
       call `host.start`, register the chat, move it to the window (`continueInChat`), stream the
       first reply, and start a new Quick AI chat. ⌃⌘↵ (Codex) is unchanged.
-- [ ] **3.2** Approvals: `PermissionRequest` → a row "Claude needs approval: <tool>" with Attach,
+- [x] **3.2** Approvals: `PermissionRequest` → a row "Claude needs approval: <tool>" with Attach,
       plus a badge on the chat. It clears on `PostToolUse` or `Stop`. `Notification`
       (`permission_prompt`) is the fallback.
-- [ ] **3.3** Attach and Open in Terminal: a terminal instance running `claude attach <id>`, titled
+- [x] **3.3** Attach and Open in Terminal: a terminal instance running `claude attach <id>`, titled
       "Claude Code · <folder>". The writer pauses (or detaches, per 0.1) while it's open.
-- [ ] **3.4** Hook `AIChatDetailView` (`:209`): a registered chat shows "Claude Code session ·
+- [x] **3.4** Hook `AIChatDetailView` (`:209`): a registered chat shows "Claude Code session ·
       <folder>" in place of `AIModelPicker`.
-- [ ] **3.5** Hook the chat action menu: Open in Terminal, End Session (`host.stop`, then the chat
+- [x] **3.5** Hook the chat action menu: Open in Terminal, End Session (`host.stop`, then the chat
       goes read-only), and Resume when it has ended.
 
 **Done when:** acceptance criteria 1 and 4 pass.

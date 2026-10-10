@@ -5,6 +5,7 @@ struct ForkClaudeSessionTranscript: Sendable {
         let name: String
         let prompt: String?
         let permissionPrompt: Bool
+        let tool: String?
     }
 
     enum Record: Sendable {
@@ -22,7 +23,8 @@ struct ForkClaudeSessionTranscript: Sendable {
                 let name = payload["hook_event_name"] as? String else { return nil }
             return Hook(
                 name: name, prompt: payload["prompt"] as? String,
-                permissionPrompt: payload["notification_type"] as? String == "permission_prompt")
+                permissionPrompt: payload["notification_type"] as? String == "permission_prompt",
+                tool: payload["tool_name"] as? String)
         }
     }
 

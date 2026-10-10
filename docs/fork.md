@@ -263,19 +263,22 @@ with reason `newChat` through `startNewChat`, which also prewarms the next root.
 
 ## Claude session chat
 
-Groups 1–2 of [Claude session chat](features/claude-session-chat.md) live in
+Groups 1–3 of [Claude session chat](features/claude-session-chat.md) live in
 `Tinycast/Fork/ClaudeSession/`: the background host, hook settings writer, atomic metadata registry,
 transcript reader, hidden attach writer and chat provider. `AppCore` owns their coordinator,
 loads the registry cache and prepares hooks at launch. Termination cancels readers and closes attach
-clients without stopping daemon sessions. Group 2 is implemented, unverified. Quick AI's existing handoff
+clients without stopping daemon sessions. Group 3 is implemented, unverified. Quick AI's existing handoff
 uses the same fork-owned executable resolver, with its override and missing-path behaviour preserved.
 
 Storage is channel-specific under `AppPaths.applicationSupport()/ClaudeSessions/`. All seven hooks
 append stdin to one `events.jsonl`, whose payloads carry `session_id`; transcript paths come from the
 agents listing or hook payloads. `registry.json` maps chat UUIDs to session metadata and offsets,
-without message text. A registered chat selects the session provider synchronously from the cache;
+without message text; an optional ended flag persists End Session. A registered chat selects the session provider synchronously from the cache;
 other chats keep upstream routing. Readers are connected on first provider use and retained for
-foreign turns. Start Work routing and launch reconnection remain for Groups 3–4.
+foreign turns. Claude Start Work registers a background session and moves the chat to AI Chat; its first reply
+is read without typing the handoff prompt again. Approvals offer Attach, which pauses the writer
+until its terminal closes or exits. Session chats replace the model picker with a folder label
+and offer Open in Terminal, End Session and Resume. Launch reconnection remains for Group 4.
 
 The reader watches the shared events file, filters by session ID, and polls the transcript every
 0.5 seconds during a turn. It retains incomplete lines and waits for Stop plus a final assistant
@@ -359,8 +362,11 @@ unless they have an explicit symbol-only allowance. The audit is a static guard,
 | File | Tag | Purpose |
 | --- | --- | --- |
 | `Tinycast/App/AppCore.swift` | `// FORK: claude-session-chat` | Own the Claude host, registry and session coordinator; load the registry cache and write hooks at launch; close readers and attach clients at termination without stopping daemon sessions. |
-| `Tinycast/Features/AI/UI/AIChatCoordinator.swift` | `// FORK: claude-session-chat` | Select the session provider for registered chat IDs and skip separate automatic title requests. |
-| `Tinycast/Features/AI/UI/AIChatState.swift` | `// FORK: claude-session-chat` | Append and save foreign turns, preserving a queued user message and its streaming reply. |
+| `Tinycast/Features/AI/UI/AIChatCoordinator.swift` | `// FORK: claude-session-chat` | Expose session controls, select the session provider for registered chat IDs, keep ended sessions read-only, reject file staging and regeneration, and skip separate automatic title requests. |
+| `Tinycast/Features/AI/UI/AIChatState.swift` | `// FORK: claude-session-chat` | Start the already-submitted handoff reply without duplicating its user turn; append and save foreign turns, preserving a queued user message and its streaming reply. |
+| `Tinycast/Features/AI/UI/AIChatDetailView.swift` | `// FORK: claude-session-chat` | Render fork-owned session labels and approval notices; replace the ended session composer with Resume. |
+| `Tinycast/Features/AI/UI/AIChatWindowChrome.swift` | `// FORK: claude-session-chat` | Add session actions to the chat menu and suppress session regeneration. |
+| `Tinycast/Features/AI/UI/AIChatSidebarView.swift` | `// FORK: claude-session-chat` | Show an approval badge on a session chat. |
 | `Tinycast/Features/TerminalInstances/Service/TerminalProcess.swift` | `// FORK: claude-session-chat` | Spawn an executable directly with supplied arguments and environment; capture its raw output without shell marks while preserving shell instances. |
 | `Scripts/run-tests.sh` | `// FORK: agent-runs` | Register the AgentRuns decoding harness. |
 | `Tinycast/App/AppDelegate.swift` | `// FORK: previews` | Skip AppCore start and termination work when Xcode's canvas hosts the app. |

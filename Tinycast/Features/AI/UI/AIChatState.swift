@@ -124,6 +124,17 @@ final class AIChatState {
     }
 
     // FORK: claude-session-chat
+    func forkStartClaudeReply(pending: ChatMessage?, using provider: any AIProvider) {
+        guard !isStreaming else { return }
+        if let pending { session.append(pending) }
+        clearStaging()
+        notice = nil
+        startReply(
+            using: provider, webSearch: false, instructions: nil,
+            contextBudget: ChatSession.defaultTextBudget)
+    }
+
+    // FORK: claude-session-chat
     func forkAppendClaudeTurn(user: String, assistant: String, waiting: Bool) {
         session = ForkClaudeSessionCoordinator.appending(
             user: user, assistant: assistant, to: session, waiting: waiting)

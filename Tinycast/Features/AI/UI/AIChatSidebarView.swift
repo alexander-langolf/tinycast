@@ -113,6 +113,11 @@ struct AIChatSidebarView: View {
         } else {
             ChatSidebarRow(
                 conversation: conversation, isAnswering: isAnswering, isSelected: isSelected)
+                // FORK: claude-session-chat
+                .overlay(alignment: .trailing) {
+                    ForkClaudeSessionControls.ApprovalBadge(
+                        sessions: coordinator.forkClaudeSessions, chatID: conversation.id)
+                }
         }
     }
 
