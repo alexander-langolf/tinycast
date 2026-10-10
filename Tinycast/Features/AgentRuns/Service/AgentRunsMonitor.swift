@@ -11,6 +11,15 @@ final class AgentRunsMonitor {
     private static let statusPath = "LangolfVault/.agents/bin/agent-status"
     nonisolated private static let logger = Logger(subsystem: "com.tinycast", category: "AgentRuns")
 
+    init() {}
+
+    #if DEBUG
+        /// A fixed snapshot for Xcode previews, which have no helper to poll.
+        init(previewRuns: [AgentRun]) {
+            runs = previewRuns
+        }
+    #endif
+
     func start() {
         guard pollTask == nil else { return }
         let executable = FileManager.default.homeDirectoryForCurrentUser

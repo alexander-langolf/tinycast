@@ -420,6 +420,7 @@
 		7A00665D4679F91BA59FB290 /* GhosttyRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23F2B97100FD04056EC81D14 /* GhosttyRenderer.swift */; };
 		7A7D20DFBEB49D7C7D9DDEB5 /* RoomPreviewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 676760D8D30526B99A1F97B7 /* RoomPreviewController.swift */; };
 		7AF6E4F92BBF4D41B9B1E700 /* BackupBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 780B32AF98BA3A51D2F0E8B4 /* BackupBundle.swift */; };
+		7B0D1B7FA5D763A24C9A17B0 /* AgentRunsPreviewData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D01E06B56B47D45C85760CA /* AgentRunsPreviewData.swift */; };
 		7B25CD1684D24C164346AA68 /* SnippetEditorScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = F590D5052075C9E121306FEE /* SnippetEditorScreen.swift */; };
 		7B32E6EE86458C854D76B0AF /* RoomWindowSweep.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D1BD03E0327890BD4E68988 /* RoomWindowSweep.swift */; };
 		7BDB7CF7F1352015F6AC96C3 /* SnippetsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 375734577C888260A8023181 /* SnippetsStore.swift */; };
@@ -995,6 +996,7 @@
 		1B865FF16D3C395A8D509B94 /* QuicklinkLauncher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuicklinkLauncher.swift; sourceTree = "<group>"; };
 		1C8F318681FA5313677A14DA /* InstalledAIProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstalledAIProbe.swift; sourceTree = "<group>"; };
 		1CA9344AFD0A92CE69A388A2 /* GhosttyTerminalGrid.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GhosttyTerminalGrid.swift; sourceTree = "<group>"; };
+		1D01E06B56B47D45C85760CA /* AgentRunsPreviewData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentRunsPreviewData.swift; sourceTree = "<group>"; };
 		1D2472AA0A370E1D5A3C4025 /* EmojiKeywords */ = {isa = PBXFileReference; lastKnownFileType = folder; name = EmojiKeywords; path = Tinycast/Resources/EmojiKeywords; sourceTree = SOURCE_ROOT; };
 		1D85BC3DABE5D072E59B65EA /* MathFormula.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MathFormula.swift; sourceTree = "<group>"; };
 		1DE1B6753513C787B3FFE423 /* AIConnection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIConnection.swift; sourceTree = "<group>"; };
@@ -1912,6 +1914,7 @@
 				DA862DAF1EB18B45F6B857CD /* AgentRunCard.swift */,
 				2FD804881211DBC6E1E34E60 /* AgentRunsCoordinator.swift */,
 				878CDE1022D3864D3112B927 /* AgentRunsMetrics.swift */,
+				1D01E06B56B47D45C85760CA /* AgentRunsPreviewData.swift */,
 				230F040540B1DB99E8008402 /* AgentRunsStack.swift */,
 			);
 			path = UI;
@@ -4156,6 +4159,7 @@
 				F52A198DDDBE1FA2EF4222AF /* AgentRunsMonitor.swift in Sources */,
 				4E7EBAB242DFA82030760C67 /* AgentRunsPanel.swift in Sources */,
 				1B61BFFECA23D67A1B48DAD5 /* AgentRunsPanelPresenter.swift in Sources */,
+				7B0D1B7FA5D763A24C9A17B0 /* AgentRunsPreviewData.swift in Sources */,
 				CCD443FE3A32C1383AD1D881 /* AgentRunsStack.swift in Sources */,
 				D68E7585496722BEC72E788C /* AliasStore.swift in Sources */,
 				EA89498DA03BDFA3858144BF /* AppActionsMenu.swift in Sources */,

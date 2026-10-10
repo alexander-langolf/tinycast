@@ -94,6 +94,16 @@ rows while the stack changes. Check below/right/left placement near screen edges
 compact mode and other palette modes, transparent gaps and shadows over a light desktop, and search
 focus through card mouse-down until attachment activates kitty.
 
+## Editing the cards visually
+
+Open `Tinycast.xcodeproj` in Xcode, open `Features/AgentRuns/UI/AgentRunCard.swift`, and open the
+canvas with ⌥⌘↩. The previews live in `AgentRunsPreviewData.swift` (`#if DEBUG`, so none of it ships
+in Release): one card per state (working, blocked, done), Codex and no-model runs, a long title and
+detail line, and a four-card stack. They need no AppCore: the cards read only the default
+`InterfaceMetrics`, and the stack gets a coordinator over a fixed `AgentRunsMonitor(previewRuns:)`.
+Edit sizes in `AgentRunsMetrics` or the card and watch the canvas update. After adding a Swift file on
+disk, run `xcodegen generate` so the project picks it up.
+
 ## Fork ownership
 
 `Features/AgentRuns/`, `Windows/AgentRuns/`, this document and `Tests/agent-runs-test.swift` are
