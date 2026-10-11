@@ -2,6 +2,7 @@ import Foundation
 
 /// fzf v2: the best alignment of one folded term in a text, scored with fzf's bonuses and gaps.
 enum ForkFzf {
+    enum Scheme: Sendable { case standard, path }
     struct Hit: Sendable, Equatable {
         let score: Int
         /// Unique character offsets into the source text, in ascending order.
@@ -20,17 +21,18 @@ enum ForkFzf {
 
     enum CharClass: Equatable { case white, delimiter, nonWord, lower, upper, digit }
 
-    static func charClass(_ c: Character?) -> CharClass {
+    static func charClass(_ c: Character?, scheme: Scheme = .standard) -> CharClass {
         guard let c else { return .white }
         if c.isWhitespace { return .white }
-        if "/,:;|".contains(c) { return .delimiter }
+        if (scheme == .path ? "/" : "/,:;|").contains(c) { return .delimiter }
         if c.isNumber { return .digit }
         if c.isUppercase { return .upper }
         if c.isLetter { return .lower }
         return .nonWord
     }
 
-    static func bonus(after prev: CharClass, at cur: CharClass) -> Int {
+    static func bonus(after prev: CharClass, at cur: CharClass, scheme: Scheme = .standard) -> Int {
+        if scheme == .path { return pathBonus(after: prev, at: cur) }
         guard cur == .lower || cur == .upper || cur == .digit else {
             return cur == .white ? 0 : bonusBoundary
         }
@@ -45,8 +47,27 @@ enum ForkFzf {
         return 0
     }
 
+    private static func pathBonus(after previous: CharClass, at current: CharClass) -> Int {
+        if current != .white {
+            switch previous {
+            case .white, .nonWord: return bonusBoundary
+            case .delimiter: return bonusDelimiter
+            default: break
+            }
+        }
+        if previous == .lower && current == .upper { return bonusCamel }
+        if previous != .digit && current == .digit { return bonusCamel }
+        switch current {
+        case .white, .delimiter, .nonWord: return bonusBoundary
+        default: return 0
+        }
+    }
+
     /// `humps` are extra word starts a folded text no longer shows (the launcher's camel humps).
-    static func match(_ term: [Character], in raw: String, exact: Bool, humps: [Int] = []) -> Hit? {
+    static func match(
+        _ term: [Character], in raw: String, exact: Bool, humps: [Int] = [],
+        scheme: Scheme = .standard
+    ) -> Hit? {
         guard !term.isEmpty else { return nil }
         let bytes = Array(raw.utf8)
         // Byte offsets equal Character offsets only for ASCII without CR: Swift folds "\r\n" into one Character.
@@ -55,10 +76,10 @@ enum ForkFzf {
             let text = bytes.map { (65...90).contains($0) ? $0 + 32 : $0 }
             guard containsSubsequence(needle, in: text) else { return nil }
             let humpStarts = Set(humps)
-            var previous = CharClass.white
+            var previous: CharClass = scheme == .path ? .delimiter : .white
             let bonuses = bytes.enumerated().map { index, byte in
-                let current = asciiClass(byte)
-                var value = bonus(after: previous, at: current)
+                let current = asciiClass(byte, scheme: scheme)
+                var value = bonus(after: previous, at: current, scheme: scheme)
                 if humpStarts.contains(index) { value = max(value, bonusCamel) }
                 previous = current
                 return value
@@ -81,11 +102,11 @@ enum ForkFzf {
         }
         guard containsSubsequence(term, in: text) else { return nil }
         let humpStarts = Set(humps)
-        var previous = CharClass.white
+        var previous: CharClass = scheme == .path ? .delimiter : .white
         var sourceBonuses: [Int] = []
         for j in chars.indices {
-            let current = charClass(chars[j])
-            var value = bonus(after: previous, at: current)
+            let current = charClass(chars[j], scheme: scheme)
+            var value = bonus(after: previous, at: current, scheme: scheme)
             if humpStarts.contains(j) { value = max(value, bonusCamel) }
             sourceBonuses.append(value)
             previous = current
@@ -100,10 +121,11 @@ enum ForkFzf {
         return Hit(score: hit.score, positions: Set(hit.positions.map { sources[$0] }).sorted())
     }
 
-    private static func asciiClass(_ byte: UInt8) -> CharClass {
+    private static func asciiClass(_ byte: UInt8, scheme: Scheme) -> CharClass {
         switch byte {
         case 9...13, 32: return .white
-        case 47, 44, 58, 59, 124: return .delimiter
+        case 47: return .delimiter
+        case 44, 58, 59, 124: return scheme == .path ? .nonWord : .delimiter
         case 48...57: return .digit
         case 65...90: return .upper
         case 97...122: return .lower

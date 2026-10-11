@@ -42,7 +42,9 @@ enum ForkSearch {
         }
     }
 
-    static func hit(_ term: Term, in field: String, humps: [Int] = []) -> ForkFzf.Hit? {
+    static func hit(
+        _ term: Term, in field: String, humps: [Int] = [], scheme: ForkFzf.Scheme = .standard
+    ) -> ForkFzf.Hit? {
         // Anchors are judged on the folded text: a fold can expand (ß → ss), so source windows alone misfire.
         if term.prefix || term.suffix {
             let folded = FuzzyMatch.normalized(field)
@@ -52,17 +54,21 @@ enum ForkSearch {
             else { return nil }
         }
         if term.prefix {
-            guard let h = ForkFzf.match(term.text, in: String(field.prefix(term.text.count)), exact: true)
+            guard
+                let h = ForkFzf.match(
+                    term.text, in: String(field.prefix(term.text.count)), exact: true, scheme: scheme)
             else { return nil }
             return h
         }
         if term.suffix {
             let start = max(0, field.count - term.text.count)
-            guard let h = ForkFzf.match(term.text, in: String(field.suffix(term.text.count)), exact: true)
+            guard
+                let h = ForkFzf.match(
+                    term.text, in: String(field.suffix(term.text.count)), exact: true, scheme: scheme)
             else { return nil }
             return ForkFzf.Hit(score: h.score, positions: h.positions.map { $0 + start })
         }
-        return ForkFzf.match(term.text, in: field, exact: term.exact, humps: humps)
+        return ForkFzf.match(term.text, in: field, exact: term.exact, humps: humps, scheme: scheme)
     }
 
     /// Every positive word must hit some field (the best one wins); any negated word that hits rejects the item.

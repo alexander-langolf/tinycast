@@ -127,9 +127,11 @@ run() {
             case " $* " in *"/SearchRelevance.swift "*) ;; *) set -- "$@" Tinycast/Features/Launcher/Model/SearchRelevance.swift ;; esac
             ;;
     esac
-    # // FORK: harness-sources includes the two-query runner only for file-search sessions.
+    # // FORK: harness-sources includes the two-query runner and the ripgrep index only for file-search sessions.
     case " $* " in
-        *"/FileSearchSession.swift "*) set -- "$@" Tinycast/Fork/Search/ForkFileSearchService.swift ;;
+        *"/FileSearchSession.swift "*) set -- "$@" Tinycast/Fork/Search/ForkFileSearchService.swift \
+            Tinycast/Fork/Search/ForkFileSearchEngine.swift Tinycast/Fork/Search/ForkRipgrep*.swift \
+            Tinycast/Platform/ProcessExit.swift ;;
     esac
     # // FORK: harness-sources adds shared fork files from several cases, so each is compiled once.
     local fork_unique=() fork_seen=" " fork_arg

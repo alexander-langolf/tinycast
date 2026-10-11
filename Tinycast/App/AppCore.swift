@@ -61,6 +61,7 @@ final class AppCore {
     let agentRuns = AgentRunsMonitor()  // FORK: agent-runs
     let palette = PaletteState()
     let fileSearch = FileSearchSession()
+    @ObservationIgnored private(set) lazy var forkRipgrepIndex = ForkRipgrepIndex()  // FORK: search
     let dictionary = DictionarySession()
     let menuSearch = MenuSearchSession()
     let windowSwitch = WindowSwitchSession()
@@ -291,6 +292,10 @@ final class AppCore {
     }
 
     func start() {
+        // FORK: search
+        forkRipgrepIndex.configure(
+            engine: settings.fileSearchEngine, patterns: settings.fileSearchIgnorePatterns)
+        fileSearch.useForkIndex(forkRipgrepIndex)  // FORK: search
         forkAppearance.start()  // FORK: appearance-start
         forkTheme.start()  // FORK: appearance-theme
         startForkAIWorkingDirectory()  // FORK: ai-working-directory
@@ -360,6 +365,7 @@ final class AppCore {
                 self?.appleShortcutCoordinator.refresh()
             }
             paletteCoordinator.onScreenOpening = { [weak self] mode in
+                self?.forkRipgrepIndex.paletteOpened()  // FORK: search
                 if mode == .fileNavigator { self?.fileNavigator.resume() }  // FORK: file-navigator
                 switch mode {
                 case .menuSearch: self?.menuSearchCoordinator.load()
@@ -583,6 +589,7 @@ final class AppCore {
         settingsFile?.flush()
         agentRunsCoordinator.stop()  // FORK: agent-runs
         fileNavigator.stop()  // FORK: file-navigator
+        forkRipgrepIndex.stop()  // FORK: search
         terminalInstances.closeAll()  // FORK: terminal-instances
         automation.stop()  // FORK: automation
         clipboardTextIndexer?.stop()
@@ -747,6 +754,21 @@ final class AppCore {
                 _ = $0.fileSearchScopes
                 _ = $0.fileSearchIgnorePatterns
             }, reproject: { $0.fileSearchCoordinator.applyPolicy() })
+        // FORK: search
+        track(
+            {
+                _ = $0.fileSearchEngine; _ = $0.fileSearchIgnorePatterns
+            },
+            reproject: {
+                $0.forkRipgrepIndex.configure(
+                    engine: $0.settings.fileSearchEngine, patterns: $0.settings.fileSearchIgnorePatterns)
+                $0.fileSearchCoordinator.applyPolicy()
+                $0.fileSearch.cancel()
+                if $0.palette.mode == .fileSearch && $0.palette.isVisible {
+                    $0.fileSearch.search($0.palette.query, filter: $0.palette.fileSearchFilter)
+                }
+                $0.fileNavigator.searchConfigurationChanged()
+            })
         track({ _ = $0.snippetsEnabled }, reproject: { $0.snippetCoordinator.applySnippetsEnabled() })
         // Not a feature switch, but the same re-projection: a combo has the chord's ⇧ bit baked in.
         track({ _ = $0.hyperKeyIncludesShift }, reproject: { $0.applyHyperChord() })

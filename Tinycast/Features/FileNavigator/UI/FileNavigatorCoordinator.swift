@@ -40,6 +40,7 @@ final class FileNavigatorCoordinator {
 
     init(core: AppCore) {
         self.core = core
+        globalSearch.useForkIndex(core.forkRipgrepIndex)
         home = FileManager.default.homeDirectoryForCurrentUser.path
         state = FileNavigatorState(home: home)
         folders = ["/", home]
@@ -101,6 +102,11 @@ final class FileNavigatorCoordinator {
     func resume() {
         guard core.palette.mode == .fileNavigator else { return }
         updateInput(core.palette.query, force: !active)
+    }
+
+    func searchConfigurationChanged() {
+        guard active, core.palette.mode == .fileNavigator else { return }
+        updateInput(state.input, force: true)
     }
 
     func stop() {
@@ -222,7 +228,23 @@ final class FileNavigatorCoordinator {
                         batch, request: request, input: input, revision: revision, focus: focus)
                 }
                 if subtree {
-                    try await SubtreeWalker.walk(request, receive: receive)
+                    if let executable = self?.core.forkRipgrepIndex.executable,
+                        let patterns = self?.core.settings.fileSearchIgnorePatterns
+                    {
+                        do {
+                            try await RipgrepSubtreeScanner.scan(
+                                request, executable: executable, patterns: patterns, receive: receive)
+                        } catch is CancellationError { throw CancellationError() } catch {
+                            guard let self, self.accepts(revision, input: input), !Task.isCancelled else {
+                                return
+                            }
+                            self.candidates = []
+                            self.rows = []
+                            try await SubtreeWalker.walk(request, receive: receive)
+                        }
+                    } else {
+                        try await SubtreeWalker.walk(request, receive: receive)
+                    }
                 } else {
                     try await DirectoryLister.list(request, receive: receive)
                 }

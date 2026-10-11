@@ -36,6 +36,10 @@ The fork adds `fileNavigator.editor` (blank means `${EDITOR:-fresh}`) and `fileN
 optional arguments; it is mirrored through AppSettings but excluded from settings backups.
 Navigator bookmarks/recent paths are bundle-local content, outside this mirror.
 
+<!-- // FORK: search -->
+`fileNavigator.searchEngine` selects `spotlight` or `ripgrep`; the pane uses the same AppSettings
+property. An unset preference chooses ripgrep if found, otherwise Spotlight. See [ripgrep search](ripgrep-search.md).
+
 ## Layout
 
 | File | Role |

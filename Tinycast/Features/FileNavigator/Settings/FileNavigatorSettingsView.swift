@@ -7,7 +7,22 @@ struct FileNavigatorSettingsView: View {
         @Bindable var settings = settings
         return Form {
             Section {
-                TextField("${EDITOR:-fresh}", text: $settings.fileNavigatorEditor) {
+                Picker(selection: $settings.fileSearchEngine) {
+                    ForEach(ForkFileSearchEngine.allCases, id: \.self) { engine in
+                        Text(engine.title).tag(engine)
+                    }
+                } label: {
+                    SettingsRowTitle(.fileNavigatorSearchEngine, "File search engine")
+                    Text(
+                        ForkFileSearchEngine.executable() == nil
+                            ? "ripgrep was not found. File search uses Spotlight."
+                            : "Choose how Search Files and recursive folder search find files.")
+                }
+            } header: {
+                SettingsSectionHeader(.fileNavigatorSearchEngine)
+            }
+            Section {
+                TextField(text: $settings.fileNavigatorEditor, prompt: Text("${EDITOR:-fresh}")) {
                     SettingsRowTitle(.fileNavigatorEditor, "Editor command")
                     Text("Leave blank to use $EDITOR, or Fresh when unset. Shell arguments are allowed.")
                 }

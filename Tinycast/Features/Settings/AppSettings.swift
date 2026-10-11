@@ -301,6 +301,11 @@ final class AppSettings {
         didSet { defaults.set(fileNavigatorEditor, forKey: Key.fileNavigatorEditor.rawValue) }
     }
 
+    // FORK: search
+    var fileSearchEngine: ForkFileSearchEngine {
+        didSet { defaults.set(fileSearchEngine.rawValue, forKey: Key.fileSearchEngine.rawValue) }
+    }
+
     // Feature switches, off out of the box, and off means fully off.
     var fileSearchEnabled: Bool {
         didSet { defaults.set(fileSearchEnabled, forKey: Key.fileSearchEnabled.rawValue) }
@@ -707,6 +712,11 @@ final class AppSettings {
             Set(defaults.stringArray(forKey: Key.paletteExpandedCenterDisplays.rawValue) ?? [])
         // FORK: file-navigator
         fileNavigatorEditor = defaults.string(forKey: Key.fileNavigatorEditor.rawValue) ?? ""
+        // FORK: search
+        fileSearchEngine =
+            defaults.string(forKey: Key.fileSearchEngine.rawValue)
+            .flatMap(ForkFileSearchEngine.init(rawValue:))
+            ?? (ForkFileSearchEngine.executable() == nil ? .spotlight : .ripgrep)
         fileSearchEnabled = defaults.bool(forKey: Key.fileSearchEnabled.rawValue)
         // Unset seeds home; a stored empty array is a cleared list that searches nothing.
         fileSearchScopes =

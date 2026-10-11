@@ -74,6 +74,8 @@ enum SettingsBackupCoverage {
 
     /// Keys kept out of a backup on purpose, each with the reason it has to stay out.
     static let deliberatelyExcluded: [String: String] = [
+        AppSettingsKey.fileSearchEngine.rawValue:  // FORK: search
+            "The experimental engine choice depends on ripgrep being installed on this Mac.",
         AppSettingsKey.fileNavigatorEditor.rawValue:  // FORK: file-navigator
             "Names a local editor command; the destination Mac may not have it.",
         AppSettingsKey.dictationEnabled.rawValue:

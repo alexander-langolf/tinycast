@@ -38,6 +38,8 @@ final class FileSearchSession {
         let earliestStart: ContinuousClock.Instant
     }
 
+    func useForkIndex(_ index: ForkRipgrepIndex) { forkSearch.index = index }  // FORK: search
+
     init() {
         let homeDirectory = FileManager.default.homeDirectoryForCurrentUser
         self.homeDirectory = homeDirectory
@@ -116,7 +118,9 @@ final class FileSearchSession {
             pendingSearch = nil
             let request = pending.request
             do {
-                if forkDefaultOperation && ForkSearch.isEnabled && ForkSearch.fileNeedsGlob(request.query) {  // FORK: search
+                if forkDefaultOperation && ForkSearch.isEnabled
+                    && forkSearch.handles(request.query, policy: policy)
+                {  // FORK: search
                     try await forkSearch.search(
                         query: request.query, policy: policy, filter: request.filter
                     ) { [weak self] candidates in

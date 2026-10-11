@@ -140,6 +140,11 @@ agentkit MCP ([Agentkit MCP](../../agentkit/README.md#agentkit-mcp)).
 
 ## Search
 
+The [ripgrep candidate experiment](features/ripgrep-search.md) supplies Search Files and navigator
+global words from one AppCore-owned home index, and navigator ⌘F from a streamed rg subtree listing.
+Settings → File Navigator selects Spotlight or ripgrep; discovery defaults to ripgrep when installed.
+No executable is bundled. The Spotlight retrieval bullets below apply to the fallback/Spotlight path.
+
 Every list input matches with one fzf v2 scorer, fork-owned in `Tinycast/Fork/Search/`
 (`ForkFzf` scores, `ForkSearch` parses syntax and adapts it to upstream callers). `ForkSearch.setEnabled`
 is the switch, turned on in `ForkAppearance.start()`; off, every hook falls through to upstream behaviour.
@@ -316,6 +321,16 @@ launcher changes live there without upstream hooks. The generated pbxproj except
 
 | File | Tag | Purpose |
 | --- | --- | --- |
+| `Tinycast/App/AppCore.swift` | `// FORK: search` | Own/wire the home index; refresh on palette opening, invalidate on preference changes, stop at quit and rerun visible searches. |
+| `Tinycast/Features/Settings/AppSettings.swift` | `// FORK: search` | Load/persist the engine preference and choose its discovery-dependent default. |
+| `Tinycast/Features/Settings/AppSettingsKey.swift` | `// FORK: search` | Name the bundle-local experimental engine preference. |
+| `Tinycast/Features/Settings/Model/SettingsFileKey.swift` | `// FORK: search` | Declare fileNavigator.searchEngine. |
+| `Tinycast/Features/Settings/SettingsFileSchema.swift` | `// FORK: search` | Bind the engine mirror. |
+| `Tinycast/Features/Settings/SettingsAnchor.swift` | `// FORK: search` | Search/scroll anchor for the fork-owned engine picker. |
+| `Tinycast/Features/Backup/Model/SettingsBackupCoverage.swift` | `// FORK: search` | Exclude the machine-dependent experiment from backups. |
+| `docs/README.md` | `// FORK: search` | Index the ripgrep feature document. |
+| `docs/features/file-search.md` | `// FORK: search` | Distinguish upstream Spotlight behavior from the fork's candidate experiment. |
+| `docs/features/settings-file.md` | `// FORK: search` | Document the engine mirror. |
 | `Tinycast/App/AppCore.swift` | `// FORK: file-navigator` | Own the lazy coordinator; resume on screen opening and stop at termination. |
 | `Tinycast/Features/FileSearch/UI/FileSearchScreen.swift` | `// FORK: file-navigator` | Add the fork-owned Show in File Navigator action to a result's menu. |
 | `Tinycast/Palette/PaletteMode.swift` | `// FORK: file-navigator` | Add fileNavigator mode, symbol and path/words placeholder. |
@@ -357,7 +372,7 @@ launcher changes live there without upstream hooks. The generated pbxproj except
 | `Tinycast/Features/Clipboard/Model/ClipboardStore.swift` | `// FORK: search` | FTS/resident union, fuzzy medium-threshold filter and rank; upstream pins. |
 | `Tinycast/Features/FileSearch/Model/FileSearchQuery.swift` | `// FORK: search` | Optional supplemental glob, fuzzy root matching and filename/folder ranking. |
 | `Tinycast/Features/FileSearch/Service/FileSearchService.swift` | `// FORK: search` | Run either predicate and return batches before the display cap for the merge. |
-| `Tinycast/Features/FileSearch/Service/FileSearchSession.swift` | `// FORK: search` | Production two-query runner, fast publication and revision guards. |
+| `Tinycast/Features/FileSearch/Service/FileSearchSession.swift` | `// FORK: search` | Attach the shared index and route production nonblank queries to the fork service; injected operations and recents remain upstream. |
 | `AGENTS.md` | `// FORK: documentation` | Link the fork maintenance guide. |
 | `Tinycast/DesignSystem/Scrolling/OverflowFade.swift` | `// FORK: overflow-double` | Compile fix: explicit `Double` for the fade strengths. |
 | `Scripts/run-tests.sh` | `// FORK: fork-harness` | Register the fork-layer harness. |

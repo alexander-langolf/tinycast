@@ -1,5 +1,9 @@
 # File Navigator
 
+The [ripgrep search experiment](ripgrep-search.md) now selects the candidate source for global words
+and ⌘F. The original Swift/Spotlight decisions below remain historical where that document supersedes
+them. Direct folder listings and their reveal toggle are unchanged.
+
 A fork-owned keyboard folder browser in `Tinycast/Features/FileNavigator/`. Implementation is on
 `al/file-navigator`; the settled 2026-10-11 decisions are preserved below. Compilation, harness execution
 and rendered acceptance remain for Claude's verification pass.
@@ -26,8 +30,9 @@ and rendered acceptance remain for Claude's verification pass.
   ignored entries are suppressed by default; ⌘⇧. admits them in direct listings only. Subtree walks
   always exclude hidden entries and ignored folders, including excluded roots; package roots cannot
   be browsed and package descendants stay excluded.
-- Only the visible folder is watched. Recursive walks stop at depth 8 or 50,000 visited entries and
-  publish batches of 500. `.gitignore` and file contents are not searched.
+- Only the visible folder is watched. Recursive scans stop at depth 8 and publish batches of 500.
+  Swift counts 50,000 visited entries; ripgrep caps 50,000 emitted/derived rows and respects `.gitignore`.
+  File contents are not searched.
 - Preview is on by default, focused-row only, debounced 90 ms, and uses upstream preview surfaces.
   ⌘Y toggles that pane; Quick Look is a separate action using the upstream in-palette overlay.
 - Bookmarks and recent folders use bundle-scoped defaults. Editor preference uses AppSettings,
@@ -58,7 +63,7 @@ and modifiers.
 | Key | Action |
 |---|---|
 | type | edits the path; the last segment fuzzy-filters its folder (`ForkFzf`, fzf syntax: `'exact`, `^prefix`, `!exclude`) |
-| words without `~`/`/` | search everywhere: Spotlight through Search Files' existing session, used as is |
+| words without `~`/`/` | global words through Search Files' session and the selected candidate engine |
 | `/` | descends into the folder the input names |
 | ⌫ | edits the input; across a `/` it lands in the parent, already filtered by the folder you left; clearing the whole input returns to the launcher root |
 | Tab | completes the focused row into the input (a folder descends) |
@@ -73,7 +78,7 @@ and modifiers.
 | ⌘⇧. | show hidden and ignored entries in direct listings; recursive exclusions remain enforced |
 | ⌘O | Ghostty app tab in the current folder |
 | ⌘T | Open Ghostty here: an embedded Ghostty terminal view in the current folder |
-| ⌘F | search below this folder: the last segment matches recursively (Swift walk + `ForkFzf`), rows show their subfolder; ⌘F again returns to the folder listing |
+| ⌘F | search below this folder: streamed ripgrep or Swift walk + `ForkFzf`; ⌘F again returns to the folder listing |
 | ⌃G | close and `cd` the originating terminal view into the current folder |
 | Esc | trim to the folder → clear picks → close (one step per press) |
 
@@ -106,6 +111,9 @@ with embedded apostrophes escaped. The command is `${EDITOR:-fresh}` followed by
 blank restores `$EDITOR` / Fresh. The settings mirror exposes `fileNavigator.editor` and
 `fileNavigator.commands`. Install the default with `brew install fresh-editor`; if absent, the login
 shell's own command-not-found error appears in the terminal output.
+
+**File search engine** shares this pane. `fileNavigator.searchEngine` mirrors `spotlight` / `ripgrep`;
+the latter defaults on when found. A missing binary is explained in the pane and uses Spotlight.
 
 `TerminalInstancesCoordinator.open(command:directory:isEditor:)` marks the instance before starting
 its shell. Editor instances use the existing palette width and request up to 680 scaled points of
@@ -149,7 +157,7 @@ missing-editor errors visible. No editor is run in the old log renderer.
 | `FileSearchPreviewKind` + `FileSearchPreview` surfaces (plain text, PDF, Quick Look, media) | the preview pane (always present, focused row only, debounced) |
 | `FileSearchCoordinator` actions (open, showInFinder, share, copyPath, copyName, copyFile, trash) | ⌘K actions, generalised to take one or many URLs |
 | `FileSearchFilter` (type filter) | not in v1 |
-| `FileSearchSession` (Spotlight) | used as is for words typed without `~`/`/` (search everywhere); not used for browsing |
+| `FileSearchSession` | selected global candidate engine for words without `~`/`/`; not used for browsing |
 
 New pieces:
 

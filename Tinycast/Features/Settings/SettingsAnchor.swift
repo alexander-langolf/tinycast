@@ -58,6 +58,7 @@ extension SettingsAnchor {
     // FORK: file-navigator
     static let fileNavigatorEditor = Self(tab: .fileNavigator, title: "Editor")
     static let fileNavigatorCommands = Self(tab: .fileNavigator, title: "Commands")
+    static let fileNavigatorSearchEngine = Self(tab: .fileNavigator, title: "Search")  // FORK: search
 
     static let fileSearchFileSearch = Self(tab: .fileSearch, title: "File Search")
     static let fileSearchCommands = Self(tab: .fileSearch, title: "Commands")

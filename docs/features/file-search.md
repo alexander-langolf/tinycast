@@ -1,5 +1,10 @@
 # Search Files
 
+<!-- // FORK: search -->
+This fork also offers the [ripgrep candidate engine](ripgrep-search.md), selected in File Navigator
+settings and defaulted on when `rg` is found. The Spotlight-specific source, scope, type-filter and
+memory statements below describe the Spotlight path; recents keep that path in either engine.
+
 Search Files is an on-demand palette screen for opening files and folders from the folders the user
 configures. It searches filenames through Spotlight, adds no private index or launch work, and is
 reached from the built-in Search Files launcher command — or its own global shortcut — after the
