@@ -176,6 +176,12 @@ run fork-search-test Tinycast/Features/Launcher/Model/SearchRelevance.swift \
     Tinycast/Fork/Search/ForkFzf.swift Tinycast/Fork/Search/ForkSearch.swift \
     Tinycast/Features/FileSearch/Model/*.swift
 
+# // FORK: ripgrep-ranking pins that fuzzy queries spanning folder and filename still list the file.
+run ripgrep-ranking-test Tinycast/Features/Launcher/Model/SearchRelevance.swift \
+    Tinycast/Fork/Search/ForkFzf.swift Tinycast/Fork/Search/ForkSearch.swift \
+    Tinycast/Fork/Search/ForkRipgrepQuery.swift Tinycast/Fork/Search/ForkRipgrepPolicy.swift \
+    Tinycast/Features/FileSearch/Model/*.swift
+
 # // FORK: file-navigator
 run file-navigator-test Tinycast/Features/FileNavigator/Model/*.swift \
     Tinycast/Features/TerminalInstances/Model/TerminalEditorKey.swift \
