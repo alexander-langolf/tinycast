@@ -4,7 +4,7 @@ import OSLog
 @MainActor
 final class ForkRipgrepIndex {
     private var engine = ForkFileSearchEngine.spotlight
-    private var hidden = true
+    private var hidden = false
     private var patterns: [String] = []
     private let home: URL
     private(set) var paths: [String]?
@@ -39,7 +39,7 @@ final class ForkRipgrepIndex {
         refreshIfNeeded()
     }
 
-    func configure(engine: ForkFileSearchEngine, patterns: [String], hidden: Bool = true) {
+    func configure(engine: ForkFileSearchEngine, patterns: [String], hidden: Bool = false) {
         guard engine != self.engine || patterns != self.patterns || hidden != self.hidden else { return }
         self.engine = engine
         self.patterns = patterns

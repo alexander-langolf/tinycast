@@ -722,7 +722,7 @@ final class AppSettings {
             defaults.string(forKey: Key.fileSearchEngine.rawValue)
             .flatMap(ForkFileSearchEngine.init(rawValue:))
             ?? (ForkFileSearchEngine.executable() == nil ? .spotlight : .ripgrep)
-        fileSearchHidden = defaults.object(forKey: Key.fileSearchHidden.rawValue) as? Bool ?? true  // FORK: search
+        fileSearchHidden = defaults.object(forKey: Key.fileSearchHidden.rawValue) as? Bool ?? false  // FORK: search
         fileSearchEnabled = defaults.bool(forKey: Key.fileSearchEnabled.rawValue)
         // Unset seeds home; a stored empty array is a cleared list that searches nothing.
         fileSearchScopes =

@@ -60,7 +60,7 @@ struct RipgrepRankingTest {
         }
         let on = ForkRipgrepPolicy.arguments(patterns: [], home: home.path, subtree: false)
         let off = ForkRipgrepPolicy.arguments(patterns: [], home: home.path, subtree: false, hidden: false)
-        check("hidden files are listed by default", on.contains("--hidden"))
+        check("--hidden is passed when requested", on.contains("--hidden"))
         check(
             "turning hidden off drops --hidden but keeps the .git exclusion",
             !off.contains("--hidden") && off.contains("!.git/") && on.count == off.count + 1)
