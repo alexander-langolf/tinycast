@@ -64,7 +64,8 @@ final class AutomationMCPHandler {
 
     private static let instructions =
         "Tinycast automation. Read tinycast://agents for agent runs, ask the user with question_ask, "
-        + "and expect commands and agent launches to wait for the user's approval."
+        + "and use terminal_run for commands that wait for the user's approval. "
+        + "Dispatch background agents through the agentkit MCP server's agent_dispatch tool."
 
     private func initializeResult(version: String) -> [String: JSONValue] {
         [

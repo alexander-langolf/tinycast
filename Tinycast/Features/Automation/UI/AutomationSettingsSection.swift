@@ -68,7 +68,7 @@ struct AutomationSettingsSection: View {
         } footer: {
             Text(
                 "Each client has its own token, kept in your login Keychain and never in a file. "
-                    + "Commands and agent launches always ask you first.")
+                    + "Commands always ask you first.")
         }
     }
 

@@ -51,7 +51,7 @@ final class TerminalSession {
             }
             guard let self, self.phase == .starting, !self.isTerminated else { return }
             self.startupNotice =
-                "Shell hasn't reached a prompt: Cmd-O to open in kitty, Cmd-W to close"
+                "Shell hasn't reached a prompt: Cmd-O to open in Ghostty, Cmd-W to close"
         }
         let directory = directory
         let columns = columns

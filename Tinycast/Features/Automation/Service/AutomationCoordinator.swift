@@ -38,8 +38,7 @@ final class AutomationCoordinator {
             present: { [unowned core] approval in await core.approveAutomation(approval) })
         self.approvals = approvals
         router = AutomationRouter(
-            runner: AutomationRunner(
-                core: core, questions: questions, profiles: .standard()),
+            runner: AutomationRunner(core: core, questions: questions),
             audit: audit, approvals: approvals,
             currentCaller: { [clients] caller in
                 guard let id = caller.clientID else { return caller }

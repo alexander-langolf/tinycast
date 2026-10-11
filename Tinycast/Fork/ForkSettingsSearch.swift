@@ -42,7 +42,7 @@ enum ForkSettingsSearch {
             keywords: ["claude code", "codex", "cursor", "mcp add", "config", "bridge"]),
         .init(.automationCapabilities, "What Clients Can Do", keywords: ["tools", "resources", "scopes"]),
         .init(.automationLinks, "Links", keywords: ["url", "url scheme", "deep link", "hud", "palette"]),
-        .init(.automationFiles, "Automation folder", keywords: ["audit", "log", "agent profiles", "finder"])
+        .init(.automationFiles, "Automation folder", keywords: ["audit", "log", "finder"])
     ]
 }
 

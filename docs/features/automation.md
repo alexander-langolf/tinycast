@@ -1,8 +1,12 @@
 # Inbound automation
 
 Other programs can ask Tinycast to do things: open the palette with a query, show a message, ask
-you a question, read agent status, focus a terminal, start a named agent. This is the **server**
+you a question, read agent status, focus a terminal, run an approved command. This is the **server**
 side and is unrelated to the MCP **client** in [mcp.md](mcp.md); the two share no code.
+
+Dispatch background agents through the separate **agentkit MCP** server's `agent_dispatch` tool;
+see [`~/github/agentkit/README.md`, Agentkit MCP](../../../agentkit/README.md#agentkit-mcp).
+Tinycast continues to display the runs that `agent-status` reads from `~/.agents/runs`.
 
 ## Invariants
 
@@ -10,7 +14,7 @@ side and is unrelated to the MCP **client** in [mcp.md](mcp.md); the two share n
   it to `AutomationRouter.route`. The registry in `AutomationOperationCatalog` is the only list of
   operations: the MCP listing, the policy and the link allowlist all read it.
 - **Identity is not authority.** `AutomationCaller` says who is asking; `AutomationScope` says what
-  they may ask for: `agents:read`, `context:read`, `clipboard:read`, `ui`, `exec`, `dispatch`.
+  they may ask for: `agents:read`, `context:read`, `clipboard:read`, `ui`, `exec`.
   A `tinycast://` link has an identity and **no scopes**: it may only open the palette with a
   query (never executed) and show a message labelled as coming from a link, rate limited.
 - **Unavailable looks like unknown.** A tool or resource the caller's scopes do not cover is absent
@@ -54,7 +58,8 @@ Code and Codex both carry both eras and fall back on a 4xx. Spec pages read on 2
   Create, rotate and revoke are in Settings → Automation. Expiry is enforced like a
   revoke while the endpoint runs (re-checked at least hourly and at each expiry instant): the
   client's listen streams end, its questions go and its pending approvals are withdrawn.
-  Metadata reads and writes, Keychain access, profile reads, directory checks and audit writes
+  Unrecognized scope strings are dropped on metadata load; remaining grants and client identities survive.
+  Metadata reads and writes, Keychain access, directory checks and audit writes
   run off the main actor. Client mutations are serialized across their asynchronous IO.
   Bearer tokens are a deliberate departure from MCP's OAuth profile: this is a local, per-user
   endpoint with manually provisioned clients.
@@ -153,15 +158,13 @@ stdio MCP server that POSTs each line to the running app's endpoint:
 
 | Operation | Scope | What it does |
 | --- | --- | --- |
-| resource `tinycast://agents` | `agents:read` | Runs from the existing status helper (`attach` is reduced to `attachable`). |
+| resource `tinycast://agents` | `agents:read` | Runs from `agent-status`, which reads `~/.agents/runs` (`attach` is reduced to `attachable`). |
 | resource `tinycast://terminals` | `agents:read` | Open terminal instances: id, directory, phase, pinned, `startedByYou`. No command text. |
 | resource `tinycast://questions` | `ui` | The caller's own questions with `state` (`pending`, `answered`, `expired`, `acknowledged`), `answer`, `expiresAt`. |
 | tool `question_ask` | `ui` | Puts a card on screen with up to six buttons; returns the question id. |
 | tool `question_ack` | `ui` | Marks an answered or expired question handled so it leaves the resource. |
-| tool `terminal_focus` | `ui` | Raises a terminal instance **this client started** (via `terminal_run` or `agent_dispatch`) by id; any other id is refused as if absent. |
+| tool `terminal_focus` | `ui` | Raises a terminal instance **this client started** via `terminal_run` by id; any other id is refused as if absent. |
 | tool `terminal_run` | `exec` | Opens a terminal instance running a command, **after the user approves it**. |
-| tool `agent_dispatch` | `dispatch` | Starts a named profile with a prompt, **after the user approves it**; returns the terminal id. |
-| resource `tinycast://agent-profiles` | `dispatch` | Profile names the caller may ask for. |
 | resource `tinycast://context` | `context:read` | The frontmost app. |
 
 `clipboard:read` is a defined scope with no operation yet.
@@ -176,17 +179,6 @@ stdio MCP server that POSTs each line to the running app's endpoint:
 - **Push.** Changes to agents, terminals and a client's questions publish
   `notifications/resources/updated` to subscribed streams; the client re-reads. A subscriber also
   holds the agent poll open while the palette is hidden.
-- **Launch grants.** `agent_dispatch` only starts what the user wrote into
-  `~/Library/Application Support/<bundle id>/Automation/agent-profiles.json`, re-read on every call:
-
-  ```json
-  [{"name": "claude", "title": "Claude Code", "command": "claude", "arguments": ["{prompt}"]}]
-  ```
-
-  The client sends a profile name and a prompt (control characters become spaces, at most 1,000
-  characters); the shell line is built with every word single-quoted, and that exact line is what the
-  approval dialog shows. A dispatched agent is an ordinary terminal instance: it appears in
-  `tinycast://agents` only if the status helper reports it, and nothing links the two ids.
 
 ## Registering a client
 
@@ -201,7 +193,7 @@ Settings → Automation (`AutomationSettingsView`, fork-owned) holds it all:
   it asks first.
 - **Links:** each link operation with an example to copy, and a Try button that hands it straight to
   this build's `handleLink`, so it never lands on another installed copy.
-- **Files:** reveals the Automation folder (audit log, agent profiles).
+- **Files:** reveals the Automation folder containing the audit log and client metadata.
 
 The commands it produces look like this:
 

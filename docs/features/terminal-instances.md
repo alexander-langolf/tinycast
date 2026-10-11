@@ -22,7 +22,7 @@
   it retains the last 131,072 characters and increments the generation to force a full redraw.
 - **Full-screen programs are not rendered.** Entering alternate-screen mode 1049, 1047 or 47
   suppresses further output until a command-finished mark and shows “Full-screen program · ⌘O opens
-  kitty”. Ordinary typing is not forwarded to running programs; `PAGER` and `GIT_PAGER` are `cat`.
+  Ghostty”. Ordinary typing is not forwarded to running programs; `PAGER` and `GIT_PAGER` are `cat`.
 - **Instances outlive the palette.** Each is a top-level, key-capable panel that stays visible on
   deactivation. It starts pinned: non-activating at `.floating`, below the palette's `.palette`
   level, on all Spaces. Unpinning makes it an ordinary managed window at `.normal` that can activate
@@ -59,7 +59,7 @@ coalesce for 30 ms; marks flush the pending batch immediately. Input writes stop
 a write dispatch source flushes the remaining bytes while the read source continues draining.
 
 After ten seconds without the first prompt, the card shows “Shell hasn't reached a prompt: Cmd-O to
-open in kitty, Cmd-W to close”. The notice clears at the first prompt, exit or close. ⌃C is ignored
+open in Ghostty, Cmd-W to close”. The notice clears at the first prompt, exit or close. ⌃C is ignored
 while the shell starts: it would stop the shim before the prompt marks are installed. While a long
 command is still being written, ⌃C drops the unsent rest. If zsh had not started the command (no
 C mark) and no prompt follows within 0.5 s, the session sends one more ⌃C: the first only discards
@@ -77,7 +77,7 @@ independently of pty EOF, including when a background job retains the terminal d
 The “Grow” card is built like the palette's search row: `GlassEffectView`, the palette scrim and the
 same panel radius, with no border. The bar reuses the header's gutters, icon slot, `searchField` font,
 `textPrimary` caret and `textTertiary` placeholder; the folder uses the section-header style and the
-pin, kitty and close controls are compact `BarButton`s like the palette's accessory. The phase shows in
+pin, Ghostty and close controls are compact `BarButton`s like the palette's accessory. The phase shows in
 the leading glyph instead: starting and running a spinner tinted with the accent, a non-zero status a
 neutral `exclamationmark.circle` with the code in its tooltip (a crash signal, 128 + SIGILL/ABRT/FPE/KILL/BUS/SEGV, shows a
 red `xmark.octagon` instead), ended a dimmed `powersleep`, otherwise `$`. The bar matches the compact
@@ -101,12 +101,30 @@ the panels. `logInset` restates `TerminalLogView`'s private inset; keep it in st
 | ⌃C | Interrupt shell startup or the running command |
 | ⎋ | Toggle output expansion |
 | ⌘P | Toggle pinning between floating and normal window order |
-| ⌘O | Open a separate kitty shell in the instance's current directory |
+| ⌘O | Open a separate Ghostty shell in the instance's current directory |
 | ⌘W | Close the card and hang up its shell |
 
-⌘O tries a new tab through a running kitty socket under `/tmp/kitty.sock*`; if remote control
-fails or no socket is found, it opens a new `/Applications/kitty.app` instance with `--directory`.
-It does not attach to the existing pty or rerun the command. Opening failures use the message HUD.
+⌘O calls `TerminalGhosttyLauncher` to open a new tab in the running Ghostty's front window, or a
+new window if it has none, then selects the tab and activates that window. It targets the running
+`NSRunningApplication.bundleURL`: `/Applications/Ghostty.app` and `/Applications/Ghostty Tip.app`
+share `com.mitchellh.ghostty`. An active instance wins; otherwise stable wins if both are running.
+With neither running, `NSWorkspace` launches stable Ghostty with `--working-directory=<directory>`
+as one argument, without a shell or application substitution. It does not attach to the existing pty
+or rerun the command. Opening failures use the message HUD.
+
+The AppleScript terms come from `sdef /Applications/Ghostty.app` (local version 1.3.1):
+`new surface configuration from {initial working directory: …}`, `new tab in … with configuration`,
+`new window with configuration`, `select tab` and `activate window`. Paths are escaped as AppleScript
+string literals, and the target application path is resolved at execution time. Script preparation
+and execution stay inside a detached task; only Sendable values cross back to the main actor.
+The coordinator owns one pending launch per terminal and cancels it on card close, quit or teardown.
+Cancellation propagates to the worker and suppresses obsolete errors and follow-up activation; a blocking
+Apple Event already sent, or an application launch already requested, cannot be undone.
+
+`Tinycast/Info.plist` supplies `NSAppleEventsUsageDescription`, retaining the system-action explanation
+and adding Ghostty. `Tinycast.entitlements` already grants `com.apple.security.automation.apple-events`
+for the hardened Release runtime; App Sandbox stays off so the launch arguments are honored.
+The first running-app handoff may ask for Automation permission; denial reports through the HUD.
 
 Instances stack newest first at the most recently captured palette corner, separated by
 `spacing.md`. Growth and closing animate restacking over 0.18 seconds. Attached panels clamp
@@ -180,9 +198,14 @@ It does not create or assert a user `.zlogin` file.
 The [chips harness](../../Tests/palette-chips-test.swift) covers reducer transitions, unavailable
 chips, consumed slots, Escape/back/reset behaviour and pill/side placement geometry.
 
-These harnesses do not verify native focus, glass rendering, drag behaviour, kitty integration
+These harnesses do not verify native focus, glass rendering, drag behaviour, Ghostty integration
 or the composed palette hooks. Manual checks should cover those surfaces, hide/reopen, stacked
 growth near screen edges, pinning, output collapse, keyboard routing and category selection.
+For ⌘O, cover stable running with several windows, running with no windows, Tip alone, both versions
+running and neither running. Confirm the selected window/tab and directory, including spaces,
+quotes, backslashes and Unicode. Check permission allow/deny, repeat presses, closing the card during
+a pending handoff and quitting during one. AppleScript syntax, signed permission prompts and runtime
+behavior require manual verification; dictionary inspection alone does not prove them.
 
 ## Fork ownership
 

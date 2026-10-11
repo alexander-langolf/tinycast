@@ -35,7 +35,7 @@ enum AutomationOperationCatalog {
         required: ["id"])
     static let terminalFocus = tool(
         "terminal_focus", "Focus a terminal",
-        "Bring a terminal this client started (terminal_run, agent_dispatch) to the front by id.",
+        "Bring a terminal this client started with terminal_run to the front by id.",
         scope: .ui, properties: ["id": string("Terminal instance id.", max: 64)], required: ["id"])
     static let terminalRun = tool(
         "terminal_run", "Run a command",
@@ -46,19 +46,10 @@ enum AutomationOperationCatalog {
             "cwd": string("Working directory; defaults to the home folder.", max: 500)
         ],
         required: ["command"])
-    static let agentDispatch = tool(
-        "agent_dispatch", "Start a named agent",
-        "Start one of the configured agent profiles in a terminal instance. The user approves first.",
-        scope: .dispatch, needsApproval: true,
-        properties: [
-            "agent": string("A profile name from tinycast://agent-profiles.", max: 64),
-            "prompt": string("The task for the agent.", max: 1_000),
-            "cwd": string("Working directory; defaults to the home folder.", max: 500)
-        ],
-        required: ["agent", "prompt"])
 
     static let agents = resource(
-        "tinycast://agents", "Agent runs", "Background agent runs and their state.",
+        "tinycast://agents", "Agent runs",
+        "Background agent runs reported by agent-status from ~/.agents/runs.",
         scope: .agentsRead)
     static let terminals = resource(
         "tinycast://terminals", "Terminals", "Open terminal instances and their phase.",
@@ -66,15 +57,12 @@ enum AutomationOperationCatalog {
     static let questions = resource(
         "tinycast://questions", "Your questions",
         "Questions this client asked, with answer, expiry and acknowledgement state.", scope: .ui)
-    static let agentProfiles = resource(
-        "tinycast://agent-profiles", "Agent profiles", "Names agent_dispatch accepts.",
-        scope: .dispatch)
     static let context = resource(
         "tinycast://context", "Context", "The frontmost app.", scope: .contextRead)
 
     static let all: [AutomationOperation] = [
         paletteShow, hudShow, questionAsk, questionAcknowledge, terminalFocus, terminalRun,
-        agentDispatch, agents, terminals, questions, agentProfiles, context
+        agents, terminals, questions, context
     ]
 
     static func tool(named name: String) -> AutomationOperation? {

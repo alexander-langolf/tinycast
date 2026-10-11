@@ -137,7 +137,6 @@ private struct AutomationLinksSection: View {
     }
 }
 
-/// The folder holding the audit log and the agent profiles `agent_dispatch` may start.
 private struct AutomationFilesSection: View {
     private var folder: URL {
         AppPaths.applicationSupport().appending(path: "Automation", directoryHint: .isDirectory)
@@ -150,7 +149,7 @@ private struct AutomationFilesSection: View {
                     .settingsEnabled(FileManager.default.fileExists(atPath: folder.path))
             } label: {
                 Text("Automation folder")
-                Text("audit.jsonl records every privileged call; agent-profiles.json lists what agents may start.")
+                Text("audit.jsonl records every privileged call.")
             }
         } header: {
             SettingsSectionHeader(.automationFiles)
