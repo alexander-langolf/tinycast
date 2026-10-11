@@ -26,15 +26,17 @@ and rendered acceptance remain for Claude's verification pass.
   and listing memory. Actions revalidate targets and report unavailable items through Tinycast's HUD,
   retaining the current screen.
 - Application and installer packages are file rows. Logical symlink paths are preserved; canonical
-  ancestor cycles are rejected and recursive traversal tracks canonical directories. Hidden and
-  ignored entries are suppressed by default; ⌘⇧. admits them in direct listings only. Subtree walks
-  always exclude hidden entries and ignored folders, including excluded roots; package roots cannot
-  be browsed and package descendants stay excluded.
+  ancestor cycles are rejected and recursive traversal tracks canonical directories. Direct listings
+  suppress hidden and ignored entries by default; ⌘⇧. admits them there only. Global ripgrep words
+  and subtree scans include dot files and dot folders regardless of that toggle. Recursive scans
+  always enforce ignore patterns, home `Library/` and `.Trash/`, and `.git/`, including excluded roots;
+  package roots cannot be browsed and package descendants stay excluded.
 - Only the visible folder is watched. Recursive scans stop at depth 8 and publish batches of 500.
   Swift counts 50,000 visited entries; ripgrep caps 50,000 emitted/derived rows and respects `.gitignore`.
   File contents are not searched.
 - Preview is on by default, focused-row only, debounced 90 ms, and uses upstream preview surfaces.
-  ⌘Y toggles that pane; Quick Look is a separate action using the upstream in-palette overlay.
+  ⌘Y toggles that pane; ⌘⇧Y expands it across the body and enables it if hidden. Expansion resets
+  when the navigator closes. Quick Look is a separate action using the upstream in-palette overlay.
 - Bookmarks and recent folders use bundle-scoped defaults. Editor preference uses AppSettings,
   `SettingsFileKey` and the existing schema. Editor commands stay device-local in backups.
 - Hand to an agent v1 copies context only. It never dispatches an agent or sends a message.
@@ -75,12 +77,15 @@ and modifiers.
 | ⌘K | action panel for the picked files, else the focused row |
 | ⌘B | bookmarks + recent folders |
 | ⌘Y | hide / show the preview pane (shown by default) |
-| ⌘⇧. | show hidden and ignored entries in direct listings; recursive exclusions remain enforced |
+| ⌘⇧Y | expand / collapse the preview; expanding enables the preview and hides the list |
+| ⌥↑ / ⌥↓ | page the preview up / down, keeping keyboard focus in the path input |
+| ⌥⇧↑ / ⌥⇧↓ | jump to the preview's top / bottom |
+| ⌘⇧. | show / hide hidden and ignored entries in direct folder listings only; search includes dot entries independently |
 | ⌘O | Ghostty app tab in the current folder |
 | ⌘T | Open Ghostty here: an embedded Ghostty terminal view in the current folder |
 | ⌘F | search below this folder: streamed ripgrep or Swift walk + `ForkFzf`; ⌘F again returns to the folder listing |
 | ⌃G | close and `cd` the originating terminal view into the current folder |
-| Esc | trim to the folder → clear picks → close (one step per press) |
+| Esc | collapse expanded preview → trim to the folder → clear picks → close (one step per press) |
 
 A mistyped folder (`~/nope/x`) shows "No folder ~/nope" and no rows; nothing is guessed. nnn's
 auto-enter does not apply in this model.
@@ -102,15 +107,46 @@ folder. Show in File Navigator replaces the input with the target's parent folde
 search, and focuses the target after loading; plain folder listings omit it. Picks and terminal origin
 survive this navigation.
 
+## Expanded preview and scrolling
+
+The expanded preview occupies the whole navigator body. The path input remains mounted; typing
+still filters and bare ↑/↓ still move the focused row, including while the list is hidden. ⌘⇧Y or
+the first Escape collapses it without changing the path, focus or picks. ⌘Y hides the preview and
+also collapses it. Menus retain their existing Escape dismissal priority.
+
+`FileNavigatorPreviewGeometry` requests a 680-point scaled body plus the existing header/footer,
+capped to the palette screen's visible frame. The panel shifts vertically within that frame when
+needed, retaining its session anchor for normal-size restoration. The only new upstream hook is
+in `PaletteWindowController.positionPanel`; sizing policy stays in FileNavigator.
+
+`FileNavigatorPreview` wraps the existing split `FileSearchPreview` and uses `FileSearchSurface`
+directly when expanded, without the thumbnail aspect-ratio constraint or Information block.
+Its hosting view refuses keyboard focus. The coordinator owns a scroll target holding only a weak
+reference to that host and the displayed result identity. Option-arrow commands are consumed before
+the field editor; they never move the list or caret, even with a hidden or unsupported preview.
+
+The target finds the current surface on each command: `PlainTextSurface`'s enclosing `NSScrollView`,
+`PDFSurface`'s scroll view (PDFKit page navigation if none is exposed), or an `NSScrollView` exposed
+inside `QuickLookSurface`. The Information block is excluded from keyboard targeting. Quick Look
+providers rendered out of process without an exposed scroll view do not support these keyboard
+commands; media and folder previews also do nothing. No first-responder changes or private APIs
+are used. Native mouse/trackpad wheel delivery remains intact: `PalettePanel.sendEvent` disarms row
+hover but forwards scroll-wheel events to AppKit, and the host adds no wheel interception.
+
+This session's verification is limited to XcodeGen and parsing touched Swift files. Claude should
+verify split/expanded geometry, collapse after filtering and picks, closing/reopening, path-field
+focus, keyboard scrolling and wheel delivery for plain text, PDFs and representative Quick Look
+providers on the target macOS version.
+
 ## Edit in a terminal view
 
 Edit in Fresh is the first action for targets containing files; folders are excluded from its arguments.
 The first file's parent is the working folder; all file arguments are paths relative to it, single-quoted
-with embedded apostrophes escaped. The command is `${EDITOR:-fresh}` followed by those arguments.
+with embedded apostrophes escaped. The command is `fresh` followed by those arguments.
 **Settings → File Navigator → Editor command** can override the command, including shell arguments;
-blank restores `$EDITOR` / Fresh. The settings mirror exposes `fileNavigator.editor` and
-`fileNavigator.commands`. Install the default with `brew install fresh-editor`; if absent, the login
-shell's own command-not-found error appears in the terminal output.
+blank restores Fresh, independent of the shell's editor environment. The settings mirror exposes
+`fileNavigator.editor` and `fileNavigator.commands`. Install the default with `brew install fresh-editor`;
+if absent, the login shell's own command-not-found error appears in the terminal output.
 
 **File search engine** shares this pane. `fileNavigator.searchEngine` mirrors `spotlight` / `ripgrep`;
 the latter defaults on when found. A missing binary is explained in the pane and uses Spotlight.
@@ -211,6 +247,10 @@ palette and focuses that terminal. A busy or closed origin produces a HUD and le
 ## Behaviour rules
 
 - Folders sort first, then by name; a non-empty filter sorts by score.
+- Global ripgrep words and ⌘F include dot entries unless ignored; `.git/`, home `Library/` and
+  `.Trash/` remain excluded. Ripgrep still respects `.gitignore`; the Swift fallback does not read it.
+  ⌘⇧. affects direct listings only. Ripgrep derives folder rows, including `.config`, from file parents.
+  A leading dot does not lower filename scores; equal ripgrep matches prefer shallower paths.
 - `.app`/`.pkg` bundles are files (no package browsing in v1). Symlinked folders are entered by
   their logical path; loops are detected by canonical path.
 - TCC-protected folders (Desktop, Documents, Downloads, iCloud, removable volumes) prompt once; a
@@ -227,7 +267,8 @@ palette and focuses that terminal. A busy or closed origin produces a HUD and le
 3. Picks made in two folders survive navigation and reach ⌘K → Hand to an agent as copied file context.
 4. A 10,000-entry folder lists without blocking the main thread; typing stays responsive.
 5. In direct listings, ⌘⇧. reveals `.git`, `.env`, `node_modules`; ⌘⇧. again hides them. Subtree walks
-   skip hidden/ignored entries and package contents regardless of that toggle.
+   include dot entries while excluding ignored paths, `.git/`, home `Library/` and `.Trash/`, and package
+   contents regardless of that toggle.
 6. A file deleted on disk while visible disappears from the list and from picks.
 7. Harness `file-navigator-test` covers the reducer cases in the prototype's walkthroughs.
 8. The preview pane shows the focused row by default (text, PDF, Quick Look) without stalling navigation.
@@ -254,7 +295,7 @@ empty bookmarks panel. No correction-session harness or runtime checks were exec
 ## Decisions (2026-10-11)
 
 1. Interaction: Script Kit model — the input is the path (nnn's folder + filter rejected).
-2. Default editor: **Fresh** (`${EDITOR:-fresh}`, overridable).
+2. Default editor: **Fresh** (`fresh`, overridable with shell arguments).
 3. Matching: **`ForkFzf` only, no Rust fuzzy libraries.** Subtree candidates (⌘F, search below this
    folder) come from a **Swift `FileManager`
    enumerator**: prefetched resource keys, streamed in batches, cancelled on the next keystroke,
@@ -264,3 +305,8 @@ empty bookmarks panel. No correction-session harness or runtime checks were exec
 4. Search Files gets one small Show in File Navigator action hook; search itself stays upstream.
 5. ↵ on a file opens the ⌘K actions (revisit when a Monaco view exists).
 6. Preview pane on by default.
+7. **2026-10-11 — dot entries in search:** Sasha superseded the original recursive hidden-entry
+   exclusion. Global ripgrep words and both ⌘F scanners include dot files and folders; ignore patterns,
+   `.git/`, home `Library/` and `.Trash/`, and package boundaries remain enforced. Ripgrep retains
+   `.gitignore`. ⌘⇧. controls direct folder listings only. A dotless filename match receives the same
+   score as its dotted spelling, with shallower paths breaking equal ripgrep scores/name lengths.

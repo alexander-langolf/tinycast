@@ -31,7 +31,7 @@ in `Features/Settings/` (`Model/`, `Service/`, `SettingsFileSchema.swift`), the 
   being entered.
 
 <!-- // FORK: file-navigator -->
-The fork adds `fileNavigator.editor` (blank means `${EDITOR:-fresh}`) and `fileNavigator.commands`
+The fork adds `fileNavigator.editor` (blank means `fresh`) and `fileNavigator.commands`
 (Browse Files shortcut, alias and visibility). The editor string is a local shell command, including
 optional arguments; it is mirrored through AppSettings but excluded from settings backups.
 Navigator bookmarks/recent paths are bundle-local content, outside this mirror.

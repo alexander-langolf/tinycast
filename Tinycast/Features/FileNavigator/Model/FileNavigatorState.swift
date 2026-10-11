@@ -4,7 +4,7 @@ struct FileNavigatorState: Sendable {
     enum Panel: Sendable { case actions, bookmarks }
     enum Event: Sendable {
         case type(String), backspace, tab, shiftTab, up, down, enter, pick, selectAll, escape
-        case hidden, togglePreview, subtree, actions, bookmarks
+        case hidden, togglePreview, togglePreviewExpanded, subtree, actions, bookmarks
     }
 
     var input: String
@@ -16,6 +16,7 @@ struct FileNavigatorState: Sendable {
     var picks: [FileSearchResult] = []
     var panel: Panel?
     var preview = true
+    var previewExpanded = false
     var showHidden = false
     var subtree = false
     var bookmarks: [String] = []
@@ -101,7 +102,9 @@ struct FileNavigatorState: Sendable {
             let existing = Set(picks.map(\.id))
             picks.append(contentsOf: rows.filter { !existing.contains($0.id) })
         case .escape:
-            if case .global(let words) = path, !words.isEmpty {
+            if previewExpanded {
+                previewExpanded = false
+            } else if case .global(let words) = path, !words.isEmpty {
                 setInput("~/", home: home, folders: folders)
             } else if !filter.isEmpty {
                 setInput(FileNavigatorPath.directoryInput(folder, home: home), home: home, folders: folders)
@@ -111,7 +114,12 @@ struct FileNavigatorState: Sendable {
                 isOpen = false
             }
         case .hidden: showHidden.toggle(); focus = 0
-        case .togglePreview: preview.toggle()
+        case .togglePreview:
+            preview.toggle()
+            if !preview { previewExpanded = false }
+        case .togglePreviewExpanded:
+            previewExpanded.toggle()
+            if previewExpanded { preview = true }
         case .subtree:
             if case .folder = path { subtree.toggle(); focus = 0 }
         case .actions: panel = .actions

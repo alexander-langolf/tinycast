@@ -17,6 +17,7 @@ final class TerminalInstancePanel: NSPanel {
         hidesOnDeactivate = false
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         isMovableByWindowBackground = true
+        acceptsMouseMovedEvents = true
         isOpaque = false
         backgroundColor = .clear
         hasShadow = true
@@ -57,7 +58,7 @@ final class TerminalInstancePanel: NSPanel {
 
     override func sendEvent(_ event: NSEvent) {
         if event.type == .keyDown, onKey?(event) == true { return }
-        if event.type == .leftMouseDown || event.type == .rightMouseDown, level == .normal {
+        if [.leftMouseDown, .rightMouseDown, .otherMouseDown].contains(event.type), level == .normal {
             raiseAsOrdinaryWindow()
         }
         super.sendEvent(event)

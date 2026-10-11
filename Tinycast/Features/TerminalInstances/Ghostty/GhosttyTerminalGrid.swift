@@ -48,6 +48,8 @@ final class GhosttyTerminalGrid {
     @ObservationIgnored private var rowCells: GhosttyRenderStateRowCells?
     @ObservationIgnored private var keyEncoder: GhosttyKeyEncoder?
     @ObservationIgnored private var keyEvent: GhosttyKeyEvent?
+    @ObservationIgnored private var mouseEncoder: GhosttyMouseEncoder?
+    @ObservationIgnored private var mouseEvent: GhosttyMouseEvent?
 
     private static let scrollbackLines = 10_000
 
@@ -62,7 +64,9 @@ final class GhosttyTerminalGrid {
             ghostty_render_state_row_iterator_new(nil, &rowIterator) == GHOSTTY_SUCCESS,
             ghostty_render_state_row_cells_new(nil, &rowCells) == GHOSTTY_SUCCESS,
             ghostty_key_encoder_new(nil, &keyEncoder) == GHOSTTY_SUCCESS,
-            ghostty_key_event_new(nil, &keyEvent) == GHOSTTY_SUCCESS
+            ghostty_key_event_new(nil, &keyEvent) == GHOSTTY_SUCCESS,
+            ghostty_mouse_encoder_new(nil, &mouseEncoder) == GHOSTTY_SUCCESS,
+            ghostty_mouse_event_new(nil, &mouseEvent) == GHOSTTY_SUCCESS
         else { return nil }
         var limit = Self.scrollbackLines
         _ = ghostty_terminal_set(terminal, GHOSTTY_TERMINAL_OPT_SCROLLBACK_MAX_LINES, &limit)
@@ -109,6 +113,8 @@ final class GhosttyTerminalGrid {
     }
 
     isolated deinit {
+        ghostty_mouse_event_free(mouseEvent)
+        ghostty_mouse_encoder_free(mouseEncoder)
         ghostty_key_event_free(keyEvent)
         ghostty_key_encoder_free(keyEncoder)
         ghostty_render_state_row_cells_free(rowCells)
@@ -126,6 +132,7 @@ final class GhosttyTerminalGrid {
     /// RIS: a new command starts on a clean screen with no scrollback.
     func reset() {
         ghostty_terminal_reset(terminal)
+        ghostty_mouse_encoder_reset(mouseEncoder)
         refresh()
     }
 
@@ -170,6 +177,47 @@ final class GhosttyTerminalGrid {
         var written = 0
         guard
             ghostty_key_encoder_encode(keyEncoder, keyEvent, &buffer, buffer.count, &written)
+                == GHOSTTY_SUCCESS
+        else { return [] }
+        return buffer[0..<written].map { UInt8(bitPattern: $0) }
+    }
+
+    var capturesMouse: Bool {
+        guard let terminal else { return false }
+        var tracking = false
+        _ = ghostty_terminal_get(terminal, GHOSTTY_TERMINAL_DATA_MOUSE_TRACKING, &tracking)
+        return tracking
+    }
+
+    var reportsMousePixels: Bool {
+        guard let terminal else { return false }
+        var mode = GhosttyTerminalModeConfig(mode: ghostty_mode_new(1016, false), value: false)
+        _ = ghostty_terminal_get(terminal, GHOSTTY_TERMINAL_DATA_MODE, &mode)
+        return mode.value
+    }
+
+    func encodeMouse(
+        action: GhosttyMouseAction, button: GhosttyMouseButton?, mods: GhosttyMods,
+        position: GhosttyMousePosition, size: GhosttyMouseEncoderSize, anyButtonPressed: Bool
+    ) -> [UInt8] {
+        guard let terminal, let mouseEncoder, let mouseEvent else { return [] }
+        ghostty_mouse_encoder_setopt_from_terminal(mouseEncoder, terminal)
+        var size = size
+        var pressed = anyButtonPressed
+        ghostty_mouse_encoder_setopt(mouseEncoder, GHOSTTY_MOUSE_ENCODER_OPT_SIZE, &size)
+        ghostty_mouse_encoder_setopt(mouseEncoder, GHOSTTY_MOUSE_ENCODER_OPT_ANY_BUTTON_PRESSED, &pressed)
+        ghostty_mouse_event_set_action(mouseEvent, action)
+        if let button {
+            ghostty_mouse_event_set_button(mouseEvent, button)
+        } else {
+            ghostty_mouse_event_clear_button(mouseEvent)
+        }
+        ghostty_mouse_event_set_mods(mouseEvent, mods)
+        ghostty_mouse_event_set_position(mouseEvent, position)
+        var buffer = [CChar](repeating: 0, count: 64)
+        var written = 0
+        guard
+            ghostty_mouse_encoder_encode(mouseEncoder, mouseEvent, &buffer, buffer.count, &written)
                 == GHOSTTY_SUCCESS
         else { return [] }
         return buffer[0..<written].map { UInt8(bitPattern: $0) }

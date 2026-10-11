@@ -19,12 +19,9 @@ enum SubtreeWalker {
         guard
             let enumerator = manager.enumerator(
                 at: root, includingPropertiesForKeys: DirectoryLister.keys,
-                options: [.skipsHiddenFiles, .skipsPackageDescendants])
+                options: [.skipsPackageDescendants])
         else { throw DirectoryLister.Failure.unreadable("Couldn’t read this folder") }
-        let traversal = DirectoryLister.Request(
-            folder: request.folder, home: request.home, showHidden: false,
-            ignore: request.ignore, pickedPaths: request.pickedPaths)
-        let visibleRoot = try DirectoryLister.entry(root, request: traversal) != nil
+        let visibleRoot = try DirectoryLister.entry(root, request: request, recursive: true) != nil
         var canonicalFolders: Set<String> = [root.resolvingSymlinksInPath().path]
         var batch = DirectoryLister.Batch()
         var count = 0
@@ -32,7 +29,7 @@ enum SubtreeWalker {
             try Task.checkCancellation()
             count += 1
             if count > entryLimit { break }
-            guard let row = try DirectoryLister.entry(url, request: traversal) else {
+            guard let row = try DirectoryLister.entry(url, request: request, recursive: true) else {
                 enumerator.skipDescendants()
                 continue
             }

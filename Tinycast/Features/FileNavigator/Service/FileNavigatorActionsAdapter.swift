@@ -59,7 +59,7 @@ enum FileNavigatorActionsAdapter {
         _ files: [FileSearchResult], folder: String, override: String
     ) -> String {
         let editor = override.trimmingCharacters(in: .whitespacesAndNewlines)
-        let executable = editor.isEmpty ? "${EDITOR:-fresh}" : editor
+        let executable = editor.isEmpty ? "fresh" : editor
         let arguments = files.map { file in
             let relative = FileNavigatorPath.relative(file.id, to: folder)
             return FileNavigatorPath.quote(relative.hasPrefix("-") ? "./" + relative : relative)

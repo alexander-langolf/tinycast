@@ -49,8 +49,8 @@ struct TerminalInstanceCard<Output: View>: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(ink.terminalScrim)
-        .background(GlassEffectView())
+        .background { Rectangle().fill(ink.terminalScrim).allowsHitTesting(false) }
+        .background { GlassEffectView().allowsHitTesting(false) }
         .clipShape(shape)
         .onAppear { fieldFocused = true }
         .onChange(of: phase) { _, phase in

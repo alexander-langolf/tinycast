@@ -22,9 +22,9 @@ struct FileNavigatorSettingsView: View {
                 SettingsSectionHeader(.fileNavigatorSearchEngine)
             }
             Section {
-                TextField(text: $settings.fileNavigatorEditor, prompt: Text("${EDITOR:-fresh}")) {
+                TextField(text: $settings.fileNavigatorEditor, prompt: Text("fresh")) {
                     SettingsRowTitle(.fileNavigatorEditor, "Editor command")
-                    Text("Leave blank to use $EDITOR, or Fresh when unset. Shell arguments are allowed.")
+                    Text("Leave blank to use Fresh. Shell arguments are allowed.")
                 }
             } header: {
                 SettingsSectionHeader(.fileNavigatorEditor)

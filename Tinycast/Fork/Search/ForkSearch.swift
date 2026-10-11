@@ -257,19 +257,44 @@ enum ForkSearch {
     }
 
     static func rankPaths(_ items: [(name: String, folder: String)], query: String) -> [Int] {
+        let words = terms(query, profile: .fuzzy)
         let scored = items.enumerated().compactMap { index, item -> (score: Int, length: Int, index: Int)? in
-            guard
-                let result = match(
-                    query, fields: [item.name, item.folder], weights: [1, 0.6], profile: .fuzzy,
-                    negatedFields: [item.name])
+            let path = item.folder + (item.folder.hasSuffix("/") ? "" : "/") + item.name
+            guard let score = fileScore(words, name: item.name, folder: item.folder, path: path)
             else { return nil }
-            return (result.score, item.name.count, index)
+            return (score, item.name.count, index)
         }
         return scored.sorted {
             if $0.score != $1.score { return $0.score > $1.score }
             if $0.length != $1.length { return $0.length < $1.length }
             return $0.index < $1.index
         }.map(\.index)
+    }
+
+    static func fileScore(
+        _ words: [Term], name: String, folder: String, path: String,
+        scheme: ForkFzf.Scheme = .standard
+    ) -> Int? {
+        guard words.contains(where: { !$0.negated }) else { return nil }
+        var total = 0
+        for word in words {
+            if word.negated {
+                if hit(word, in: name, scheme: scheme) != nil { return nil }
+            } else if word.text.contains("/") {
+                guard let result = hit(word, in: path, scheme: .path) else { return nil }
+                total += result.score
+            } else {
+                let filename = hit(word, in: name, scheme: scheme)
+                let dotless = name.hasPrefix(".") && !word.prefix
+                    ? hit(word, in: String(name.dropFirst()), scheme: scheme) : nil
+                let directory = hit(word, in: folder, scheme: scheme)
+                guard filename != nil || directory != nil else { return nil }
+                total += max(
+                    max(filename?.score ?? Int.min, dotless?.score ?? Int.min),
+                    directory.map { Int(Double($0.score) * 0.6) } ?? Int.min)
+            }
+        }
+        return total
     }
 
     /// Clipboard order: input arrives newest first; ties keep it. Off: unchanged.

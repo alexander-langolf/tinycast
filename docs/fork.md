@@ -143,7 +143,19 @@ agentkit MCP ([Agentkit MCP](../../agentkit/README.md#agentkit-mcp)).
 The [ripgrep candidate experiment](features/ripgrep-search.md) supplies Search Files and navigator
 global words from one AppCore-owned home index, and navigator ⌘F from a streamed rg subtree listing.
 Settings → File Navigator selects Spotlight or ripgrep; discovery defaults to ripgrep when installed.
-No executable is bundled. The Spotlight retrieval bullets below apply to the fallback/Spotlight path.
+No executable is bundled. Search includes dot entries, retains ignore patterns and `.gitignore`, and
+excludes `.git/`, home `Library/` and `.Trash/`; ⌘⇧. still controls direct folder listings only. These
+rules live in fork-owned search/navigator code with no additional upstream hook. The Spotlight
+retrieval bullets below apply to the fallback/Spotlight path.
+
+Ripgrep ranks the whole home-relative path using fzf v2's path scheme: slash/word/camel boundaries,
+consecutive runs and gap penalties determine score. Only equal scores use filename-position,
+whole-path length and input-order tie breakers; there is no filename tier or folder discount.
+Extended terms, including `/`, anchors and exclusions, apply to the relative path. One leading
+filename dot stays neutral for undotted, unanchored terms, preserving `.config` first for `config`.
+There is no fixed quality cutoff. A 200-candidate heap expands to the original 1,000 cap when metadata
+or type filtering leaves the page short. A ready home index bypasses both Spotlight passes; cold or
+failed indexing, external scopes and blank recents retain the documented Spotlight fallbacks.
 
 Every list input matches with one fzf v2 scorer, fork-owned in `Tinycast/Fork/Search/`
 (`ForkFzf` scores, `ForkSearch` parses syntax and adapts it to upstream callers). `ForkSearch.setEnabled`
@@ -181,6 +193,8 @@ follow the owner's revised fuzzy-search decision:
   upstream ranking before the display cap, so an exact short filename survives unsorted candidates.
   `'`, `^`, `$` and `!` produce exact, anchored or negated glob clauses.
   Retrieval still queries filenames, so folder-only terms cannot discover extra paths on their own.
+  Positive terms containing `/` score against the joined path; the ready ripgrep index retrieves
+  them across parent/filename boundaries. Other terms keep filename/folder weights and exclusions.
 - Each file session owns a `ForkFileSearchService`, which awaits only the substring batch and owns
   a separate task for the supplemental glob and merge. New requests and session cancellation cancel
   that task immediately; the session worker can then process the next request without waiting for
@@ -206,6 +220,11 @@ initially pinned panel running the feature's own persistent `forkpty` zsh sessio
 `Platform/PseudoTerminal.swift` and `TerminalLogView` remain unchanged.
 `TerminalGhosttyLauncher` owns ⌘O's separate Ghostty shell, with the running bundle path, escaped
 AppleScript and coordinator-owned cancellation described in the feature doc.
+
+The embedded renderer links `libghostty-vt` and owns a terminal and encoders, not a full Ghostty
+surface. Mouse buttons, drags, movement and captured wheel events use its mouse encoder and the
+existing PTY input path on the main actor. Uncaptured scrolling retains grid scrollback; focus,
+coordinate conversion and trackpad handling are described in the terminal feature doc.
 
 ## Palette chips
 
@@ -264,6 +283,15 @@ FileSearchSession for global words, focused preview state and bookmark/recent pe
 Upstream `Features/FileSearch/` is reused through one marked action-menu hook: Show in File Navigator
 opens a result's parent folder and focuses that result after the listing loads.
 
+The preview's expansion and scroll adapter live in FileNavigator. The split reuses `FileSearchPreview`;
+expansion renders `FileSearchSurface` across the body. A weak hosting-view target reaches native text,
+PDF and exposed Quick Look scroll views without changing first responder. A marked sizing hook in
+`PaletteWindowController` applies fork-owned, screen-bounded 680-point body geometry while expanded.
+The existing `PalettePanel` keyboard hook delivers ⌘⇧Y and Option-arrow chords before the path editor;
+its native wheel delivery is unchanged. Remote Quick Look providers without scroll views ignore
+keyboard scroll commands.
+
+The editor command defaults to `fresh`; a nonblank override supplies the shell command and arguments.
 The editor override lives on AppSettings and in `fileNavigator.editor` in settings.json; the new
 pane owns Browse Files' alias, visibility and shortcut controls through `SettingsTab.ownedCommands`.
 Backups deliberately exclude the local editor command. Bookmarks and recent paths are local,
@@ -336,8 +364,8 @@ launcher changes live there without upstream hooks. The generated pbxproj except
 | `Tinycast/Palette/PaletteMode.swift` | `// FORK: file-navigator` | Add fileNavigator mode, symbol and path/words placeholder. |
 | `Tinycast/Palette/RootPaletteView.swift` | `// FORK: file-navigator` | Route root paths, compose the screen, query/mode lifecycle and keyboard/observers. |
 | `Tinycast/Palette/PaletteEnvironment.swift` | `// FORK: file-navigator` | Inject the coordinator into palette and hosted menus. |
-| `Tinycast/Palette/PalettePanel.swift` | `// FORK: file-navigator` | Forward navigator keys ahead of field/menu equivalents, including Space and Ctrl-G. |
-| `Tinycast/Palette/PaletteWindowController.swift` | `// FORK: file-navigator` | Stop listing, watcher, preview and pending actions on every hide. |
+| `Tinycast/Palette/PalettePanel.swift` | `// FORK: file-navigator` | Forward navigator keys ahead of field/menu equivalents, including Space, Ctrl-G, ⌘⇧Y and Option-arrow preview scrolling. |
+| `Tinycast/Palette/PaletteWindowController.swift` | `// FORK: file-navigator` | Stop listing, watcher, preview and pending actions on every hide; apply fork-owned screen-bounded geometry for the expanded preview. |
 | `Tinycast/Features/Launcher/Model/CommandID.swift` | `// FORK: file-navigator` | Register Browse Files with symbol and normal command hotkey mapping. |
 | `Tinycast/Features/Launcher/Model/CommandCatalog.swift` | `// FORK: file-navigator` | File Navigator pane owns Browse Files. |
 | `Tinycast/Features/Launcher/UI/LauncherCoordinator.swift` | `// FORK: file-navigator` | Dispatch Browse Files to the coordinator. |

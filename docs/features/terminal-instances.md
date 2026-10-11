@@ -146,6 +146,27 @@ Other Command chords keep their card meaning. With the log renderer selected, th
 real Ghostty running `zsh -ilc`; no full-screen editor is attempted in TerminalLogView.
 See [file-navigator.md](file-navigator.md#edit-in-a-terminal-view) for keymap/Option caveats and review.
 
+The embedded grid uses `libghostty-vt`, not a `ghostty_surface_t`. Left, right and other button
+presses/releases, drags and tracked movement go through `ghostty_mouse_event_set_*` and
+`ghostty_mouse_encoder_encode`, configured from the terminal's current reporting mode and format.
+Positions are view-local with a top-left origin (`GhosttyGridNSView` is flipped), excluding the
+grid inset. Cell reporting uses fractional cell coordinates so rounded backing-pixel widths cannot
+shift clicks across columns; SGR pixel reporting uses the view's backing scale and padding.
+
+The grid accepts the first click, makes its panel key and itself first responder, and prevents
+background window dragging inside the output. The scrim and glass ignore hits; header controls
+retain their own event paths. Output revisions no longer repeatedly take focus from those controls.
+These rules apply to pinned and unpinned panels; the panel admits movement and raises an unpinned
+window for left, right and other button presses.
+
+When a running program requests mouse reporting, vertical and horizontal wheel deltas become
+encoded wheel-button presses at the pointer and go to its PTY. Otherwise vertical deltas scroll
+the grid's history. Precise trackpad deltas accumulate by cell size, including momentum; gesture
+starts, cancellation and capture changes clear residual deltas. The VT API has no scroll precision
+or momentum flags to forward. It also has no surface-owned selection: TUI drag selection and the
+editor's existing Command-C mapping remain the program's responsibility; local selection outside
+mouse-reporting programs is not implemented.
+
 ## Tab chips
 
 Tab in the collapsed compact launcher toggles chip mode, unless a menu or control list owns the

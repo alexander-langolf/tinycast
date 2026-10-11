@@ -9,27 +9,33 @@ struct FileNavigatorView: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            VStack(spacing: 0) {
-                if coordinator.needsAccess {
-                    Button(action: coordinator.grantAccess) {
-                        Label("Grant access to this folder", systemImage: "lock.open")
+            if !coordinator.state.previewExpanded {
+                VStack(spacing: 0) {
+                    if coordinator.needsAccess {
+                        Button(action: coordinator.grantAccess) {
+                            Label("Grant access to this folder", systemImage: "lock.open")
+                        }
+                        .buttonStyle(.plain)
+                        .font(metrics.typography.rowTitle)
+                        .padding(metrics.spacing.md)
+                        .accessibilityLabel("Grant access to this folder in Privacy settings")
+                        Spacer(minLength: 0)
+                    } else if coordinator.rows.isEmpty {
+                        EmptyResults(text: emptyMessage)
+                    } else {
+                        FileNavigatorList(selection: selection, scroll: scroll, openActions: openActions)
                     }
-                    .buttonStyle(.plain)
-                    .font(metrics.typography.rowTitle)
-                    .padding(metrics.spacing.md)
-                    .accessibilityLabel("Grant access to this folder in Privacy settings")
-                    Spacer(minLength: 0)
-                } else if coordinator.rows.isEmpty {
-                    EmptyResults(text: emptyMessage)
-                } else {
-                    FileNavigatorList(selection: selection, scroll: scroll, openActions: openActions)
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .frame(width: coordinator.state.preview ? metrics.size.clipboardListWidth : nil)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .frame(width: coordinator.state.preview ? metrics.size.clipboardListWidth : nil)
             if coordinator.state.preview {
-                Rectangle().fill(Theme.Colors.separator).frame(width: Theme.Size.hairline)
-                FileSearchPreview(result: coordinator.previewResult)
+                if !coordinator.state.previewExpanded {
+                    Rectangle().fill(Theme.Colors.separator).frame(width: Theme.Size.hairline)
+                }
+                FileNavigatorPreview(
+                    result: coordinator.previewResult, expanded: coordinator.state.previewExpanded,
+                    scrollTarget: coordinator.previewScrollTarget)
             }
         }
         .overlay {

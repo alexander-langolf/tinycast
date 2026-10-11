@@ -92,13 +92,19 @@ enum DirectoryLister {
         return recovery
     }
 
-    nonisolated static func entry(_ url: URL, request: Request) throws -> FileSearchResult? {
+    nonisolated static func entry(
+        _ url: URL, request: Request, recursive: Bool = false
+    ) throws -> FileSearchResult? {
         let values: URLResourceValues
         do { values = try url.resourceValues(forKeys: Set(keys)) } catch {
             if (error as NSError).code == NSFileReadNoSuchFileError { return nil }
             throw error
         }
-        if !request.showHidden {
+        if recursive {
+            guard !ForkRipgrepPolicy.excludes(
+                url.path, ignore: request.ignore, home: request.home, packages: false)
+            else { return nil }
+        } else if !request.showHidden {
             guard values.isHidden != true, !url.lastPathComponent.hasPrefix("."),
                 !request.ignore.excludes(path: url.path)
             else { return nil }

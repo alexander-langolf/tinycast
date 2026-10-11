@@ -513,10 +513,17 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
             ? size.compactHeight
             : PalettePresentationResolver.current(in: core.palette).windowHeight(metrics: metrics)
         // FORK: palette-chips
-        let frame = NSRect(
+        var frame = NSRect(
             x: anchor.x, y: anchor.y - height,
             width: core.paletteChips.paletteWidth(collapsed: collapsed, metrics: metrics),
             height: height)
+        // FORK: file-navigator
+        if core.palette.mode == .fileNavigator, core.fileNavigator.state.previewExpanded {
+            frame = FileNavigatorPreviewGeometry.frame(
+                frame, metrics: metrics,
+                visibleFrame: NSScreen.screens.first { $0.frame.contains(anchor) }?.visibleFrame
+                    ?? panel.screen?.visibleFrame ?? targetScreen()?.visibleFrame)
+        }
         // FORK: palette-motion
         frameAnimator.move(
             panel, to: frame,

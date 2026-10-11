@@ -73,7 +73,7 @@ strict concurrency, `Model/` stays Foundation-only. Upstream Search Files files 
 
 ## Task 4 — Edit in Fresh
 
-- Edit in Fresh = `TerminalInstancesCoordinator.open(command: "${EDITOR:-fresh} <quoted files>",
+- Edit in Fresh = `TerminalInstancesCoordinator.open(command: "fresh <quoted files>",
   directory: <file's folder>)`, files relative to that folder, single-quoted.
 - Mark such instances as editor instances; give them the largest grid layout `TerminalInstanceMetrics`
   allows.

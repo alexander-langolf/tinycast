@@ -2,11 +2,19 @@ import Foundation
 
 enum ForkRipgrepPolicy {
     nonisolated static func arguments(
-        patterns: [String], home: String, subtree: Bool, depthLimit: Int? = nil
+        patterns: [String], home: String, subtree: Bool, depthLimit: Int? = nil,
+        directory: String? = nil
     ) -> [String] {
-        var arguments = ["--files", "--no-messages", "--null"]
+        var arguments = ["--files", "--hidden", "--no-messages", "--null", "--glob", "!.git/"]
         if let depthLimit { arguments += ["--max-depth", String(depthLimit)] }
-        if !subtree { arguments += ["--glob", "!/Library/", "--glob", "!/.Trash/"] }
+        let directory = directory ?? home
+        let prefix = directory == "/" ? "/" : directory + "/"
+        for name in ["Library", ".Trash"] {
+            let path = home + "/" + name
+            if path.hasPrefix(prefix) {
+                arguments += ["--glob", "!/" + path.dropFirst(prefix.count) + "/"]
+            }
+        }
         for pattern in FileSearchIgnoreList.defaults + patterns {
             let pattern = pattern.trimmingCharacters(in: .whitespaces)
             guard !pattern.isEmpty, !pattern.contains("\0"),
@@ -14,8 +22,8 @@ enum ForkRipgrepPolicy {
             else { continue }
             if !pattern.contains("/") {
                 arguments += ["--iglob", "!" + pattern, "--iglob", "!" + pattern + "/**"]
-            } else if pattern.hasPrefix(home + "/") {
-                let relative = String(pattern.dropFirst(home.count + 1))
+            } else if pattern.hasPrefix(prefix) {
+                let relative = String(pattern.dropFirst(prefix.count))
                 arguments += ["--iglob", "!/" + relative, "--iglob", "!/" + relative + "/**"]
             }
         }
@@ -24,13 +32,15 @@ enum ForkRipgrepPolicy {
     }
 
     nonisolated static func excludes(
-        _ path: String, ignore: FileSearchIgnoreList, packages: Bool = true
+        _ path: String, ignore: FileSearchIgnoreList, home: String, packages: Bool = true
     ) -> Bool {
         path.split(separator: "/").contains {
-            $0.hasPrefix(".")
+            $0 == ".git"
                 || (packages
                     && ($0.lowercased().hasSuffix(".app")
                         || $0.lowercased().hasSuffix(".pkg")))
+        } || ["Library", ".Trash"].contains {
+            path == home + "/" + $0 || path.hasPrefix(home + "/" + $0 + "/")
         } || ignore.excludes(path: path)
     }
 }

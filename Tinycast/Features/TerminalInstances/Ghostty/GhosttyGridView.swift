@@ -3,7 +3,6 @@ import Carbon.HIToolbox
 import GhosttyVt
 import SwiftUI
 
-/// FORK: libghostty prototype. Draws a `GhosttyTerminalGrid` with Core Text and forwards wheel and keys.
 struct GhosttyGridView: NSViewRepresentable {
     let session: TerminalSession
     var isEditor = false  // FORK: file-navigator
@@ -21,21 +20,41 @@ struct GhosttyGridView: NSViewRepresentable {
         // Reading the revision here is what makes SwiftUI call this again after each change.
         _ = session.grid?.revision
         view.needsDisplay = true
-        if session.phase == .running, view.window?.firstResponder !== view {
+        let startedRunning = session.phase == .running && !view.wasRunning
+        view.wasRunning = session.phase == .running
+        if startedRunning, view.window?.firstResponder !== view {
             view.window?.makeFirstResponder(view)
         }
     }
 }
 
+@MainActor
 final class GhosttyGridNSView: NSView {
     weak var session: TerminalSession?
     var isEditor = false  // FORK: file-navigator
-    private var scrollRemainder: CGFloat = 0
+    var wasRunning = false
+    private var scrollRemainder = CGPoint.zero
+    private var wasCapturingMouse = false
+    private var mouseTrackingArea: NSTrackingArea?
+    private var pressedButtons: [Int: GhosttyMouseButton] = [:]
     private var reportedColumns = 0
 
     override var isFlipped: Bool { true }
     override var acceptsFirstResponder: Bool { true }
     override var isOpaque: Bool { false }
+    override var mouseDownCanMoveWindow: Bool { false }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let mouseTrackingArea { removeTrackingArea(mouseTrackingArea) }
+        let area = NSTrackingArea(
+            rect: .zero, options: [.mouseMoved, .inVisibleRect, .activeAlways],
+            owner: self, userInfo: nil)
+        addTrackingArea(area)
+        mouseTrackingArea = area
+    }
 
     override func layout() {
         super.layout()
@@ -137,16 +156,134 @@ final class GhosttyGridNSView: NSView {
 
     // MARK: - Input
 
+    override func mouseDown(with event: NSEvent) { pressMouse(event) }
+    override func rightMouseDown(with event: NSEvent) { pressMouse(event) }
+    override func otherMouseDown(with event: NSEvent) { pressMouse(event) }
+    override func mouseUp(with event: NSEvent) { releaseMouse(event) }
+    override func rightMouseUp(with event: NSEvent) { releaseMouse(event) }
+    override func otherMouseUp(with event: NSEvent) { releaseMouse(event) }
+    override func mouseDragged(with event: NSEvent) { dragMouse(event) }
+    override func rightMouseDragged(with event: NSEvent) { dragMouse(event) }
+    override func otherMouseDragged(with event: NSEvent) { dragMouse(event) }
+
+    override func mouseMoved(with event: NSEvent) {
+        forwardMouse(event, action: GHOSTTY_MOUSE_ACTION_MOTION, button: pressedButtons.values.first)
+    }
+
+    private func pressMouse(_ event: NSEvent) {
+        window?.makeKey()
+        window?.makeFirstResponder(self)
+        guard let button = Self.mouseButton(event.buttonNumber) else { return }
+        pressedButtons[event.buttonNumber] = button
+        forwardMouse(event, action: GHOSTTY_MOUSE_ACTION_PRESS, button: button)
+    }
+
+    private func releaseMouse(_ event: NSEvent) {
+        guard let button = pressedButtons.removeValue(forKey: event.buttonNumber) else { return }
+        forwardMouse(event, action: GHOSTTY_MOUSE_ACTION_RELEASE, button: button)
+    }
+
+    private func dragMouse(_ event: NSEvent) {
+        forwardMouse(
+            event, action: GHOSTTY_MOUSE_ACTION_MOTION, button: pressedButtons[event.buttonNumber])
+    }
+
+    private func forwardMouse(
+        _ event: NSEvent, action: GhosttyMouseAction, button: GhosttyMouseButton?
+    ) {
+        guard let session, session.phase == .running, let grid = session.grid, grid.capturesMouse else {
+            return
+        }
+        let point = convert(event.locationInWindow, from: nil)
+        let inset = TerminalInstanceMetrics.logInset
+        var size = GhosttyMouseEncoderSize()
+        size.size = MemoryLayout<GhosttyMouseEncoderSize>.size
+        let position: GhosttyMousePosition
+        if grid.reportsMousePixels {
+            let scale = window?.backingScaleFactor ?? 2
+            size.screen_width = UInt32(max(1, bounds.width * scale))
+            size.screen_height = UInt32(max(1, bounds.height * scale))
+            size.cell_width = UInt32(max(1, (TerminalInstanceMetrics.characterWidth * scale).rounded()))
+            size.cell_height = UInt32(max(1, (TerminalInstanceMetrics.rowHeight * scale).rounded()))
+            size.padding_left = UInt32(inset.width * scale)
+            size.padding_right = size.padding_left
+            size.padding_top = UInt32(inset.height * scale)
+            size.padding_bottom = size.padding_top
+            position = GhosttyMousePosition(x: Float(point.x * scale), y: Float(point.y * scale))
+        } else {
+            size.screen_width = UInt32(grid.columns)
+            size.screen_height = UInt32(grid.rows)
+            size.cell_width = 1
+            size.cell_height = 1
+            position = GhosttyMousePosition(
+                x: Float((point.x - inset.width) / TerminalInstanceMetrics.characterWidth),
+                y: Float((point.y - inset.height) / TerminalInstanceMetrics.rowHeight))
+        }
+        session.sendInput(
+            grid.encodeMouse(
+                action: action, button: button, mods: Self.mouseModifiers(event.modifierFlags),
+                position: position, size: size, anyButtonPressed: !pressedButtons.isEmpty))
+    }
+
+    private static func mouseButton(_ number: Int) -> GhosttyMouseButton? {
+        switch number {
+        case 0: GHOSTTY_MOUSE_BUTTON_LEFT
+        case 1: GHOSTTY_MOUSE_BUTTON_RIGHT
+        case 2: GHOSTTY_MOUSE_BUTTON_MIDDLE
+        case 3: GHOSTTY_MOUSE_BUTTON_EIGHT
+        case 4: GHOSTTY_MOUSE_BUTTON_NINE
+        case 5: GHOSTTY_MOUSE_BUTTON_SIX
+        case 6: GHOSTTY_MOUSE_BUTTON_SEVEN
+        case 7: GHOSTTY_MOUSE_BUTTON_FOUR
+        case 8: GHOSTTY_MOUSE_BUTTON_FIVE
+        case 9: GHOSTTY_MOUSE_BUTTON_TEN
+        case 10: GHOSTTY_MOUSE_BUTTON_ELEVEN
+        default: nil
+        }
+    }
+
+    private static func mouseModifiers(_ flags: NSEvent.ModifierFlags) -> GhosttyMods {
+        var mods: GhosttyMods = 0
+        if flags.contains(.shift) { mods |= GhosttyMods(GHOSTTY_MODS_SHIFT) }
+        if flags.contains(.control) { mods |= GhosttyMods(GHOSTTY_MODS_CTRL) }
+        if flags.contains(.option) { mods |= GhosttyMods(GHOSTTY_MODS_ALT) }
+        if flags.contains(.command) { mods |= GhosttyMods(GHOSTTY_MODS_SUPER) }
+        return mods
+    }
+
     override func scrollWheel(with event: NSEvent) {
+        guard let grid = session?.grid else { return }
+        let capturesMouse = session?.phase == .running && grid.capturesMouse
+        if capturesMouse != wasCapturingMouse || event.phase == .began
+            || event.phase == .cancelled || event.momentumPhase == .cancelled
+        {
+            scrollRemainder = .zero
+        }
+        wasCapturingMouse = capturesMouse
+        if event.phase == .cancelled || event.momentumPhase == .cancelled { return }
         let rowHeight = TerminalInstanceMetrics.rowHeight
-        let lines =
-            event.hasPreciseScrollingDeltas ? event.scrollingDeltaY / rowHeight : event.scrollingDeltaY * 3
-        scrollRemainder += lines
-        let whole = Int(scrollRemainder.rounded(.towardZero))
-        guard whole != 0 else { return }
-        scrollRemainder -= CGFloat(whole)
-        // Positive wheel delta reveals older rows, which is up in ghostty's terms.
-        session?.grid?.scroll(by: -whole)
+        scrollRemainder.y += event.hasPreciseScrollingDeltas
+            ? event.scrollingDeltaY / rowHeight : event.scrollingDeltaY * 3
+        scrollRemainder.x += event.hasPreciseScrollingDeltas
+            ? event.scrollingDeltaX / TerminalInstanceMetrics.characterWidth : event.scrollingDeltaX
+        let vertical = Int(scrollRemainder.y.rounded(.towardZero))
+        let horizontal = Int(scrollRemainder.x.rounded(.towardZero))
+        scrollRemainder.y -= CGFloat(vertical)
+        scrollRemainder.x -= CGFloat(horizontal)
+        if capturesMouse {
+            for _ in 0..<abs(vertical) {
+                forwardMouse(
+                    event, action: GHOSTTY_MOUSE_ACTION_PRESS,
+                    button: vertical > 0 ? GHOSTTY_MOUSE_BUTTON_FOUR : GHOSTTY_MOUSE_BUTTON_FIVE)
+            }
+            for _ in 0..<abs(horizontal) {
+                forwardMouse(
+                    event, action: GHOSTTY_MOUSE_ACTION_PRESS,
+                    button: horizontal > 0 ? GHOSTTY_MOUSE_BUTTON_SIX : GHOSTTY_MOUSE_BUTTON_SEVEN)
+            }
+        } else {
+            grid.scroll(by: -vertical)
+        }
     }
 
     override func keyDown(with event: NSEvent) {

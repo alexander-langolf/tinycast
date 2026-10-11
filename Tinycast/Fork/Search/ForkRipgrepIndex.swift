@@ -109,7 +109,7 @@ final class ForkRipgrepIndex {
                     let path = url.path
                     guard path.hasPrefix(home.path + "/"),
                         !path.hasPrefix(home.path + "/Library/"),
-                        !ForkRipgrepPolicy.excludes(path, ignore: ignore)
+                        !ForkRipgrepPolicy.excludes(path, ignore: ignore, home: home.path)
                     else { continue }
                     paths.append(path)
                     var directory = url.deletingLastPathComponent()

@@ -12,6 +12,7 @@ final class FileNavigatorCoordinator {
     private(set) var status = ""
     private(set) var needsAccess = false
     private(set) var isLoading = false
+    @ObservationIgnored let previewScrollTarget = FileNavigatorPreviewScrollTarget()
     @ObservationIgnored private unowned let core: AppCore
     @ObservationIgnored private let home: String
     @ObservationIgnored private let watcher = FolderWatcher()
@@ -110,6 +111,7 @@ final class FileNavigatorCoordinator {
     }
 
     func stop() {
+        let wasExpanded = state.previewExpanded
         active = false
         revision = UUID()
         work?.cancel()
@@ -126,9 +128,12 @@ final class FileNavigatorCoordinator {
         folders = ["/", home, state.folder, FileNavigatorPath.parent(state.folder)]
         state.picks = []
         previewResult = nil
+        state.previewExpanded = false
+        previewScrollTarget.clear()
         quickLookResult = nil
         state.panel = nil
         isLoading = false
+        if wasExpanded { core.paletteCoordinator.syncPaletteSize() }
         IconCache.purgeFitted()
     }
 
@@ -387,7 +392,9 @@ final class FileNavigatorCoordinator {
         let previousInput = state.input
         let previousHidden = state.showHidden
         let previousSubtree = state.subtree
+        let previousExpanded = state.previewExpanded
         state.reduce(event, rows: rows, home: home, folders: folders)
+        if state.previewExpanded != previousExpanded { core.paletteCoordinator.syncPaletteSize() }
         if !state.isOpen {
             core.paletteCoordinator.hidePalette()
             core.paletteCoordinator.popToRootNow()
@@ -541,13 +548,26 @@ final class FileNavigatorCoordinator {
     }
 
     func handleKey(_ event: NSEvent, openActions: () -> Void) -> Bool {
-        guard core.palette.mode == .fileNavigator, !core.palette.menuOpen, !core.palette.isComposing else {
+        guard core.palette.mode == .fileNavigator, !core.palette.menuOpen else {
             return false
         }
         let flags = event.modifierFlags.intersection([.command, .control, .option, .shift])
         let key =
             ASCIIKeyboardLayout.character(for: event)?.lowercased()
             ?? event.charactersIgnoringModifiers?.lowercased()
+        if flags == .option || flags == [.option, .shift] {
+            let code = Int(event.keyCode)
+            if code == kVK_UpArrow || code == kVK_DownArrow {
+                if state.preview, quickLookResult == nil, previewResult?.id == selected?.id {
+                    previewScrollTarget.scroll(
+                        resultID: previewResult?.id,
+                        down: code == kVK_DownArrow, toEnd: flags.contains(.shift))
+                }
+                return true
+            }
+        }
+        guard !core.palette.isComposing else { return false }
+        if flags == [.command, .shift], key == "y" { send(.togglePreviewExpanded); return true }
         if flags == .control, key == "g" { cdToOrigin(); return true }
         // Finder's own chord for hidden files.
         if flags == [.command, .shift], key == "." { send(.hidden); return true }
@@ -573,7 +593,13 @@ final class FileNavigatorCoordinator {
             return true
         }
         if flags.isEmpty, Int(event.keyCode) == kVK_Escape {
-            if quickLookResult != nil { dismissQuickLook() } else { send(.escape) }
+            if state.previewExpanded {
+                send(.escape)
+            } else if quickLookResult != nil {
+                dismissQuickLook()
+            } else {
+                send(.escape)
+            }
             return true
         }
         if Int(event.keyCode) == kVK_Tab, flags.isEmpty || flags == .shift {
