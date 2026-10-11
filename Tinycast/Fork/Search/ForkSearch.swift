@@ -285,7 +285,8 @@ enum ForkSearch {
                 total += result.score
             } else {
                 let filename = hit(word, in: name, scheme: scheme)
-                let dotless = name.hasPrefix(".") && !word.prefix
+                let dotless =
+                    name.hasPrefix(".") && !word.prefix
                     ? hit(word, in: String(name.dropFirst()), scheme: scheme) : nil
                 let directory = hit(word, in: folder, scheme: scheme)
                 guard filename != nil || directory != nil else { return nil }

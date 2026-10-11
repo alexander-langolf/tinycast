@@ -39,8 +39,9 @@ enum ForkRipgrepPolicy {
                 || (packages
                     && ($0.lowercased().hasSuffix(".app")
                         || $0.lowercased().hasSuffix(".pkg")))
-        } || ["Library", ".Trash"].contains {
-            path == home + "/" + $0 || path.hasPrefix(home + "/" + $0 + "/")
-        } || ignore.excludes(path: path)
+        }
+            || ["Library", ".Trash"].contains {
+                path == home + "/" + $0 || path.hasPrefix(home + "/" + $0 + "/")
+            } || ignore.excludes(path: path)
     }
 }

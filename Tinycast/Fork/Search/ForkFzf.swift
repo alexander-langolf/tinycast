@@ -169,11 +169,13 @@ enum ForkFzf {
                 var nextRuns = nextScores + text.count
                 var starts = nextRuns + text.count
                 var nextStarts = starts + text.count
-                var previous = first == 0
+                var previous =
+                    first == 0
                     ? CharClass.delimiter : asciiClass(text[first - 1], scheme: .path)
                 for index in range {
                     let current = asciiClass(text[index], scheme: .path)
-                    bonuses[index] = index == dotStart
+                    bonuses[index] =
+                        index == dotStart
                         ? bonusDelimiter : bonus(after: previous, at: current, scheme: .path)
                     previous = current
                 }

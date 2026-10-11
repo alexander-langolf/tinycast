@@ -101,8 +101,9 @@ enum DirectoryLister {
             throw error
         }
         if recursive {
-            guard !ForkRipgrepPolicy.excludes(
-                url.path, ignore: request.ignore, home: request.home, packages: false)
+            guard
+                !ForkRipgrepPolicy.excludes(
+                    url.path, ignore: request.ignore, home: request.home, packages: false)
             else { return nil }
         } else if !request.showHidden {
             guard values.isHidden != true, !url.lastPathComponent.hasPrefix("."),

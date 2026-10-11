@@ -262,9 +262,11 @@ final class GhosttyGridNSView: NSView {
         wasCapturingMouse = capturesMouse
         if event.phase == .cancelled || event.momentumPhase == .cancelled { return }
         let rowHeight = TerminalInstanceMetrics.rowHeight
-        scrollRemainder.y += event.hasPreciseScrollingDeltas
+        scrollRemainder.y +=
+            event.hasPreciseScrollingDeltas
             ? event.scrollingDeltaY / rowHeight : event.scrollingDeltaY * 3
-        scrollRemainder.x += event.hasPreciseScrollingDeltas
+        scrollRemainder.x +=
+            event.hasPreciseScrollingDeltas
             ? event.scrollingDeltaX / TerminalInstanceMetrics.characterWidth : event.scrollingDeltaX
         let vertical = Int(scrollRemainder.y.rounded(.towardZero))
         let horizontal = Int(scrollRemainder.x.rounded(.towardZero))

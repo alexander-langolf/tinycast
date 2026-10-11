@@ -9,7 +9,8 @@ enum ForkRipgrepQuery {
 
         init(_ term: ForkSearch.Term) {
             self.term = term
-            maximumScore = ForkFzf.scoreMatch * term.text.count
+            maximumScore =
+                ForkFzf.scoreMatch * term.text.count
                 + ForkFzf.bonusDelimiter * (term.text.count + 1)
             bytes =
                 term.text.allSatisfy { $0.asciiValue != nil }
@@ -62,19 +63,21 @@ enum ForkRipgrepQuery {
             case .folders: if !indexedPath.hasSuffix("/") { continue }
             default: break
             }
-            let candidate = indexedPath.utf8.withContiguousStorageIfAvailable { bytes in
-                score(
-                    path: indexedPath, bytes: bytes, words: words, homePrefix: homePrefix,
-                    offset: offset, maximumScore: maximumScore,
-                    minimumScore: heap.count == candidateLimit ? heap[0].score : 0,
-                    workspace: &workspace)
-            } ?? Array(indexedPath.utf8).withUnsafeBufferPointer { bytes in
-                score(
-                    path: indexedPath, bytes: bytes, words: words, homePrefix: homePrefix,
-                    offset: offset, maximumScore: maximumScore,
-                    minimumScore: heap.count == candidateLimit ? heap[0].score : 0,
-                    workspace: &workspace)
-            }
+            let candidate =
+                indexedPath.utf8.withContiguousStorageIfAvailable { bytes in
+                    score(
+                        path: indexedPath, bytes: bytes, words: words, homePrefix: homePrefix,
+                        offset: offset, maximumScore: maximumScore,
+                        minimumScore: heap.count == candidateLimit ? heap[0].score : 0,
+                        workspace: &workspace)
+                }
+                ?? Array(indexedPath.utf8).withUnsafeBufferPointer { bytes in
+                    score(
+                        path: indexedPath, bytes: bytes, words: words, homePrefix: homePrefix,
+                        offset: offset, maximumScore: maximumScore,
+                        minimumScore: heap.count == candidateLimit ? heap[0].score : 0,
+                        workspace: &workspace)
+                }
             guard let candidate,
                 heap.count < candidateLimit || candidate.precedes(heap[0]),
                 contains(candidate.path, home: home, roots: roots, includesHome: policy.includesHome),
@@ -114,9 +117,11 @@ enum ForkRipgrepQuery {
         path: String, bytes: UnsafeBufferPointer<UInt8>, words: [Word], homePrefix: [UInt8],
         offset: Int, maximumScore: Int, minimumScore: Int, workspace: inout ForkFzf.PathWorkspace
     ) -> Candidate? {
-        let insideHome = bytes.count >= homePrefix.count && homePrefix.withUnsafeBufferPointer {
-            memcmp(bytes.baseAddress!, $0.baseAddress!, homePrefix.count) == 0
-        }
+        let insideHome =
+            bytes.count >= homePrefix.count
+            && homePrefix.withUnsafeBufferPointer {
+                memcmp(bytes.baseAddress!, $0.baseAddress!, homePrefix.count) == 0
+            }
         let start = insideHome ? homePrefix.count : 0
         let end = bytes.count - (bytes.last == 47 ? 1 : 0)
         guard start < end else { return nil }
@@ -167,7 +172,8 @@ enum ForkRipgrepQuery {
                 begin = min(begin, hit.start)
             }
         }
-        let pathname = begin >= separator
+        let pathname =
+            begin >= separator
             ? begin - separator - (dotStart != nil && begin >= dotStart! ? 1 : 0) : Int.max
         return Candidate(
             path: end == bytes.count ? path : String(path.dropLast()), score: total,
@@ -184,7 +190,8 @@ enum ForkRipgrepQuery {
         for byte in word {
             let remaining = end - cursor
             let lower = memchr(cursor, Int32(byte), remaining)?.assumingMemoryBound(to: UInt8.self)
-            let upper = (97...122).contains(byte)
+            let upper =
+                (97...122).contains(byte)
                 ? memchr(cursor, Int32(byte - 32), remaining)?.assumingMemoryBound(to: UInt8.self) : nil
             let found: UnsafePointer<UInt8>?
             switch (lower, upper) {
