@@ -413,7 +413,13 @@ struct RootPaletteView: View {
             fileNavigator.routeRootQuery(vm.query)
             return true
         }
-        if vm.mode == .fileNavigator { fileNavigator.updateInput(vm.query) }
+        if vm.mode == .fileNavigator {
+            if vm.query.isEmpty {
+                fileNavigator.returnToLauncher()
+                return true
+            }
+            fileNavigator.updateInput(vm.query)
+        }
         return false
     }
 

@@ -74,6 +74,12 @@ final class FileNavigatorCoordinator {
         updateInput(query, force: true)
     }
 
+    /// Clearing the whole path leaves the navigator for the launcher root, whichever way it opened.
+    func returnToLauncher() {
+        origin = nil
+        core.palette.prepare(mode: .launcher)
+    }
+
     func resume() {
         guard core.palette.mode == .fileNavigator else { return }
         updateInput(core.palette.query, force: !active)

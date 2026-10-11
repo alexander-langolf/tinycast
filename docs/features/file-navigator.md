@@ -55,7 +55,7 @@ and modifiers.
 | type | edits the path; the last segment fuzzy-filters its folder (`ForkFzf`, fzf syntax: `'exact`, `^prefix`, `!exclude`) |
 | words without `~`/`/` | search everywhere: Spotlight through Search Files' existing session, used as is |
 | `/` | descends into the folder the input names |
-| ⌫ | edits the input; across a `/` it lands in the parent, already filtered by the folder you left; empty input is a no-op and stays in the navigator |
+| ⌫ | edits the input; across a `/` it lands in the parent, already filtered by the folder you left; clearing the whole input returns to the launcher root |
 | Tab | completes the focused row into the input (a folder descends) |
 | ⇧Tab | parent folder, with the folder you came from focused (from a mistyped path: back to the last real folder) |
 | ↑ ↓ | move focus |
