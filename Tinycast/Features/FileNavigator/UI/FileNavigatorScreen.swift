@@ -82,9 +82,15 @@ struct FileNavigatorScreen: PaletteScreen {
                 })
         }
         let targets = coordinator.targets
+        let isSearch =
+            switch coordinator.state.path {
+            case .global: true
+            case .folder: coordinator.state.subtree
+            case .missing: false
+            }
         return PopoverMenuContent(
             header: targets.isEmpty ? "Current Folder" : "\(targets.count) selected",
-            items: FileNavigatorAction.actionsFor(targets).map { action in
+            items: FileNavigatorAction.actionsFor(targets, isSearch: isSearch).map { action in
                 PopoverMenuItem(title: action.title, systemImage: action.symbol) {
                     coordinator.perform(action)
                 }

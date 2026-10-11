@@ -2,7 +2,7 @@ import Foundation
 
 enum FileNavigatorAction: String, CaseIterable, Sendable {
     case edit, openDefault, ghostty, ghosttyApp, quickLook, copyPath, copyRelative, reveal
-    case searchBelow, agent, bookmark
+    case showInNavigator, searchBelow, agent, bookmark
 
     var title: String {
         switch self {
@@ -14,6 +14,7 @@ enum FileNavigatorAction: String, CaseIterable, Sendable {
         case .copyPath: "Copy path(s)"
         case .copyRelative: "Copy relative path(s)"
         case .reveal: "Reveal in Finder"
+        case .showInNavigator: "Show in File Navigator"
         case .searchBelow: "Search below this folder"
         case .agent: "Hand to an agent"
         case .bookmark: "Bookmark folder"
@@ -28,18 +29,19 @@ enum FileNavigatorAction: String, CaseIterable, Sendable {
         case .ghosttyApp: "macwindow"
         case .quickLook: "eye"
         case .copyPath, .copyRelative: "doc.on.clipboard"
-        case .reveal, .bookmark: "folder"
+        case .reveal, .showInNavigator, .bookmark: "folder"
         case .searchBelow: "magnifyingglass"
         case .agent: "person.crop.rectangle.stack"
         }
     }
 
-    static func actionsFor(_ targets: [FileSearchResult]) -> [Self] {
+    static func actionsFor(_ targets: [FileSearchResult], isSearch: Bool = false) -> [Self] {
         var actions: [Self] = []
         if targets.contains(where: { !$0.isDirectory }) { actions.append(.edit) }
         if !targets.isEmpty { actions.append(.openDefault) }
         actions += [.ghostty, .ghosttyApp]
         if !targets.isEmpty { actions += [.quickLook, .copyPath, .copyRelative, .reveal] }
+        if isSearch, targets.count == 1 { actions.append(.showInNavigator) }
         actions.append(.searchBelow)
         if !targets.isEmpty { actions.append(.agent) }
         actions.append(.bookmark)

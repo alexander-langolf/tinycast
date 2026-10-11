@@ -256,7 +256,8 @@ is `workspace` and every route is upstream.
 AppCore owns the lazy coordinator and the palette environment injects it. The coordinator owns
 cancellable off-main directory/subtree work, the visible-folder watcher, a separate upstream
 FileSearchSession for global words, focused preview state and bookmark/recent persistence.
-Upstream `Features/FileSearch/` is used without editing it.
+Upstream `Features/FileSearch/` is reused through one marked action-menu hook: Show in File Navigator
+opens a result's parent folder and focuses that result after the listing loads.
 
 The editor override lives on AppSettings and in `fileNavigator.editor` in settings.json; the new
 pane owns Browse Files' alias, visibility and shortcut controls through `SettingsTab.ownedCommands`.
@@ -316,6 +317,7 @@ launcher changes live there without upstream hooks. The generated pbxproj except
 | File | Tag | Purpose |
 | --- | --- | --- |
 | `Tinycast/App/AppCore.swift` | `// FORK: file-navigator` | Own the lazy coordinator; resume on screen opening and stop at termination. |
+| `Tinycast/Features/FileSearch/UI/FileSearchScreen.swift` | `// FORK: file-navigator` | Add the fork-owned Show in File Navigator action to a result's menu. |
 | `Tinycast/Palette/PaletteMode.swift` | `// FORK: file-navigator` | Add fileNavigator mode, symbol and path/words placeholder. |
 | `Tinycast/Palette/RootPaletteView.swift` | `// FORK: file-navigator` | Route root paths, compose the screen, query/mode lifecycle and keyboard/observers. |
 | `Tinycast/Palette/PaletteEnvironment.swift` | `// FORK: file-navigator` | Inject the coordinator into palette and hosted menus. |

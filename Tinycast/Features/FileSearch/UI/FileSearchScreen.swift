@@ -156,6 +156,8 @@ enum FileSearchActionsMenu {
                 PopoverMenuItem(
                     title: "Show in Finder", systemImage: "folder", shortcut: "⌘↵"
                 ) { coordinator.showInFinder(result) },
+                // FORK: file-navigator
+                core.fileNavigator.showInNavigatorAction(for: result),
                 PopoverMenuItem(title: "Quick Look", systemImage: "eye", shortcut: "⌘Y") {
                     vm.fileSearchQuickLook = true
                 },

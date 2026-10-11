@@ -57,14 +57,26 @@ final class FileNavigatorCoordinator {
         query == "~" || query == "/" ? "~/" : query
     }
 
-    func show(input: String? = nil, origin: TerminalInstance? = nil) {
+    func show(input: String? = nil, origin: TerminalInstance? = nil, focus: String? = nil) {
         self.origin = origin
         state.picks = []
         state.panel = nil
+        state.subtree = false
+        state.pendingFocus = focus
         state.isOpen = true
         let initial = input ?? FileNavigatorPath.directoryInput(state.recent.first ?? home, home: home)
         core.paletteCoordinator.showPalette(mode: .fileNavigator, seeding: initial)
         updateInput(initial, force: true)
+    }
+
+    func showInNavigatorAction(for result: FileSearchResult) -> PopoverMenuItem {
+        let action = FileNavigatorAction.showInNavigator
+        return PopoverMenuItem(title: action.title, systemImage: action.symbol) { [weak self] in
+            guard let self else { return }
+            self.show(
+                input: FileNavigatorPath.directoryInput(FileNavigatorPath.parent(result.id), home: self.home),
+                focus: result.id)
+        }
     }
 
     func routeRootQuery(_ query: String) {
@@ -372,8 +384,10 @@ final class FileNavigatorCoordinator {
 
     func closePanel() { state.panel = nil }
 
-    func chooseFolder(_ folder: String) {
+    func chooseFolder(_ folder: String, focus: String? = nil) {
         state.panel = nil
+        state.subtree = false
+        state.pendingFocus = focus
         core.palette.rewriteQuery(FileNavigatorPath.directoryInput(folder, home: home))
         updateInput(core.palette.query, force: true)
     }
@@ -389,13 +403,17 @@ final class FileNavigatorCoordinator {
     func perform(_ action: FileNavigatorAction) {
         let targets = targets
         let folder = state.folder
+        let validationFolder =
+            action == .showInNavigator && targets.count == 1
+            ? FileNavigatorPath.parent(targets[0].id) : folder
         let revision = revision
         actionWork?.cancel()
         actionIdentity = UUID()
         let identity = actionIdentity
         actionWork = Task { [weak self] in
             do {
-                let missing = try await FileNavigatorActionsAdapter.validate(targets, folder: folder)
+                let missing = try await FileNavigatorActionsAdapter.validate(
+                    targets, folder: validationFolder)
                 guard let self, self.accepts(revision, input: self.state.input),
                     self.actionIdentity == identity,
                     self.state.folder == folder, self.targets == targets, !Task.isCancelled
@@ -442,6 +460,9 @@ final class FileNavigatorCoordinator {
                 targets.map { FileNavigatorPath.relative($0.id, to: folder) }.joined(separator: "\n"))
             core.showMessage("Copied relative paths")
         case .reveal: FileNavigatorActionsAdapter.reveal(targets, core: core)
+        case .showInNavigator:
+            guard targets.count == 1, let target = targets.first else { return }
+            chooseFolder(FileNavigatorPath.parent(target.id), focus: target.id)
         case .searchBelow:
             core.palette.rewriteQuery(FileNavigatorPath.directoryInput(folder, home: home))
             state.setInput(core.palette.query, home: home, folders: folders)

@@ -13,7 +13,7 @@ and rendered acceptance remain for Claude's verification pass.
   and `ForkFzf` hits supply extended matching; no dependency, Rust component or helper binary is added.
 - AppCore owns the lazy coordinator. Views receive it through the palette environment; no feature
   singleton is introduced. All new feature code is fork-owned; upstream `Features/FileSearch/` is reused
-  without edits.
+  with one marked action-menu hook for Show in File Navigator.
 - Listings and ranking run off-main. Every batch, ranking result and preview checks the current request
   identity, destination and cancellation before publishing. Leaving or hiding cancels owned work and
   the folder watcher. External actions validate the same destination and target set after suspension.
@@ -43,6 +43,8 @@ and rendered acceptance remain for Claude's verification pass.
   browsed, else `~`.
 - From a **terminal view**: a card action opens the navigator in that instance's current directory
   (OSC 7 cwd the session already tracks).
+- From **Search Files**: ⌘K → Show in File Navigator opens the result's parent folder with the
+  file or folder row focused after loading.
 - Typing a path (`~/…` or `/…`) in the root palette routes here, as `$` routes to terminals.
 
 ## Interaction model
@@ -89,8 +91,11 @@ An empty Bookmarks & Recent panel shows a disabled "No bookmarks or recent folde
 
 ⌘K actions: **Edit in Fresh** (files only; terminal view), Open with default app, Open Ghostty here
 (embedded terminal view, not the Ghostty app), Open in Ghostty app, Quick Look, Copy path(s), Copy
-relative path(s), Reveal in Finder, Search below this folder, Hand to an agent (copy absolute-path
-context), Bookmark folder.
+relative path(s), Reveal in Finder, Show in File Navigator (one target in global or ⌘F subtree search
+only; no shortcut), Search below this folder, Hand to an agent (copy absolute-path context), Bookmark
+folder. Show in File Navigator replaces the input with the target's parent folder, leaves subtree
+search, and focuses the target after loading; plain folder listings omit it. Picks and terminal origin
+survive this navigation.
 
 ## Edit in a terminal view
 
@@ -150,8 +155,8 @@ New pieces:
 
 All new code is fork-owned under `Tinycast/Features/FileNavigator/`, the same pattern as the fork's
 terminal instances (docs/fork.md → Terminal instances). Upstream's Search Files files (24 upstream commits since 2026-08-01) are
-**used, never edited**; a thin fork adapter maps them so an upstream API change breaks the build in
-one place instead of producing merge conflicts.
+reused through thin fork adapters. The only navigator hook in Search Files adds a fork-owned menu
+action; listing, search and preview behavior remain upstream.
 
 - `FileNavigator/Model/FileNavigatorState.swift` — the pure path reducer the prototype validates
   (folder, filter, focus, picks, panel, hidden toggle, bookmarks, recent). Foundation-only, with a
@@ -170,8 +175,9 @@ Upstream integration points (each `// FORK: file-navigator`, listed in docs/fork
 3. Launcher command registration for **Browse Files**.
 4. Terminal card action "Browse here" (already fork-owned code).
 5. `Scripts/run-tests.sh` registers `file-navigator-test`.
+6. `FileSearchActionsMenu` adds the fork-owned Show in File Navigator action.
 
-No hook inside upstream's Search Files: words typed in the navigator already search everywhere.
+The Search Files hook only enters the navigator; words typed in the navigator still use its own session.
 
 ## Lifecycle and actions
 
@@ -184,6 +190,8 @@ and permission-error classification. The recursive reveal policy is independent 
 
 Actions use `FileNavigatorActionsAdapter` for multi-target open, reveal and copy, retaining upstream
 single-target actions. Relative copies compute paths from the current folder (including `../`).
+Show in File Navigator seeds `state.pendingFocus` with the target's absolute logical path and forces
+a direct listing; the existing batch receiver applies that focus and clears it on the final batch.
 Quick Look opens the first target in the upstream overlay; the preview still follows only the focused
 row. Agent context is a short header and one absolute path per line; a HUD says
 “Context copied — paste into an agent”. No prompt or direct dispatch is included in v1.
@@ -245,6 +253,6 @@ empty bookmarks panel. No correction-session harness or runtime checks were exec
    skipping hidden entries, package contents and `FileSearchIgnoreList`, capped by depth and count.
    No bundled `fd`/`rg` in v1; add a bundled `fd` only if a benchmark on `~/work` shows first rows
    clearly slower than Spotlight. `.gitignore` files are not read in v1. Content search is out of v1.
-4. No Search Files hook (redundant with the navigator's global search; upstream churn).
+4. Search Files gets one small Show in File Navigator action hook; search itself stays upstream.
 5. ↵ on a file opens the ⌘K actions (revisit when a Monaco view exists).
 6. Preview pane on by default.
