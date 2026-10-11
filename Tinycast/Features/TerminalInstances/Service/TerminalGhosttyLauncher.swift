@@ -32,7 +32,7 @@ enum TerminalGhosttyLauncher {
 
     private static func source(application: URL, directory: String) -> String {
         """
-        using terms from application "/Applications/Ghostty.app"
+        using terms from application \(stringLiteral(application.path))
             set targetApplication to \(stringLiteral(application.path))
             tell application targetApplication
                 set surfaceConfig to new surface configuration from {initial working directory:\(stringLiteral(directory))}
@@ -57,30 +57,33 @@ enum TerminalGhosttyLauncher {
             .replacingOccurrences(of: "\t", with: "\\t") + "\""
     }
 
+    /// One script at a time: NSAppleScript is not safe to run concurrently from background threads.
+    private static let scriptQueue = DispatchQueue(label: "com.tinycast.ghostty-launcher", qos: .userInitiated)
+
     private nonisolated static func runScript(_ source: String) async throws {
         try Task.checkCancellation()
-        let task = Task.detached(priority: .userInitiated) {
-            try Task.checkCancellation()
-            guard let script = NSAppleScript(source: source) else {
-                throw ScriptFailure("The Ghostty automation could not be prepared.")
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
+            scriptQueue.async {
+                guard let script = NSAppleScript(source: source) else {
+                    continuation.resume(throwing: ScriptFailure("The Ghostty automation could not be prepared."))
+                    return
+                }
+                var errorInfo: NSDictionary?
+                _ = script.executeAndReturnError(&errorInfo)
+                guard let errorInfo else {
+                    continuation.resume()
+                    return
+                }
+                if errorInfo[NSAppleScript.errorNumber] as? Int == -1743 {
+                    continuation.resume(throwing: ScriptFailure(
+                        "Allow Tinycast to control Ghostty in System Settings → Privacy & Security → Automation."))
+                    return
+                }
+                continuation.resume(throwing: ScriptFailure(
+                    errorInfo[NSAppleScript.errorMessage] as? String ?? "The Ghostty automation failed."))
             }
-            try Task.checkCancellation()
-            var errorInfo: NSDictionary?
-            _ = script.executeAndReturnError(&errorInfo)
-            try Task.checkCancellation()
-            guard let errorInfo else { return }
-            if errorInfo[NSAppleScript.errorNumber] as? Int == -1743 {
-                throw ScriptFailure(
-                    "Allow Tinycast to control Ghostty in System Settings → Privacy & Security → Automation.")
-            }
-            throw ScriptFailure(
-                errorInfo[NSAppleScript.errorMessage] as? String ?? "The Ghostty automation failed.")
         }
-        try await withTaskCancellationHandler {
-            try await task.value
-        } onCancel: {
-            task.cancel()
-        }
+        try Task.checkCancellation()
     }
 
     private struct ScriptFailure: LocalizedError, Sendable {
