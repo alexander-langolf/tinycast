@@ -21,18 +21,21 @@ navigator, not a file manager: no rename, move, copy-to or bulk delete in v1.
 
 ## Interaction model
 
-Single list (no Miller columns — the palette is narrow) plus an optional preview pane. Letters
-always belong to the filter, so commands use arrows and modifiers.
+Follows Script Kit Next's File Search (`src/file_search/directory.rs`): **the input is the path.**
+`~/github/agentkit/li` lists `~/github/agentkit/` filtered by `li`; input that does not start with
+`~` or `/` searches everywhere. Single list (no Miller columns — the palette is narrow) plus an
+optional preview pane. The input owns letters, so commands use arrows, Tab and modifiers.
 
 | Key | Action |
 |---|---|
-| type | fuzzy-filter the current folder (`ForkFzf`, fzf extended syntax: `'exact`, `^prefix`, `!exclude`) |
-| `~/…`, `/…` | path jump: walk to the deepest existing folder, keep the rest as the filter |
+| type | edits the path; the last segment fuzzy-filters its folder (`ForkFzf`, fzf syntax: `'exact`, `^prefix`, `!exclude`) |
+| words without `~`/`/` | search everywhere: Spotlight through Search Files' existing session, used as is |
+| `/` | descends into the folder the input names |
+| ⌫ | edits the input; across a `/` it lands in the parent, already filtered by the folder you left |
+| Tab | completes the focused row into the input (a folder descends) |
+| ⇧Tab | parent folder, with the folder you came from focused (from a mistyped path: back to the last real folder) |
 | ↑ ↓ | move focus |
-| → | enter the focused folder |
-| ← | parent folder, with the folder you came from focused |
-| ⌫ on empty filter | parent folder |
-| ↵ | folder: enter. File: **edit in a terminal view** (`$EDITOR`). With picked files: edit all of them |
+| ↵ | folder: descend. File: **edit in a terminal view** (`$EDITOR`). With picked files: edit all of them |
 | Space | pick / unpick (the pick list survives folder changes, nnn-style) |
 | ⌘A | pick every visible row |
 | ⌘K | action panel for the picked files, else the focused row |
@@ -41,9 +44,11 @@ always belong to the filter, so commands use arrows and modifiers.
 | ⌘. | show hidden and ignored entries |
 | ⌘O | Ghostty tab in the current folder |
 | ⌘T | new terminal view in the current folder |
-| ⌘F | Search Files scoped to the current folder |
 | ⌃G | close and `cd` the originating terminal view into the current folder |
-| Esc | clear filter → clear picks → close (one step per press) |
+| Esc | trim to the folder → clear picks → close (one step per press) |
+
+A mistyped folder (`~/nope/x`) shows "No folder ~/nope" and no rows; nothing is guessed. nnn's
+auto-enter does not apply in this model.
 
 ⌘K actions: Edit in terminal (files only), Open with default app, Open Ghostty here, New terminal
 here, Quick Look, Copy path(s), Copy relative path(s), Reveal in Finder, Search Files from here,
@@ -126,9 +131,8 @@ Upstream integration points (each `// FORK: file-navigator`, listed in docs/fork
 
 ## Open decisions
 
-1. **nnn auto-enter** (a filter leaving exactly one folder walks into it): with fuzzy matching it
-   chains (`wor` → work, then `p` → platform). Default off, or on? Try the prototype's
-   "Auto-enter surprise" tab.
+1. ~~nnn auto-enter~~ — moot: Sasha chose the Script Kit model (input is the path) on 2026-10-11;
+   the nnn folder + filter model stays in the prototype only for comparison.
 2. **Default editor** when `$EDITOR` is unset — research (vault, 2026-10-11) ranks Fresh (non-modal,
    LSP, needs Ghostty Option-as-Alt), Helix (modal, diff gutter), Microsoft Edit (simplest); all
    unverified inside the grid, and the ⌘-key gap applies to each.

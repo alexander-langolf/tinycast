@@ -57,17 +57,19 @@
 <body>
 <main>
   <h1>File Navigator Prototype</h1>
-  <p class="intro"><span class="tag">PROTOTYPE · throwaway</span>Question: does an nnn-style keyboard model feel right inside Tinycast's palette — type to filter, arrows to move between folders, a selection that survives folder changes, and a ⌘K action panel — and is "Enter on a file opens it in <code>$EDITOR</code> in a Ghostty terminal view" the right default? Everything runs on a small made-up file tree; nothing touches your disk. Use the keyboard (click the navigator first) or the buttons.</p>
+  <p class="intro"><span class="tag">PROTOTYPE · throwaway</span>Default model follows Script Kit: the input <em>is</em> the path (<code>~/github/agentkit/li</code> = folder <code>~/github/agentkit</code>, filter <code>li</code>); words without <code>~</code> or <code>/</code> search everywhere. Untick the checkbox to compare nnn's folder + separate filter. Question: does an nnn-style keyboard model feel right inside Tinycast's palette — type to filter, arrows to move between folders, a selection that survives folder changes, and a ⌘K action panel — and is "Enter on a file opens it in <code>$EDITOR</code> in a Ghostty terminal view" the right default? Everything runs on a small made-up file tree; nothing touches your disk. Use the keyboard (click the navigator first) or the buttons.</p>
 
   <div class="grid">
     <div class="card palette" id="nav" tabindex="0">
       <h2>Navigator (palette screen)</h2>
+      <div class="crumb" id="modeLabel"></div>
       <div class="crumb" id="crumb"></div>
       <div class="field" id="field"></div>
       <ul class="rows" id="rows"></ul>
       <div id="panel"></div>
       <div id="out"></div>
-      <label class="opt"><input type="checkbox" id="autoEnter"> nnn auto-enter: a filter that leaves exactly one folder walks into it</label>
+      <label class="opt"><input type="checkbox" id="pathModel" checked> Script Kit model: the input is the path (untick for nnn's folder + filter)</label>
+      <label class="opt"><input type="checkbox" id="autoEnter"> nnn auto-enter (nnn model only): a filter that leaves exactly one folder walks into it</label>
     </div>
 
     <div class="card">
@@ -98,6 +100,7 @@ const Nav = (() => {
   const D = (name, extra = {}) => ({ name, dir: true, ...extra });
   const F = (name, extra = {}) => ({ name, dir: false, ...extra });
   const FS = {
+    "/": [D("Applications"), D("Users")], "/Applications": [D("Ghostty.app"), D("Tinycast.app")], "/Users": [D("sasha")],
     "/Users/sasha": [D("github"), D("work"), D("LangolfVault"), D("Downloads"), D("Library", { hidden: true }), F(".zshrc", { hidden: true }), F("notes.txt")],
     "/Users/sasha/github": [D("agentkit"), D("tinycast"), D("cdp-mux")],
     "/Users/sasha/github/agentkit": [D("bin"), D("lib"), D("hooks"), D("node_modules", { ignored: true }), D(".git", { hidden: true }), F("README.md"), F("package.json"), F(".env", { hidden: true })],
@@ -126,6 +129,7 @@ const Nav = (() => {
   // Fuzzy subsequence score, the same idea as FileSearch's shared FuzzyMatch scorer.
   function score(name, q) {
     if (!q) return 0;
+    if (q === "\u0000") return -1;
     const n = name.toLowerCase(), s = q.toLowerCase();
     if (n.startsWith(s)) return 1000 - n.length;
     let i = 0, gaps = 0, last = -1;
@@ -133,10 +137,22 @@ const Nav = (() => {
     return 500 - gaps * 5 - n.length;
   }
 
+  function allEntries() {
+    const out = [];
+    for (const [dir, kids] of Object.entries(FS)) for (const e of kids) if (!e.hidden && !e.ignored && !dir.split("/").some(seg => seg.startsWith(".") || seg === "node_modules" || seg === "Library")) out.push({ ...e, path: join(dir, e.name) });
+    return out;
+  }
+
   function listing(state) {
+    if (state.model === "path" && state.global !== null) {
+      if (!state.global.trim()) return [];
+      // Not a path: Script Kit runs Spotlight (mdfind). Simulated here over the whole fake tree.
+      return allEntries().map(e => ({ ...e, s: score(e.name, state.global), meta: tilde(parent(e.path)) }))
+        .filter(e => e.s >= 0).sort((a, b) => b.s - a.s).slice(0, 8);
+    }
     const kids = (FS[state.cwd] || []).filter(e => (state.showHidden || (!e.hidden && !e.ignored)));
     const rows = kids.map(e => ({ ...e, path: join(state.cwd, e.name), s: score(e.name, state.filter) }))
-      .filter(e => e.s >= 0)
+      .filter(e => e.s >= 0 && state.filter !== "\u0000")
       .sort((a, b) => state.filter ? b.s - a.s : (b.dir - a.dir) || a.name.localeCompare(b.name));
     return rows;
   }
@@ -145,9 +161,11 @@ const Nav = (() => {
     cwd: HOME, filter: "", cursor: 0, selection: [], showHidden: false, preview: false,
     panel: null, panelCursor: 0, bookmarks: ["/Users/sasha/github/agentkit", "/Users/sasha/LangolfVault"],
     recent: [], autoEnter: !!opts.autoEnter, open: true, output: null, changed: [],
+    model: opts.model || "path", input: "~/", global: null,
   });
 
   function enterDir(state, path) {
+    if (state.model === "path") return { ...state, cwd: path, input: path === "/" ? "/" : tilde(path) + "/", global: null, filter: "", cursor: 0, recent: [path, ...state.recent.filter(p => p !== path)].slice(0, 5) };
     return { ...state, cwd: path, filter: "", cursor: 0, recent: [path, ...state.recent.filter(p => p !== path)].slice(0, 5) };
   }
 
@@ -159,6 +177,55 @@ const Nav = (() => {
     const rest = full.slice(cut + 1);
     if (!isDir(dir)) return { ...state, filter: text, cursor: 0, output: { warn: true, text: `No folder ${tilde(dir)} — showing nothing.` } };
     return { ...enterDir(state, dir), filter: rest };
+  }
+
+  // ---- Script Kit model: the input IS the path ("~/github/agentkit/li" = folder ~/github/agentkit, filter "li").
+  function parseInput(input) {
+    if (!/^[~\/]/.test(input)) return { global: input };
+    const full = expand(input);
+    if (full === HOME && input === "~") return { dir: HOME, filter: "" };
+    const cut = full.lastIndexOf("/");
+    const dir = cut <= 0 ? "/" : full.slice(0, cut);
+    return isDir(dir) ? { dir, filter: full.slice(cut + 1) } : { missing: dir };
+  }
+  function sync(state) {
+    const p = parseInput(state.input);
+    if (p.global !== undefined) return { ...state, global: p.global, filter: "", cursor: 0 };
+    if (p.missing) return { ...state, global: null, filter: "\u0000", cursor: 0, output: { warn: true, text: `No folder ${tilde(p.missing)} — keep typing or ⌫.` } };
+    const moved = p.dir !== state.cwd;
+    return { ...state, global: null, cwd: p.dir, filter: p.filter, cursor: 0,
+      recent: moved ? [p.dir, ...state.recent.filter(r => r !== p.dir)].slice(0, 5) : state.recent };
+  }
+  const withInput = (state, input) => sync({ ...state, input });
+  const dirInput = (path) => (path === "/" ? "/" : tilde(path) + "/");
+
+  function reducePath(s, action) {
+    const rows = listing(s);
+    const r = rows[s.cursor];
+    switch (action.type) {
+      case "type": return withInput(s, s.input + action.text);
+      case "backspace": return !s.input ? s : withInput(s, s.input.slice(0, -1)); // crossing "/" lands in the parent, filtered by the old folder name
+      case "right": case "tab":
+        if (!r) return s;
+        return r.dir ? withInput(s, dirInput(r.path)) : withInput(s, dirInput(parent(r.path)) + r.name); // Tab completes the focused row into the input
+      case "left": case "shiftTab": {
+        if (s.global !== null || s.cwd === "/") return s;
+        if (s.filter === "\u0000") return withInput(s, dirInput(s.cwd)); // mistyped path: back to the last real folder
+        const from = s.cwd, next = withInput(s, dirInput(parent(s.cwd)));
+        const idx = listing(next).findIndex(x => x.path === from);
+        return { ...next, cursor: Math.max(idx, 0) };
+      }
+      case "enter":
+        if (s.selection.some(p => !isDir(p))) return run(s, "edit");
+        if (!r) return { ...s, output: { warn: true, text: "No row to open — nothing matches." } };
+        return r.dir ? withInput(s, dirInput(r.path)) : run(s, "edit");
+      case "esc":
+        if (s.global !== null && s.input) return withInput(s, "~/");
+        if (s.filter) return withInput(s, dirInput(s.cwd));
+        if (s.selection.length) return { ...s, selection: [], output: { text: "Selection cleared (Esc again closes)." } };
+        return { ...s, open: false, output: { text: "Navigator closes; palette returns to root." } };
+      default: return null; // shared handling
+    }
   }
 
   function afterFilter(state) {
@@ -231,7 +298,12 @@ const Nav = (() => {
         default: return s; // other keys are ignored while a panel is open
       }
     }
+    if (s.model === "path" && action.type !== "setModel") {
+      const handled = reducePath(s, action);
+      if (handled) return handled;
+    }
     switch (action.type) {
+      case "setModel": return action.model === "path" ? withInput({ ...s, model: "path" }, dirInput(s.cwd)) : { ...s, model: "split", global: null, filter: "", input: "" };
       case "type": {
         const text = s.filter + action.text;
         if (/^[~\/]/.test(text) && text.includes("/") ) return pathJump(s, text);
@@ -307,10 +379,13 @@ function dispatch(action) {
 
 function render() {
   const rows = Nav.listing(state);
-  $("crumb").textContent = (state.open ? "" : "[closed] ") + Nav.tilde(state.cwd);
-  $("field").innerHTML = state.filter ? escapeHtml(state.filter) : '<span class="ph">Type to filter, or a path like ~/work…</span>';
+  $("crumb").textContent = (state.open ? "" : "[closed] ") + (state.model === "path" && state.global !== null ? "Search everywhere (Spotlight)" : Nav.tilde(state.cwd));
+  $("field").innerHTML = state.model === "path"
+    ? (state.input ? escapeHtml(state.input) + '<span class="ph">▏</span>' : '<span class="ph">Type a path (~/…) or words to search everywhere</span>')
+    : (state.filter ? escapeHtml(state.filter) : '<span class="ph">Type to filter, or a path like ~/work…</span>');
+  $("modeLabel").textContent = state.model === "path" ? "Model: the input is the path (Script Kit)" : "Model: folder + separate filter (nnn)";
   $("rows").innerHTML = rows.length ? rows.map((r, i) =>
-    `<li class="${i === state.cursor && !state.panel ? "cur" : ""} ${state.selection.includes(r.path) ? "picked" : ""}"><span class="kind">${r.dir ? "▸" : "·"}</span><span class="name">${escapeHtml(r.name)}${r.dir ? "/" : ""}</span><span class="meta">${r.hidden ? "hidden" : r.ignored ? "ignored" : ""}</span></li>`).join("")
+    `<li class="${i === state.cursor && !state.panel ? "cur" : ""} ${state.selection.includes(r.path) ? "picked" : ""}"><span class="kind">${r.dir ? "▸" : "·"}</span><span class="name">${escapeHtml(r.name)}${r.dir ? "/" : ""}</span><span class="meta">${r.meta ? escapeHtml(r.meta) : r.hidden ? "hidden" : r.ignored ? "ignored" : ""}</span></li>`).join("")
     : '<li class="empty">No matches</li>';
   let panel = "";
   if (state.panel === "actions") {
@@ -327,13 +402,16 @@ function render() {
   $("panel").innerHTML = panel;
   $("out").innerHTML = state.output ? `<div class="out ${state.output.warn ? "warn" : ""}">${escapeHtml(state.output.text)}</div>` : "";
   $("autoEnter").checked = state.autoEnter;
+  $("pathModel").checked = state.model === "path";
 
   const ch = (k) => state.changed.includes(k) ? ' class="changed"' : "";
   const focused = rows[state.cursor];
   $("state").innerHTML = `
+    <dt>Model</dt><dd${ch("model")}>${state.model === "path" ? "input is the path" : "folder + filter"}</dd>
+    <dt>Input</dt><dd${ch("input")}>${state.model === "path" ? escapeHtml(state.input || "—") : "—"}</dd>
     <dt>Navigator</dt><dd${ch("open")}>${state.open ? "open" : "closed"}</dd>
     <dt>Folder</dt><dd${ch("cwd")}>${escapeHtml(Nav.tilde(state.cwd))}</dd>
-    <dt>Filter</dt><dd${ch("filter")}>${state.filter ? escapeHtml(state.filter) : "—"}</dd>
+    <dt>Filter</dt><dd${ch("filter")}>${state.global !== null && state.model === "path" ? "global: " + escapeHtml(state.global) : state.filter && state.filter !== "\u0000" ? escapeHtml(state.filter) : "—"}</dd>
     <dt>Focused row</dt><dd${ch("cursor")}>${focused ? escapeHtml(focused.name) : "—"}</dd>
     <dt>Selection</dt><dd${ch("selection")}>${state.selection.length ? state.selection.map(p => escapeHtml(Nav.tilde(p))).join("<br>") : "none"}</dd>
     <dt>Hidden + ignored</dt><dd${ch("showHidden")}>${state.showHidden ? "shown" : "hidden"}</dd>
@@ -348,7 +426,7 @@ function escapeHtml(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;
 
 const KEYS = [
   ["↓ Next", { type: "down" }, "↓"], ["↑ Previous", { type: "up" }, "↑"], ["Into folder", { type: "right" }, "→"], ["Up a folder", { type: "left" }, "←"],
-  ["Open / edit", { type: "enter" }, "↵"], ["Delete a letter / up", { type: "backspace" }, "⌫"], ["Select / unselect", { type: "space" }, "Space"],
+  ["Complete / into folder", { type: "tab" }, "Tab"], ["Parent folder", { type: "shiftTab" }, "⇧Tab"], ["Open / edit", { type: "enter" }, "↵"], ["Delete a letter / up", { type: "backspace" }, "⌫"], ["Select / unselect", { type: "space" }, "Space"],
   ["Select all shown", { type: "selectAll" }, "⌘A"], ["Clear selection", { type: "clearSelection" }, ""], ["Actions", { type: "actions" }, "⌘K"],
   ["Bookmarks + recent", { type: "bookmarks" }, "⌘B"], ["Hidden files", { type: "hidden" }, "⌘."], ["Preview", { type: "preview" }, "⌘Y"],
   ["Open Ghostty here", { type: "run", id: "ghostty" }, "⌘O"], ["Search Files from here", { type: "run", id: "searchHere" }, "⌘F"],
@@ -358,12 +436,14 @@ $("keys").innerHTML = KEYS.map(([label, , k], i) => `<button data-k="${i}">${lab
 $("keys").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; if (b.id === "reset") return reset(); dispatch(KEYS[+b.dataset.k][1]); });
 $("typeBtn").onclick = () => { const v = $("typeIn").value; if (v) { dispatch({ type: "type", text: v }); $("typeIn").value = ""; } };
 $("autoEnter").onchange = (e) => dispatch({ type: "setAuto", on: e.target.checked });
+$("pathModel").onchange = (e) => dispatch({ type: "setModel", model: e.target.checked ? "path" : "split" });
 function reset(opts) { Nav.restore(PRISTINE); state = Nav.initial(opts); state.changed = []; render(); }
 
 $("nav").addEventListener("keydown", (e) => {
   const map = { ArrowDown: { type: "down" }, ArrowUp: { type: "up" }, ArrowRight: { type: "right" }, ArrowLeft: { type: "left" }, Enter: { type: "enter" }, Backspace: { type: "backspace" }, Escape: { type: "esc" } };
   let a = map[e.key];
   if (!a && e.key === " ") a = { type: "space" };
+  if (!a && e.key === "Tab") a = { type: e.shiftKey ? "shiftTab" : "tab" };
   if (!a && (e.metaKey || e.ctrlKey)) {
     const k = e.key.toLowerCase();
     a = e.ctrlKey && k === "g" ? { type: "cdOnQuit" } : { k: { type: "actions" }, b: { type: "bookmarks" }, ".": { type: "hidden" }, y: { type: "preview" }, a: { type: "selectAll" }, o: { type: "run", id: "ghostty" }, f: { type: "run", id: "searchHere" } }[k];
@@ -375,19 +455,23 @@ $("nav").addEventListener("keydown", (e) => {
 // Guided walkthroughs
 const T = (text) => ({ type: "type", text });
 const SCENARIOS = [
-  { name: "Happy path: edit a file", desc: "From home, filter to agentkit's lib and edit a file. Watch: Enter on a folder walks in, Enter on a file closes the palette and opens a terminal view running $EDITOR in the file's folder.",
+  { name: "Script Kit: the path is the input", desc: "Type a path and the list follows it. ⌫ across a “/” lands in the parent, already filtered by the folder you left; Tab completes the focused row into the input; ⇧Tab goes to the parent.",
+    steps: [["Type “github/agentkit/li”", T("github/agentkit/li")], ["⌫ “i”", { type: "backspace" }], ["⌫ “l” (filter empty)", { type: "backspace" }], ["⌫ “/” (parent, filtered “agentkit”)", { type: "backspace" }], ["Tab (complete agentkit/)", { type: "tab" }], ["Type “li”", T("li")], ["Tab (into lib/)", { type: "tab" }], ["↓", { type: "down" }], ["↵ edit codex-run.ts", { type: "enter" }]] },
+  { name: "Script Kit: words search everywhere", desc: "Input that doesn't start with ~ or / is a global search (Script Kit runs Spotlight; simulated here). Rows show their folder; ↵ on a file edits it. Start with ⌫⌫ to clear the “~/”.",
+    steps: [["⌫", { type: "backspace" }], ["⌫ (input empty)", { type: "backspace" }], ["Type “sessionlog”", T("sessionlog")], ["↓", { type: "down" }], ["Esc (back to ~/)", { type: "esc" }], ["Type “Downloads/”", T("Downloads/")], ["Space select report.pdf", { type: "space" }], ["⌘K actions", { type: "actions" }]] },
+  { name: "nnn · Happy path: edit a file", reset: { model: "split" }, desc: "From home, filter to agentkit's lib and edit a file. Watch: Enter on a folder walks in, Enter on a file closes the palette and opens a terminal view running $EDITOR in the file's folder.",
     steps: [["Type “git”", T("git")], ["↵ into github", { type: "enter" }], ["Type “agk”", T("agk")], ["↵ into agentkit", { type: "enter" }], ["Type “lib”", T("lib")], ["↵ into lib", { type: "enter" }], ["↓", { type: "down" }], ["↵ edit session-log.ts", { type: "enter" }]] },
-  { name: "Path jump", desc: "Typing a path jumps straight to the deepest folder that exists and keeps the rest as the filter, like Alfred's / and ~ entry.",
+  { name: "nnn · Path jump", reset: { model: "split" }, desc: "Typing a path jumps straight to the deepest folder that exists and keeps the rest as the filter, like Alfred's / and ~ entry.",
     steps: [["Type “~/work/st”", T("~/work/st")], ["↵ into stardust-design-system", { type: "enter" }], ["Type “/Users/sasha/github/tinycast/docs/f”", T("/Users/sasha/github/tinycast/docs/f")], ["Type “/nope/x” (no such folder)", T("/nope/x")]] },
-  { name: "Selection across folders → agent", desc: "nnn's selection survives folder changes. Pick a file in lib/, walk to lib/mcp, pick another, then hand both to an agent via ⌘K. Watch the Selection field.",
+  { name: "nnn · Selection across folders → agent", reset: { model: "split" }, desc: "nnn's selection survives folder changes. Pick a file in lib/, walk to lib/mcp, pick another, then hand both to an agent via ⌘K. Watch the Selection field.",
     steps: [["Type “~/github/agentkit/lib/”", T("~/github/agentkit/lib/")], ["↓ to codex-run.ts", { type: "down" }], ["Space: select codex-run.ts", { type: "space" }], ["↑", { type: "up" }], ["↑ back to mcp/", { type: "up" }], ["→ into mcp", { type: "right" }], ["↓ to server.ts", { type: "down" }], ["Space: select server.ts", { type: "space" }], ["⌘K actions", { type: "actions" }], ["Hand to agent", { type: "run", id: "agent" }]] },
-  { name: "Hidden and ignored", desc: "Dotfiles and ignored folders (node_modules, from FileSearch's ignore list) stay out until ⌘. — then .git, .env and node_modules appear.",
+  { name: "nnn · Hidden and ignored", reset: { model: "split" }, desc: "Dotfiles and ignored folders (node_modules, from FileSearch's ignore list) stay out until ⌘. — then .git, .env and node_modules appear.",
     steps: [["Type “~/github/agentkit/”", T("~/github/agentkit/")], ["⌘. show hidden", { type: "hidden" }], ["⌘. hide again", { type: "hidden" }]] },
-  { name: "Auto-enter surprise", desc: "nnn auto-enters when the filter leaves one folder. With fuzzy matching, “w” still matches Downloads (do-w-nloads), so nothing happens; “wor” leaves only work and jumps in, and the next letter is already filtering inside it. Fast, or jarring? Compare with auto-enter off.",
-    reset: { autoEnter: true }, steps: [["Type “w” (2 matches: stays)", T("w")], ["Type “or” (unique → jumps into work)", T("or")], ["Type “p” (unique again → chains into platform)", T("p")], ["⌫ on empty filter (up to work)", { type: "backspace" }], ["⌫ again (up to home)", { type: "backspace" }]] },
-  { name: "Esc ladder + cd back", desc: "Esc first clears the filter, then the selection, then closes. ⌃G instead closes and cds the terminal view you came from into the current folder.",
+  { name: "nnn · Auto-enter surprise", desc: "nnn auto-enters when the filter leaves one folder. With fuzzy matching, “w” still matches Downloads (do-w-nloads), so nothing happens; “wor” leaves only work and jumps in, and the next letter is already filtering inside it. Fast, or jarring? Compare with auto-enter off.",
+    reset: { autoEnter: true, model: "split" }, steps: [["Type “w” (2 matches: stays)", T("w")], ["Type “or” (unique → jumps into work)", T("or")], ["Type “p” (unique again → chains into platform)", T("p")], ["⌫ on empty filter (up to work)", { type: "backspace" }], ["⌫ again (up to home)", { type: "backspace" }]] },
+  { name: "nnn · Esc ladder + cd back", reset: { model: "split" }, desc: "Esc first clears the filter, then the selection, then closes. ⌃G instead closes and cds the terminal view you came from into the current folder.",
     steps: [["Type “~/github/tinycast/do”", T("~/github/tinycast/do")], ["Space select docs", { type: "space" }], ["Esc (clears filter)", { type: "esc" }], ["Esc (clears selection)", { type: "esc" }], ["⌃G cd terminal here", { type: "cdOnQuit" }]] },
-  { name: "Should be impossible", desc: "Edge cases: Enter with nothing matching; Edit offered for a folder; a file deleted by an agent while you look at it.",
+  { name: "nnn · Should be impossible", reset: { model: "split" }, desc: "Edge cases: Enter with nothing matching; Edit offered for a folder; a file deleted by an agent while you look at it.",
     steps: [["Type “zzz”", T("zzz")], ["↵ (no row)", { type: "enter" }], ["Esc", { type: "esc" }], ["⌘K on a folder (no Edit offered)", { type: "actions" }], ["Esc", { type: "esc" }], ["Type “~/Downloads/”", T("~/Downloads/")], ["Space select report.pdf", { type: "space" }], ["↑", { type: "up" }], ["File deleted on disk", { type: "vanish" }]] },
 ];
 let sc = 0, step = 0;
