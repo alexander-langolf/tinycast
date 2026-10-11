@@ -14,9 +14,11 @@ final class FolderWatcher {
         let generation = generation
         let source = DispatchSource.makeFileSystemObjectSource(
             fileDescriptor: descriptor, eventMask: [.write, .delete, .rename],
-            queue: DispatchQueue.global(qos: .utility))
+            queue: .main)
+        // Both handlers inherit this type's main-actor isolation, so the source must deliver on
+        // `.main`: a background queue trips Swift 6's executor check and traps the app.
         source.setEventHandler { [weak self] in
-            Task { @MainActor in
+            MainActor.assumeIsolated {
                 guard let self, self.generation == generation else { return }
                 self.debounce?.cancel()
                 self.debounce = Task { [weak self] in
