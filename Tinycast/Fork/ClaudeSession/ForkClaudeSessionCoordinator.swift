@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import os
 
 @MainActor
 @Observable
@@ -22,16 +23,210 @@ final class ForkClaudeSessionCoordinator {
     @ObservationIgnored private var terminalIDs: [UUID: UUID] = [:]
     @ObservationIgnored private var foreignTasks: [UUID: Task<Void, Never>] = [:]
     @ObservationIgnored private var foreignGenerations: [UUID: UUID] = [:]
+    @ObservationIgnored private var reconciliationTask: Task<Void, Never>?
+    @ObservationIgnored private var reconciliationGeneration: UUID?
+    @ObservationIgnored private var lifecycleExcludedChats: Set<UUID> = []
+    @ObservationIgnored private var deletionTask: Task<Void, Never>?
+    @ObservationIgnored private var deletionGeneration: UUID?
+    private static let logger = Logger(subsystem: "com.tinycast", category: "ClaudeSessionLifecycle")
 
     init(core: AppCore) { self.core = core }
 
     isolated deinit {
+        reconciliationTask?.cancel()
+        deletionTask?.cancel()
         for task in actionTasks.values { task.cancel() }
         for task in foreignTasks.values { task.cancel() }
         for connection in connections.values {
             connection.reader.stop()
             connection.writer.stop()
         }
+    }
+
+    func start() {
+        guard let core, reconciliationTask == nil else { return }
+        core.aiChats.forkClaudeSessionDeletion = { [weak self, weak core] ids, preservingPinned in
+            self?.deleteChats(chatIDs: ids, preservingPinned: preservingPinned) { [weak core] ready in
+                for id in ready { core?.aiChats.delete(id: id) }
+            } ?? false
+        }
+        let generation = UUID()
+        reconciliationGeneration = generation
+        reconciliationTask = Task { [weak self, weak core] in
+            guard let self, let core else { return }
+            defer {
+                if self.reconciliationGeneration == generation {
+                    self.reconciliationTask = nil
+                    self.reconciliationGeneration = nil
+                    self.lifecycleExcludedChats = []
+                }
+            }
+            do {
+                let entries = try await core.forkClaudeSessionRegistry.entries()
+                try Task.checkCancellation()
+                guard !entries.isEmpty else { return }
+                let sessions = try await core.forkClaudeSessionHost.sessions()
+                try Task.checkCancellation()
+                for (chatID, entry) in entries {
+                    guard !Task.isCancelled, self.reconciliationGeneration == generation else { return }
+                    while self.isBusy(chatID: chatID), !self.lifecycleExcludedChats.contains(chatID) {
+                        try await Task.sleep(for: .milliseconds(25))
+                    }
+                    let session = sessions.first {
+                        $0.id == entry.shortID && $0.sessionID == entry.sessionID
+                    }
+                    let live = session.map {
+                        $0.status.map { !["stopped", "gone"].contains($0.lowercased()) } ?? false
+                    } ?? false
+                    do {
+                        try await self.reconcile(chatID: chatID, expected: entry, live: live)
+                    } catch is CancellationError {
+                        if Task.isCancelled { return }
+                    } catch {
+                        Self.logger.error("Could not reconnect a registered Claude session")
+                    }
+                }
+            } catch is CancellationError {
+                return
+            } catch {
+                Self.logger.error("Could not check Claude sessions at launch")
+            }
+        }
+    }
+
+    private func reconcile(
+        chatID: UUID, expected: ForkClaudeSessionRegistry.Entry, live: Bool
+    ) async throws {
+        guard let core, !lifecycleExcludedChats.contains(chatID), !isBusy(chatID: chatID),
+            connections[chatID] == nil || !live,
+            let current = try core.forkClaudeSessionRegistry.cachedEntry(chatID: chatID),
+            current.matchesSession(expected), current.ended == expected.ended else { return }
+        busyChats.insert(chatID)
+        defer { busyChats.remove(chatID) }
+        let updated = try await core.forkClaudeSessionRegistry.updateEnded(
+            chatID: chatID, expected: expected, ended: !live)
+        try Task.checkCancellation()
+        guard updated, !lifecycleExcludedChats.contains(chatID) else { return }
+        if live {
+            endedChats.remove(chatID)
+            revision += 1
+            _ = try provider(chatID: chatID)
+            connections[chatID]?.reader.onFailure = { _ in
+                Self.logger.error("Could not read a reconnected Claude session")
+            }
+        } else {
+            endedChats.insert(chatID)
+            disconnect(chatID: chatID)
+            core.aiChats.holder(of: chatID)?.cancel()
+            revision += 1
+        }
+    }
+
+    private func deleteChats(
+        chatIDs: [UUID], preservingPinned: Bool,
+        completion: @escaping @MainActor ([UUID]) -> Void
+    ) -> Bool {
+        guard let core else { return false }
+        let ids = chatIDs.filter {
+            !preservingPinned || core.chatHistory.conversation(id: $0)?.isPinned != true
+        }
+        let registered: [UUID: ForkClaudeSessionRegistry.Entry]
+        do {
+            var entries: [UUID: ForkClaudeSessionRegistry.Entry] = [:]
+            for id in ids {
+                if let entry = try core.forkClaudeSessionRegistry.cachedEntry(chatID: id) {
+                    entries[id] = entry
+                }
+            }
+            registered = entries
+        } catch {
+            core.showMessage(error.localizedDescription, tone: .danger)
+            return true
+        }
+        guard !registered.isEmpty else { return false }
+        guard deletionTask == nil, !ids.contains(where: { isBusy(chatID: $0) }) else { return true }
+        let generation = UUID()
+        deletionGeneration = generation
+        for id in ids {
+            busyChats.insert(id)
+        }
+        deletionTask = Task { [weak self, weak core] in
+            guard let self, let core else { return }
+            defer {
+                if self.deletionGeneration == generation {
+                    for id in ids { self.busyChats.remove(id) }
+                    self.deletionTask = nil
+                    self.deletionGeneration = nil
+                }
+            }
+            let multiple = registered.count > 1
+            let choice = await core.choose(
+                title: multiple ? "Stop Claude sessions too?" : "Stop the Claude session too?",
+                message: multiple
+                    ? "Delete these chats and stop and remove their Claude sessions, or leave the sessions running."
+                    : "Delete this chat and stop and remove its Claude session, or leave the session running.",
+                symbol: "terminal",
+                options: [
+                    DialogAction(title: multiple ? "Delete and Stop Sessions" : "Delete and Stop Session",
+                        role: .destructive),
+                    DialogAction(title: "Delete Chat\(ids.count > 1 ? "s" : "") Only", role: .destructive),
+                    DialogAction(title: "Cancel", role: .cancel),
+                ], defaultIndex: 0)
+            guard !Task.isCancelled, self.deletionGeneration == generation, choice == 0 || choice == 1
+            else { return }
+            if self.reconciliationGeneration != nil {
+                for id in ids { self.lifecycleExcludedChats.insert(id) }
+            }
+            for id in ids {
+                guard !Task.isCancelled, self.deletionGeneration == generation else { return }
+                if preservingPinned, core.chatHistory.conversation(id: id)?.isPinned == true { continue }
+                do {
+                    let current = try core.forkClaudeSessionRegistry.cachedEntry(chatID: id)
+                    if let expected = registered[id] {
+                        guard current?.matchesSession(expected) == true else { continue }
+                    } else if current != nil { continue }
+                    if let entry = current {
+                        self.disconnect(chatID: id)
+                        core.aiChats.holder(of: id)?.cancel()
+                        if choice == 0 {
+                            try await core.forkClaudeSessionHost.stop(id: entry.shortID)
+                            try Task.checkCancellation()
+                            guard let stopped = try core.forkClaudeSessionRegistry.cachedEntry(chatID: id),
+                                stopped.matchesSession(entry) else { continue }
+                            self.endedChats.insert(id)
+                            _ = try await core.forkClaudeSessionRegistry.updateEnded(
+                                chatID: id, expected: entry, ended: true)
+                            try Task.checkCancellation()
+                            try await core.forkClaudeSessionHost.remove(id: entry.shortID)
+                            try Task.checkCancellation()
+                        }
+                        guard let latest = try core.forkClaudeSessionRegistry.cachedEntry(chatID: id),
+                            latest.matchesSession(entry) else { continue }
+                        if preservingPinned, core.chatHistory.conversation(id: id)?.isPinned == true {
+                            if !self.isEnded(chatID: id) { _ = try self.provider(chatID: id) }
+                            continue
+                        }
+                        try await core.forkClaudeSessionRegistry.unregister(chatID: id)
+                        try Task.checkCancellation()
+                        self.endedChats.remove(id)
+                        self.revision += 1
+                    }
+                    if preservingPinned, core.chatHistory.conversation(id: id)?.isPinned == true { continue }
+                    completion([id])
+                } catch is CancellationError {
+                    return
+                } catch {
+                    self.revision += 1
+                    core.showMessage(error.localizedDescription, tone: .danger)
+                    if !self.isEnded(chatID: id) {
+                        do { _ = try self.provider(chatID: id) } catch {
+                            Self.logger.error("Could not reconnect Claude after a failed chat deletion")
+                        }
+                    }
+                }
+            }
+        }
+        return true
     }
 
     func provider(chatID: UUID, initialPrompt: String? = nil) throws -> ForkClaudeSessionProvider? {
@@ -194,6 +389,7 @@ final class ForkClaudeSessionCoordinator {
 
     private func perform(chatID: UUID, operation: @escaping @MainActor () async throws -> Void) {
         let generation = UUID()
+        if reconciliationGeneration != nil { lifecycleExcludedChats.insert(chatID) }
         busyChats.insert(chatID)
         actionGenerations[chatID] = generation
         actionTasks[chatID] = Task { [weak self] in
@@ -232,6 +428,13 @@ final class ForkClaudeSessionCoordinator {
     func queuedCount(chatID: UUID) -> Int { connections[chatID]?.writer.queuedCount ?? 0 }
 
     func stop() {
+        reconciliationTask?.cancel()
+        reconciliationTask = nil
+        reconciliationGeneration = nil
+        lifecycleExcludedChats = []
+        deletionTask?.cancel()
+        deletionTask = nil
+        deletionGeneration = nil
         for task in actionTasks.values { task.cancel() }
         actionTasks = [:]
         actionGenerations = [:]

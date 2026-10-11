@@ -1,7 +1,7 @@
 # Claude session chat: specification
 
 **Status:** Group 1 (host, hooks, registry) built; Group 2 (reader, writer, provider and chat hook)
-built; Group 3 implemented, unverified; Groups 4–5 to do.
+built; Groups 3–4 implemented, unverified; Group 5 to do.
 It's an experiment, and it extends Quick AI's Start Work
 (`docs/features/quick-ai-root-session.md`). Evidence comes from the vault note *Tinycast Agent Hub —
 Design & Plan*, section "Spike results: background Claude (2026-10-11)".

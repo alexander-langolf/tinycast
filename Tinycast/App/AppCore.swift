@@ -308,6 +308,7 @@ final class AppCore {
         startForkQuickAIRoot()  // FORK: quick-ai-root
         forkClaudeSessionHost.prepare()  // FORK: claude-session-chat
         _ = forkClaudeSessionRegistry  // FORK: claude-session-chat
+        forkClaudeSessions.start()  // FORK: claude-session-chat
         // FORK: appearance-observation
         track(
             forkAppearance, { _ = $0.fontFamily; _ = $0.monoFontFamily; _ = ForkTheme.current },

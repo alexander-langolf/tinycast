@@ -9,6 +9,11 @@ final class ForkClaudeSessionRegistry: Sendable {
         let folder: String
         var readOffset: UInt64 = 0
         var ended: Bool? = nil
+
+        func matchesSession(_ other: Entry) -> Bool {
+            shortID == other.shortID && sessionID == other.sessionID
+                && transcriptPath == other.transcriptPath && folder == other.folder
+        }
     }
 
     private let cache: Mutex<Result<[String: Entry], Error>>
@@ -65,15 +70,26 @@ final class ForkClaudeSessionRegistry: Sendable {
     }
 
     func unregister(chatID: UUID) async throws {
-        try await mutate { $0.removeValue(forKey: chatID.uuidString) }
+        try await mutate { _ = $0.removeValue(forKey: chatID.uuidString) }
     }
 
-    private func mutate(
-        _ change: @escaping @Sendable (inout [String: Entry]) throws -> Void
-    ) async throws {
+    func updateEnded(chatID: UUID, expected: Entry, ended: Bool) async throws -> Bool {
+        try await mutate { entries in
+            guard var current = entries[chatID.uuidString],
+                current.matchesSession(expected),
+                current.ended == expected.ended else { return false }
+            current.ended = ended
+            entries[chatID.uuidString] = current
+            return true
+        }
+    }
+
+    private func mutate<Value: Sendable>(
+        _ change: @escaping @Sendable (inout [String: Entry]) throws -> Value
+    ) async throws -> Value {
         try await perform { fileURL in
             var entries = try Self.read(fileURL)
-            try change(&entries)
+            let result = try change(&entries)
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             let data = try encoder.encode(entries)
@@ -82,6 +98,7 @@ final class ForkClaudeSessionRegistry: Sendable {
                 attributes: [.posixPermissions: 0o700])
             try data.write(to: fileURL, options: .atomic)
             self.cache.withLock { $0 = .success(entries) }
+            return result
         }
     }
 

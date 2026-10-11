@@ -263,11 +263,11 @@ with reason `newChat` through `startNewChat`, which also prewarms the next root.
 
 ## Claude session chat
 
-Groups 1–3 of [Claude session chat](features/claude-session-chat.md) live in
+Groups 1–4 of [Claude session chat](features/claude-session-chat.md) live in
 `Tinycast/Fork/ClaudeSession/`: the background host, hook settings writer, atomic metadata registry,
 transcript reader, hidden attach writer and chat provider. `AppCore` owns their coordinator,
 loads the registry cache and prepares hooks at launch. Termination cancels readers and closes attach
-clients without stopping daemon sessions. Group 3 is implemented, unverified. Quick AI's existing handoff
+clients without stopping daemon sessions. Groups 3–4 are implemented, unverified. Quick AI's existing handoff
 uses the same fork-owned executable resolver, with its override and missing-path behaviour preserved.
 
 Storage is channel-specific under `AppPaths.applicationSupport()/ClaudeSessions/`. All seven hooks
@@ -278,7 +278,13 @@ other chats keep upstream routing. Readers are connected on first provider use a
 foreign turns. Claude Start Work registers a background session and moves the chat to AI Chat; its first reply
 is read without typing the handoff prompt again. Approvals offer Attach, which pauses the writer
 until its terminal closes or exits. Session chats replace the model picker with a folder label
-and offer Open in Terminal, End Session and Resume. Launch reconnection remains for Group 4.
+and offer Open in Terminal, End Session and Resume. Deferred launch reconciliation checks one
+`agents --json --all` listing, reconnects live readers through that same provider path and marks
+stopped or missing sessions ended; the writer's attach client still starts only on demand.
+Resume already runs in the saved folder and retains the offset for an unchanged transcript path.
+Deletion offers stop-and-remove, chat-only deletion, or cancellation through Tinycast's dialog
+presenter. Only stop-and-remove runs `claude rm`; both deletion choices unregister and disconnect
+before removing history. Bulk deletion preserves pinned chats and uses the original target IDs.
 
 The reader watches the shared events file, filters by session ID, and polls the transcript every
 0.5 seconds during a turn. It retains incomplete lines and waits for Stop plus a final assistant
@@ -361,7 +367,8 @@ unless they have an explicit symbol-only allowance. The audit is a static guard,
 
 | File | Tag | Purpose |
 | --- | --- | --- |
-| `Tinycast/App/AppCore.swift` | `// FORK: claude-session-chat` | Own the Claude host, registry and session coordinator; load the registry cache and write hooks at launch; close readers and attach clients at termination without stopping daemon sessions. |
+| `Tinycast/App/AppCore.swift` | `// FORK: claude-session-chat` | Own the Claude host, registry and session coordinator; load the registry cache, write hooks and schedule session reconciliation at launch; close readers and attach clients at termination without stopping daemon sessions. |
+| `Tinycast/Features/AI/UI/AIChatSurfacesState.swift` | `// FORK: claude-session-chat` | Intercept single and bulk deletion for registered Claude chats; defer history removal until the session choice and unregistering finish, preserving pinned chats and the requested target IDs. |
 | `Tinycast/Features/AI/UI/AIChatCoordinator.swift` | `// FORK: claude-session-chat` | Expose session controls, select the session provider for registered chat IDs, keep ended sessions read-only, reject file staging and regeneration, and skip separate automatic title requests. |
 | `Tinycast/Features/AI/UI/AIChatState.swift` | `// FORK: claude-session-chat` | Start the already-submitted handoff reply without duplicating its user turn; append and save foreign turns, preserving a queued user message and its streaming reply. |
 | `Tinycast/Features/AI/UI/AIChatDetailView.swift` | `// FORK: claude-session-chat` | Render fork-owned session labels and approval notices; replace the ended session composer with Resume. |

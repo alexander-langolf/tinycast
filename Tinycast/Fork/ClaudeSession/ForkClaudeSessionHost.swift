@@ -7,7 +7,8 @@ final class ForkClaudeSessionHost {
         let id: String
         let sessionID: String
         let cwd: String
-        let status: String
+        /// Absent once a session is stopped (`claude agents --json --all`, 2.1.296).
+        let status: String?
         let state: String?
         var transcriptPath: String?
 
@@ -84,6 +85,11 @@ final class ForkClaudeSessionHost {
         return try await withTranscript(handle)
     }
 
+    func sessions() async throws -> [Handle] {
+        let executable = try await resolveExecutable()
+        return try await handles(executable: executable)
+    }
+
     func stop(id: String) async throws {
         let executable = try await resolveExecutable()
         _ = try await Self.run(executable: executable, arguments: ["stop", id])
@@ -140,6 +146,12 @@ final class ForkClaudeSessionHost {
     private func handles(executable: URL) async throws -> [Handle] {
         let output = try await Self.run(
             executable: executable, arguments: ["agents", "--json", "--all"])
+        try Task.checkCancellation()
+        return try await Self.decodeHandles(output)
+    }
+
+    @concurrent
+    private static func decodeHandles(_ output: Data) async throws -> [Handle] {
         try Task.checkCancellation()
         return try JSONDecoder().decode([Listed].self, from: output).compactMap(\.handle)
     }

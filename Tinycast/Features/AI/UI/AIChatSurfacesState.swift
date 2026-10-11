@@ -14,6 +14,9 @@ final class AIChatSurfacesState {
 
     private let history: ChatHistoryStore
 
+    // FORK: claude-session-chat
+    @ObservationIgnored var forkClaudeSessionDeletion: (@MainActor ([UUID], Bool) -> Bool)?
+
     /// Handed to every state, so a chat that finishes its first answer can be named wherever it is.
     @ObservationIgnored var onReplyFinished: (@MainActor (AIChatState) -> Void)? {
         didSet {
@@ -108,12 +111,20 @@ final class AIChatSurfacesState {
     // MARK: - Every surface
 
     func delete(id: UUID) {
+        // FORK: claude-session-chat
+        if forkClaudeSessionDeletion?([id], false) == true { return }
         (holder(of: id) ?? window).delete(id: id)
         answeringElsewhere[id] = nil
     }
 
     /// Every doomed reply is cancelled before the clear: a cancel saves, which would bring it back.
     func deleteAll() {
+        // FORK: claude-session-chat
+        let ids = Set(history.conversations.filter { !$0.isPinned }.map(\.id))
+            .union(live.filter { history.conversation(id: $0.session.id)?.isPinned != true }
+                .map(\.session.id))
+        // FORK: claude-session-chat
+        if forkClaudeSessionDeletion?(Array(ids), true) == true { return }
         let doomed = live.filter { history.conversation(id: $0.session.id)?.isPinned != true }
         for state in doomed { state.cancel() }
         history.clearAll()

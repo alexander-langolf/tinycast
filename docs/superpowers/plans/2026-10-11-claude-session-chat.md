@@ -135,10 +135,26 @@ The task boxes remain unticked pending verification.
 
 ## Group 4: Lifecycle
 
-- [ ] **4.1** At launch, check the registry against `agents --json --all`: reconnect the reader for
+**Built 2026-10-11** (build, lint, fork audit green); acceptance criteria 5, 7 and 8 await Sasha. A stopped session is listed without `status`, which counts as ended. Launch reconciliation lists sessions once through the host,
+reuses `provider(chatID:)` for live readers at their saved offsets, and persists ended state for
+stopped or missing sessions. Reconciliation's registry IO, CLI commands and listing decoding run off-main;
+the coordinator owns and cancels the deferred launch task, and failures only log. Group 3 already
+implements 4.2: Resume runs in the saved folder, replaces the registry metadata, clears ended state
+and reconnects, retaining the offset when the transcript path is unchanged.
+
+Deletion is intercepted at `AIChatSurfacesState` for both surfaces; `ChatHistoryScreen` already
+routes there through `QuickAICoordinator`. A Tinycast dialog offers Delete and Stop Session(s),
+Delete Chat(s) Only, or Cancel. Only the first choice runs stop then remove before unregistering;
+the second unregisters without stopping the daemon. Readers, writers and pending foreign-turn
+callbacks are disconnected before history is removed. Bulk deletion snapshots its targets and
+preserves pinned chats, including chats pinned while the dialog is open. Failed session cleanup
+keeps that chat and its registration for retry. Build, lint, fork audit and runtime acceptance
+criteria remain for Claude; no builds, tests, formatters, generators or git commands were run here.
+
+- [x] **4.1** At launch, check the registry against `agents --json --all`: reconnect the reader for
       live sessions (from the saved offset) and mark gone ones "Session ended".
-- [ ] **4.2** Resume: `claude --bg --resume <session id>` (per 0.3), then update the registry.
-- [ ] **4.3** Hook `AIChatSurfacesState.delete(id:)` / `deleteAll()`: for a registered chat, ask
+- [x] **4.2** Resume: `claude --bg --resume <session id>` (per 0.3), then update the registry.
+- [x] **4.3** Hook `AIChatSurfacesState.delete(id:)` / `deleteAll()`: for a registered chat, ask
       whether to stop the session too. `claude rm` runs only on yes.
 
 **Done when:** acceptance criteria 5, 7 and 8 pass.
