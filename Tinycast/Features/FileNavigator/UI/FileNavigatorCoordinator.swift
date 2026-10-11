@@ -48,8 +48,13 @@ final class FileNavigatorCoordinator {
         state.recent = defaults.stringArray(forKey: persistencePrefix + "recent") ?? []
     }
 
+    /// A bare `~` or `/` opens the navigator at home; a longer `~/…` or `/…` (a paste) opens that path.
     static func isPathQuery(_ query: String) -> Bool {
-        query.hasPrefix("~/") || query.hasPrefix("/")
+        query == "~" || query.hasPrefix("~/") || query.hasPrefix("/")
+    }
+
+    static func rootInput(_ query: String) -> String {
+        query == "~" || query == "/" ? "~/" : query
     }
 
     func show(input: String? = nil, origin: TerminalInstance? = nil) {
@@ -68,10 +73,11 @@ final class FileNavigatorCoordinator {
         state.picks = []
         state.panel = nil
         state.isOpen = true
+        let input = Self.rootInput(query)
         core.palette.replace(mode: .fileNavigator)
-        core.palette.query = query
+        core.palette.query = input
         core.palette.forceExpanded = true
-        updateInput(query, force: true)
+        updateInput(input, force: true)
     }
 
     /// Clearing the whole path leaves the navigator for the launcher root, whichever way it opened.

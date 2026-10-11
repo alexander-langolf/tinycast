@@ -36,6 +36,9 @@ and rendered acceptance remain for Claude's verification pass.
 
 ## Entry points
 
+- Typing `~` or `/` in the launcher: either opens the navigator at `~/`; these are its only two
+  trigger characters. A longer `~/…` or `/…` (a paste) opens that path; the filesystem root is
+  reached with ⇧Tab up from home or by pasting a path such as `/usr`.
 - Launcher command **Browse Files** (and an optional global shortcut), starting in the last folder
   browsed, else `~`.
 - From a **terminal view**: a card action opens the navigator in that instance's current directory
@@ -161,7 +164,8 @@ one place instead of producing merge conflicts.
 
 Upstream integration points (each `// FORK: file-navigator`, listed in docs/fork.md):
 1. `PaletteMode.fileNavigator` case.
-2. `RootPaletteView.screen` routing: a root query starting `~/` or `/` opens the navigator
+2. `RootPaletteView.screen` routing: a root query of `~` or `/` opens the navigator at `~/`; a longer
+   `~/…` or `/…` opens that path
    (Alfred's entry, beside the existing `$` → terminal hook).
 3. Launcher command registration for **Browse Files**.
 4. Terminal card action "Browse here" (already fork-owned code).
