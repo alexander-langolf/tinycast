@@ -118,7 +118,10 @@ New pieces:
 2. **Default editor** when `$EDITOR` is unset — research (vault, 2026-10-11) ranks Fresh (non-modal,
    LSP, needs Ghostty Option-as-Alt), Helix (modal, diff gutter), Microsoft Edit (simplest); all
    unverified inside the grid, and the ⌘-key gap applies to each.
-3. **Search algorithm** for ⌘F and in-folder filtering at scale (Spotlight vs a walker + fzf-style
-   matcher such as nucleo/skim, possibly via Rust FFI) — research in progress.
+3. **Search algorithm** — research (vault, 2026-10-11) recommends: in-folder filtering stays pure
+   Swift (`FileManager` + `FuzzyMatch`, add VS Code-style filename-tier ranking); ⌘F subtree search
+   streams a bundled `fd`/`rg --files` into `FuzzyMatch`, Spotlight stays the global fallback;
+   content search is a bundled `rg`. A Rust lib (`ignore` + nucleo via C ABI) only if a benchmark on
+   `~/work` misses the latency target. Decide after that benchmark.
 4. Whether ↵ on a file should instead open the Monaco view once that exists (edit in place vs
    terminal editor).
