@@ -132,11 +132,11 @@ Upstream integration points (each `// FORK: file-navigator`, listed in docs/fork
 2. **Default editor** when `$EDITOR` is unset — research (vault, 2026-10-11) ranks Fresh (non-modal,
    LSP, needs Ghostty Option-as-Alt), Helix (modal, diff gutter), Microsoft Edit (simplest); all
    unverified inside the grid, and the ⌘-key gap applies to each.
-3. **Search algorithm** — research (vault, 2026-10-11) recommends: in-folder filtering stays pure
-   Swift (`FileManager` + `ForkFzf`); ⌘F subtree search
-   streams a bundled `fd`/`rg --files` into `ForkFzf`, Spotlight stays the global fallback;
-   content search is a bundled `rg`. A Rust lib (`ignore` + nucleo via C ABI) only if a benchmark on
-   `~/work` misses the latency target. Decide after that benchmark.
+3. **Search candidates** — matching is settled (2026-10-11): **`ForkFzf` only, no Rust fuzzy
+   libraries** (no nucleo/skim/FFI). Still open: where ⌘F subtree candidates come from — a
+   `FileManager` walk in Swift, or a bundled `fd`/`rg --files` streamed into `ForkFzf` (Spotlight
+   stays the global fallback; content search would be a bundled `rg`). Decide after benchmarking
+   both on `~/work`.
 4. Ship the optional Search Files ⌘↵ hook (integration point 4), or keep Search Files untouched?
 5. Whether ↵ on a file should instead open the Monaco view once that exists (edit in place vs
    terminal editor).
