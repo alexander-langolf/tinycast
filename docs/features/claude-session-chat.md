@@ -1,7 +1,8 @@
 # Claude session chat: specification
 
-**Status:** Group 1 (host, hooks, registry) built; Group 2 (reader, writer, provider and chat hook)
-built; Groups 3–4 implemented, unverified; Group 5 to do.
+**Status:** built, experimental (2026-10-11, branch `al/quick-ai-root`). Every group builds and
+passes lint and the fork audit. The CLI behaviour each part relies on was checked against live
+sessions (see "Spike first"). The acceptance criteria below await Sasha in Dev; results go here.
 It's an experiment, and it extends Quick AI's Start Work
 (`docs/features/quick-ai-root-session.md`). Evidence comes from the vault note *Tinycast Agent Hub —
 Design & Plan*, section "Spike results: background Claude (2026-10-11)".
@@ -193,6 +194,8 @@ the short ID so that the scratch session can be inspected and stopped manually. 
 8. **Clean environment:** with Tinycast started from a Claude shell, the session still saves its
    transcript and isn't a child session.
 9. **Off:** with "Start Work in" set to Codex or Off, nothing in this spec runs.
+
+**Results:** 1–9 not yet run (Sasha, Group 6).
 
 ## Spike first (Group 0 of the plan)
 

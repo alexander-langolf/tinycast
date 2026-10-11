@@ -161,12 +161,12 @@ criteria remain for Claude; no builds, tests, formatters, generators or git comm
 
 ## Group 5: Docs
 
-- [ ] **5.1** `docs/fork.md` rows for every `claude-session-chat` hook; `Scripts/fork-audit.sh`
+- [x] **5.1** `docs/fork.md` rows for every `claude-session-chat` hook; `Scripts/fork-audit.sh`
       passes.
-- [ ] **5.2** Spec status set to "built, experimental", with each criterion and its result.
-- [ ] **5.3** `quick-ai-root-session.md`, Start Work section: ⌘↵ with Claude now opens a session
+- [x] **5.2** Spec status set to "built, experimental", with each criterion and its result.
+- [x] **5.3** `quick-ai-root-session.md`, Start Work section: ⌘↵ with Claude now opens a session
       chat; link to this spec.
-- [ ] **5.4** The vault's hub note: Phase 0a's host verdict is `--bg`, and this feature is its
+- [x] **5.4** The vault's hub note: Phase 0a's host verdict is `--bg`, and this feature is its
       first use.
 
 ## Group 6: Sasha verifies
