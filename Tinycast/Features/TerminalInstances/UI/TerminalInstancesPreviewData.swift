@@ -74,103 +74,103 @@ enum TerminalInstancesPreviewData {
 }
 
 #if DEBUG
-extension TerminalInstancesPreviewData {
-    /// The panel's backdrop: a desktop-like gradient behind the glass card.
-    struct Canvas<Content: View>: View {
-        @ViewBuilder let content: Content
+    extension TerminalInstancesPreviewData {
+        /// The panel's backdrop: a desktop-like gradient behind the glass card.
+        struct Canvas<Content: View>: View {
+            @ViewBuilder let content: Content
 
-        var body: some View {
-            content
-                .padding(16)
-                .background(
-                    LinearGradient(colors: [.blue, .purple], startPoint: .top, endPoint: .bottom))
+            var body: some View {
+                content
+                    .padding(16)
+                    .background(
+                        LinearGradient(colors: [.blue, .purple], startPoint: .top, endPoint: .bottom))
+            }
         }
-    }
 
-    /// The four states stacked as the panels would be.
-    struct Stack: View {
-        var body: some View {
-            VStack(spacing: 8) {
-                Card(phase: .running, command: "swift build", lines: buildFailure)
-                Card(phase: .idle(lastStatus: 0), command: "ls -la", lines: listing)
-                Card(phase: .idle(lastStatus: 1), command: "make", lines: buildFailure)
-                Card()
+        /// The four states stacked as the panels would be.
+        struct Stack: View {
+            var body: some View {
+                VStack(spacing: 8) {
+                    Card(phase: .running, command: "swift build", lines: buildFailure)
+                    Card(phase: .idle(lastStatus: 0), command: "ls -la", lines: listing)
+                    Card(phase: .idle(lastStatus: 1), command: "make", lines: buildFailure)
+                    Card()
+                }
             }
         }
     }
-}
 
-#Preview("Idle · before the first command") {
-    TerminalInstancesPreviewData.Canvas { TerminalInstancesPreviewData.Card() }
-}
-
-#Preview("Idle · typing a short command") {
-    TerminalInstancesPreviewData.Canvas { TerminalInstancesPreviewData.Card(typed: "git status") }
-}
-
-#Preview("Idle · typing a long command") {
-    TerminalInstancesPreviewData.Canvas {
-        TerminalInstancesPreviewData.Card(typed: TerminalInstancesPreviewData.longCommand)
+    #Preview("Idle · before the first command") {
+        TerminalInstancesPreviewData.Canvas { TerminalInstancesPreviewData.Card() }
     }
-}
 
-#Preview("Running · with output") {
-    TerminalInstancesPreviewData.Canvas {
-        TerminalInstancesPreviewData.Card(
-            phase: .running, command: "swift build", lines: TerminalInstancesPreviewData.buildFailure)
+    #Preview("Idle · typing a short command") {
+        TerminalInstancesPreviewData.Canvas { TerminalInstancesPreviewData.Card(typed: "git status") }
     }
-}
 
-#Preview("Finished · exit 0") {
-    TerminalInstancesPreviewData.Canvas {
-        TerminalInstancesPreviewData.Card(
-            phase: .idle(lastStatus: 0), lines: TerminalInstancesPreviewData.listing)
+    #Preview("Idle · typing a long command") {
+        TerminalInstancesPreviewData.Canvas {
+            TerminalInstancesPreviewData.Card(typed: TerminalInstancesPreviewData.longCommand)
+        }
     }
-}
 
-#Preview("Failed · exit 2") {
-    TerminalInstancesPreviewData.Canvas {
-        TerminalInstancesPreviewData.Card(
-            phase: .idle(lastStatus: 2), command: "make",
-            lines: TerminalInstancesPreviewData.buildFailure)
+    #Preview("Running · with output") {
+        TerminalInstancesPreviewData.Canvas {
+            TerminalInstancesPreviewData.Card(
+                phase: .running, command: "swift build", lines: TerminalInstancesPreviewData.buildFailure)
+        }
     }
-}
 
-#Preview("Long command") {
-    TerminalInstancesPreviewData.Canvas {
-        TerminalInstancesPreviewData.Card(
-            phase: .running, command: TerminalInstancesPreviewData.longCommand,
-            directory: "/Users/sasha/github/some/deeply/nested/project/directory",
-            lines: TerminalInstancesPreviewData.buildFailure)
+    #Preview("Finished · exit 0") {
+        TerminalInstancesPreviewData.Canvas {
+            TerminalInstancesPreviewData.Card(
+                phase: .idle(lastStatus: 0), lines: TerminalInstancesPreviewData.listing)
+        }
     }
-}
 
-#Preview("Unpinned") {
-    TerminalInstancesPreviewData.Canvas {
-        TerminalInstancesPreviewData.Card(
-            phase: .idle(lastStatus: 0), isPinned: false, lines: TerminalInstancesPreviewData.listing)
+    #Preview("Failed · exit 2") {
+        TerminalInstancesPreviewData.Canvas {
+            TerminalInstancesPreviewData.Card(
+                phase: .idle(lastStatus: 2), command: "make",
+                lines: TerminalInstancesPreviewData.buildFailure)
+        }
     }
-}
 
-#Preview("Shell ended") {
-    TerminalInstancesPreviewData.Canvas { TerminalInstancesPreviewData.Card(phase: .ended) }
-}
-
-#Preview("Startup notice") {
-    TerminalInstancesPreviewData.Canvas {
-        TerminalInstancesPreviewData.Card(
-            phase: .starting,
-            startupNotice: "Shell hasn't reached a prompt: Cmd-O to open in Ghostty, Cmd-W to close")
+    #Preview("Long command") {
+        TerminalInstancesPreviewData.Canvas {
+            TerminalInstancesPreviewData.Card(
+                phase: .running, command: TerminalInstancesPreviewData.longCommand,
+                directory: "/Users/sasha/github/some/deeply/nested/project/directory",
+                lines: TerminalInstancesPreviewData.buildFailure)
+        }
     }
-}
 
-#Preview("Full-screen program") {
-    TerminalInstancesPreviewData.Canvas {
-        TerminalInstancesPreviewData.Card(phase: .running, command: "vim", isFullScreen: true)
+    #Preview("Unpinned") {
+        TerminalInstancesPreviewData.Canvas {
+            TerminalInstancesPreviewData.Card(
+                phase: .idle(lastStatus: 0), isPinned: false, lines: TerminalInstancesPreviewData.listing)
+        }
     }
-}
 
-#Preview("Stack · four cards") {
-    TerminalInstancesPreviewData.Canvas { TerminalInstancesPreviewData.Stack() }
-}
+    #Preview("Shell ended") {
+        TerminalInstancesPreviewData.Canvas { TerminalInstancesPreviewData.Card(phase: .ended) }
+    }
+
+    #Preview("Startup notice") {
+        TerminalInstancesPreviewData.Canvas {
+            TerminalInstancesPreviewData.Card(
+                phase: .starting,
+                startupNotice: "Shell hasn't reached a prompt: Cmd-O to open in Ghostty, Cmd-W to close")
+        }
+    }
+
+    #Preview("Full-screen program") {
+        TerminalInstancesPreviewData.Canvas {
+            TerminalInstancesPreviewData.Card(phase: .running, command: "vim", isFullScreen: true)
+        }
+    }
+
+    #Preview("Stack · four cards") {
+        TerminalInstancesPreviewData.Canvas { TerminalInstancesPreviewData.Stack() }
+    }
 #endif

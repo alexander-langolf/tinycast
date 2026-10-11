@@ -55,6 +55,10 @@ extension SettingsAnchor {
     static let dictationMemory = Self(tab: .dictation, title: "Memory")
     static let dictationOutput = Self(tab: .dictation, title: "Output")
 
+    // FORK: file-navigator
+    static let fileNavigatorEditor = Self(tab: .fileNavigator, title: "Editor")
+    static let fileNavigatorCommands = Self(tab: .fileNavigator, title: "Commands")
+
     static let fileSearchFileSearch = Self(tab: .fileSearch, title: "File Search")
     static let fileSearchCommands = Self(tab: .fileSearch, title: "Commands")
     static let fileSearchSearchScopes = Self(tab: .fileSearch, title: "Search Scopes")

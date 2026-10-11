@@ -11,8 +11,10 @@ final class TerminalInstance: Identifiable {
     private(set) var lastCommand: String
     var isPinned = true
     var isExpanded = true
+    let isEditor: Bool  // FORK: file-navigator
 
-    init(command: String, directory: String, columns: Int, rowCap: Int) {
+    init(command: String, directory: String, columns: Int, rowCap: Int, isEditor: Bool = false) {
+        self.isEditor = isEditor  // FORK: file-navigator
         lastCommand = command
         session = TerminalSession(directory: directory, columns: columns, rowCap: rowCap)
     }
@@ -20,7 +22,8 @@ final class TerminalInstance: Identifiable {
     var showsOutput: Bool { isExpanded && !session.isFullScreen && session.rows > 0 }
 
     func height(_ layout: TerminalInstanceMetrics) -> CGFloat {
-        TerminalInstanceStack.cardHeight(
+        let layout = TerminalInstanceMetrics(metrics: layout.metrics, isEditor: isEditor)  // FORK: file-navigator
+        return TerminalInstanceStack.cardHeight(
             barHeight: layout.barHeight, rows: showsOutput ? session.rows : 0,
             rowHeight: TerminalInstanceMetrics.rowHeight,
             verticalInset: TerminalInstanceMetrics.logInset.height, maxOutput: layout.maxOutput,

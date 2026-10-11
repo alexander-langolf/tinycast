@@ -2,6 +2,7 @@ enum SettingsTab: CaseIterable, Identifiable {
     case general, applications, systemSettings, systemActions, commands, quicklinks, appleShortcuts,
         fallbacks, clipboard, snippets, fileSearch, windowManagement, navigation, notes, calendar, emoji,
         dictation, ai, quickActions, extensions, permissions, backup, about
+    case fileNavigator  // FORK: file-navigator
     case appearance  // FORK: appearance-pane
     case automation  // FORK: automation-settings
     /// The case, never an index: a selectable `List` flattens section and row IDs together.
@@ -22,6 +23,7 @@ enum SettingsTab: CaseIterable, Identifiable {
         case .ai: return "AI"
         case .quickActions: return "Quick Actions"
         case .dictation: return "Dictation"
+        case .fileNavigator: return "File Navigator"  // FORK: file-navigator
         case .fileSearch: return "File Search"
         case .notes: return "Notes"
         case .snippets: return "Snippets"
@@ -52,6 +54,7 @@ enum SettingsTab: CaseIterable, Identifiable {
         case .ai: return "sparkles"
         case .quickActions: return "wand.and.sparkles"
         case .dictation: return "waveform"
+        case .fileNavigator: return "folder"  // FORK: file-navigator
         case .fileSearch: return "doc.text.magnifyingglass"
         case .notes: return "text.page"
         case .snippets: return "curlybraces"
@@ -94,6 +97,7 @@ enum SettingsSection: CaseIterable, Identifiable {
         case .features:
             // Everyday tools first; AI and extensions are opt-in extras.
             return [
+                .fileNavigator,  // FORK: file-navigator
                 .clipboard, .snippets, .fileSearch, .windowManagement, .navigation, .notes,
                 .calendar, .emoji, .dictation, .ai, .quickActions, .extensions,
                 .automation  // FORK: automation-settings

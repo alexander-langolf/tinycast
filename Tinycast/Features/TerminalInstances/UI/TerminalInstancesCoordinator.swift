@@ -33,8 +33,10 @@ final class TerminalInstancesCoordinator {
     private func applyMonoFont() {
         guard GhosttyRenderer.isEnabled else { return }
         for instance in instances { applyColors(to: instance) }
-        let layout = TerminalInstanceMetrics(metrics: core.settings.interfaceSize.metrics)
         for instance in instances {
+            // FORK: file-navigator
+            let layout = TerminalInstanceMetrics(
+                metrics: core.settings.interfaceSize.metrics, isEditor: instance.isEditor)
             instance.session.resizeTerminal(columns: layout.columns, rows: layout.gridRows)
         }
         core.terminalInstancesPresenter.restack()
@@ -43,18 +45,20 @@ final class TerminalInstancesCoordinator {
     /// The palette closes and the instance takes its place; the command runs at the first prompt.
     @discardableResult
     func open(
-        command: String, directory: String = FileManager.default.homeDirectoryForCurrentUser.path
+        command: String, directory: String = FileManager.default.homeDirectoryForCurrentUser.path,
+        isEditor: Bool = false  // FORK: file-navigator
     ) -> TerminalInstance? {
         let command = command.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !command.isEmpty else { return nil }
         let anchor = core.paletteCoordinator.panelFrame.map { CGPoint(x: $0.minX, y: $0.maxY) }
         core.paletteCoordinator.hidePalette(restoreFocus: false)
         core.paletteCoordinator.popToRootNow()
-        let layout = TerminalInstanceMetrics(metrics: core.settings.interfaceSize.metrics)
+        // FORK: file-navigator
+        let layout = TerminalInstanceMetrics(metrics: core.settings.interfaceSize.metrics, isEditor: isEditor)
         let instance = TerminalInstance(
             command: command, directory: directory,
             columns: layout.columns,
-            rowCap: GhosttyRenderer.isEnabled ? layout.gridRows : layout.rowCap)
+            rowCap: GhosttyRenderer.isEnabled ? layout.gridRows : layout.rowCap, isEditor: isEditor)
         instances.insert(instance, at: 0)
         applyColors(to: instance)
         if !isTrackingMonoFont {
@@ -115,6 +119,15 @@ final class TerminalInstancesCoordinator {
         instance.isExpanded.toggle()
     }
 
+    // FORK: file-navigator
+    func browseHere(_ instance: TerminalInstance) {
+        guard instances.contains(where: { $0 === instance }) else { return }
+        core.fileNavigator.show(
+            input: FileNavigatorPath.directoryInput(
+                instance.session.directory, home: FileManager.default.homeDirectoryForCurrentUser.path),
+            origin: instance)
+    }
+
     func openInTerminal(_ instance: TerminalInstance) {
         let id = instance.id
         guard instances.contains(where: { $0.id == id }), terminalLaunches[id] == nil else { return }
@@ -155,7 +168,8 @@ final class TerminalInstancesCoordinator {
                 return false
             }
         }
-        if flags == .control, key == "c", instance.session.phase == .running {
+        // FORK: file-navigator
+        if flags == .control, key == "c", !instance.isEditor, instance.session.phase == .running {
             instance.session.interrupt()
             return true
         }

@@ -100,6 +100,7 @@ If a change touches anything in the right column, the harness on the left is man
 | Harness | Guards |
 | --- | --- |
 | `fuzz-test` | `Launcher/Model/LauncherMatch.swift`, `LauncherOrder.swift`, `LauncherSuggestions.swift`, `EntryNaming.swift`, `ScriptRomanization.swift`, `SearchRelevance.swift`, `LauncherRankingStore.swift` — **a new ranking complaint is a new case in its `denseIndex`** |
+| `file-navigator-test` | Fork path reducer, picks, actions, missing folders, parent focus, disappearance, fzf syntax, path quoting and editor keys. <!-- // FORK: file-navigator --> |
 | `file-search-test` | `FileSearch/Model/`, plus the shared `FuzzyMatch` scorer |
 | `file-search-session-test` | serialized query execution, debounce coalescing and cancellation |
 | `menu-search-test` | `MenuSearch/Model/` decisions, `MenuSearch/Service/` session filtering, the shared `FuzzyMatch` scorer |
@@ -539,6 +540,12 @@ caches, TCC grants and login item, so this cannot disturb an installed copy.
 - Recording a shortcut opens the palette straight into File Search, hidden from the launcher or not
 - Search Files is absent from Settings ▸ Commands, and `Enable Commands` off leaves its shortcut live
 - Export, clear both lists and the shortcut, re-import: all three return, defaults undo not duplicated
+
+<!-- // FORK: file-navigator -->
+File Navigator's implementation session permits project generation and syntax parsing only.
+Claude's review runs its harness plus existing checks, then the Dev acceptance list in
+[file-navigator.md](features/file-navigator.md#acceptance-criteria), including Fresh/default keymaps,
+geometry, cancellation, TCC denial, previews and the disabled-grid fallback.
 
 ### Notes
 

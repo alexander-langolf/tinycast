@@ -173,13 +173,16 @@ struct WindowRoomTests {
                 "\(kind) places nothing for zero windows")
         }
 
-        let distributed = RoomLayoutEngine.distribute(1000, gap: 16, minimums: [0, 0, 0], weights: [1, 1, 1])
+        let distributed = RoomLayoutEngine.distribute(
+            1000, gap: 16, minimums: [0, 0, 0], weights: [1, 1, 1])
         expect(distributed.reduce(0, +) == 968, "whole-point pieces add up exactly")
         expect(
             RoomLayoutEngine.distribute(1016, gap: 16, minimums: [0, 0], weights: [0.6, 0.4]) == [600, 400],
             "without minimums the weights decide")
         expect(
-            RoomLayoutEngine.distribute(1000, gap: 16, minimums: [0, 600], weights: [0.6, 0.4]) == [384, 600],
+            RoomLayoutEngine.distribute(1000, gap: 16, minimums: [0, 600], weights: [0.6, 0.4]) == [
+                384, 600
+            ],
             "a minimum is kept and the rest give way")
     }
 
@@ -412,7 +415,9 @@ struct WindowRoomTests {
             widened[1].minX - widened[0].maxX == gap && widened[2].minX - widened[1].maxX == gap,
             "widened columns keep one gap")
 
-        let two = [Cell(column: 0, columns: 8, row: 0, rows: 6), Cell(column: 8, columns: 4, row: 0, rows: 6)]
+        let two = [
+            Cell(column: 0, columns: 8, row: 0, rows: 6), Cell(column: 8, columns: 4, row: 0, rows: 6)
+        ]
         expect(
             RoomGrid.frames(two, in: region, gap: gap)
                 == RoomGrid.frames(two, in: region, gap: gap, minimums: [.zero, .zero]),
@@ -662,7 +667,8 @@ struct WindowRoomTests {
             "the frames are the room's layout")
         expect(plan.missing == [2], "a closed window is missing, not guessed")
         expect(plan.parks == [1, 5], "other windows of room apps park, and so does the desktop's")
-        expect(plan.keeps == ["editor", "browser", "gone", "com.apple.finder"], "only room apps stay visible")
+        expect(
+            plan.keeps == ["editor", "browser", "gone", "com.apple.finder"], "only room apps stay visible")
 
         var columns = room
         columns.layoutsByDisplay["display-a"] = .columns
@@ -687,7 +693,8 @@ struct WindowRoomTests {
             tooBig.placements.first?.frame == canvas(area),
             "an arrangement too big for this display falls back to Auto")
 
-        var custom = Room(name: "Custom", windows: [window("editor", id: 1), window("gone")], layout: .custom)
+        var custom = Room(
+            name: "Custom", windows: [window("editor", id: 1), window("gone")], layout: .custom)
         custom.windows[0].cell = RoomGrid.Cell(column: 0, columns: 6, row: 0, rows: 12)
         custom.windows[1].cell = RoomGrid.Cell(column: 6, columns: 6, row: 0, rows: 12)
         let partial = RoomPlan.make(custom, windows: windows, on: display, gap: gap, minimums: [:])

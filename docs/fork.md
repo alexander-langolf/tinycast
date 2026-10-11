@@ -249,6 +249,37 @@ wiring file adds a computed `cwd` to `InstalledCLITurnRunner` and `CodexAppServe
 folder; the hooks read `cwd` only where a process starts or a directory flag is passed. Unset, `cwd`
 is `workspace` and every route is upstream.
 
+## File navigator
+
+`Tinycast/Features/FileNavigator/` is fork-owned, alongside TerminalInstances. Browse Files, root
+`~/` / `/` queries, and a terminal card's Browse here action enter a path-input palette screen.
+AppCore owns the lazy coordinator and the palette environment injects it. The coordinator owns
+cancellable off-main directory/subtree work, the visible-folder watcher, a separate upstream
+FileSearchSession for global words, focused preview state and bookmark/recent persistence.
+Upstream `Features/FileSearch/` is used without editing it.
+
+The editor override lives on AppSettings and in `fileNavigator.editor` in settings.json; the new
+pane owns Browse Files' alias, visibility and shortcut controls through `SettingsTab.ownedCommands`.
+Backups deliberately exclude the local editor command. Bookmarks and recent paths are local,
+explicitly bundle-scoped defaults and do not travel through settings.json or backups.
+
+TerminalInstances owns editor-role geometry and key delivery. Editor cards use the largest
+screen-bounded output viewport (680 scaled points rather than 340). The grid maps the requested
+Command shortcuts to Fresh's default Ctrl bindings, with Cmd-Shift-Z mapped to Ctrl-Y, and otherwise
+retains app chords. The log renderer falls back to a real Ghostty tab running login zsh with the same
+quoted command, waiting after command exit so command-not-found output remains visible.
+Hand to an agent v1 only copies an absolute-path context block; it dispatches nothing.
+
+The path reducer and harness port only Nav's `parseInput` / `reducePath` / `actionsFor` behavior
+from `proto/file-navigator`; no prototype UI, fake filesystem or alternate navigation model is copied.
+See [file-navigator.md](features/file-navigator.md) for ownership, keys, bounds and runtime gaps.
+The harness is registered but implementation-session execution is prohibited.
+
+`Tinycast.xcodeproj/project.pbxproj` is an explicit **generated exception** to inline hook markers:
+XcodeGen owns it and adds the new files from `project.yml`'s source directory. It is never hand-edited;
+`project.fork.yml` also adds the pure editor-key policy and its ASCII keyboard-layout helper to
+TinycastPreviews' explicit source list.
+
 ## Merge playbook
 
 1. Work from `main` and run `git merge upstream/main`. Never rebase.
@@ -278,8 +309,38 @@ unless they have an explicit symbol-only allowance. The audit is a static guard,
 
 ## Upstream hooks
 
+FileNavigator and TerminalInstances are fork-owned feature folders; terminal role, card, grid and
+launcher changes live there without upstream hooks. The generated pbxproj exception is described above.
+
+
 | File | Tag | Purpose |
 | --- | --- | --- |
+| `Tinycast/App/AppCore.swift` | `// FORK: file-navigator` | Own the lazy coordinator; resume on screen opening and stop at termination. |
+| `Tinycast/Palette/PaletteMode.swift` | `// FORK: file-navigator` | Add fileNavigator mode, symbol and path/words placeholder. |
+| `Tinycast/Palette/RootPaletteView.swift` | `// FORK: file-navigator` | Route root paths, compose the screen, query/mode lifecycle and keyboard/observers. |
+| `Tinycast/Palette/PaletteEnvironment.swift` | `// FORK: file-navigator` | Inject the coordinator into palette and hosted menus. |
+| `Tinycast/Palette/PalettePanel.swift` | `// FORK: file-navigator` | Forward navigator keys ahead of field/menu equivalents, including Space and Ctrl-G. |
+| `Tinycast/Palette/PaletteWindowController.swift` | `// FORK: file-navigator` | Stop listing, watcher, preview and pending actions on every hide. |
+| `Tinycast/Features/Launcher/Model/CommandID.swift` | `// FORK: file-navigator` | Register Browse Files with symbol and normal command hotkey mapping. |
+| `Tinycast/Features/Launcher/Model/CommandCatalog.swift` | `// FORK: file-navigator` | File Navigator pane owns Browse Files. |
+| `Tinycast/Features/Launcher/UI/LauncherCoordinator.swift` | `// FORK: file-navigator` | Dispatch Browse Files to the coordinator. |
+| `Tinycast/Features/Settings/SettingsTab.swift` | `// FORK: file-navigator` | Add the fork-owned File Navigator pane and sidebar position. |
+| `Tinycast/Features/Settings/SettingsDetailView.swift` | `// FORK: file-navigator` | Render FileNavigatorSettingsView. |
+| `Tinycast/Features/Settings/SettingsAnchor.swift` | `// FORK: file-navigator` | Editor and Commands search/scroll anchors. |
+| `Tinycast/Features/Settings/SettingsSearchCatalog.swift` | `// FORK: file-navigator` | Include the fork-owned navigator settings search entries. |
+| `Tinycast/Features/Settings/AppSettings.swift` | `// FORK: file-navigator` | Persist and load the editor override in normal bundle defaults. |
+| `Tinycast/Features/Settings/AppSettingsKey.swift` | `// FORK: file-navigator` | Name the editor override preference. |
+| `Tinycast/Features/Settings/Model/SettingsFileKey.swift` | `// FORK: file-navigator` | Declare fileNavigator.editor and fileNavigator.commands. |
+| `Tinycast/Features/Settings/SettingsFileSchema.swift` | `// FORK: file-navigator` | Bind editor and command mirror keys using existing conventions. |
+| `Tinycast/Features/Backup/Model/SettingsBackupCoverage.swift` | `// FORK: file-navigator` | Exclude the machine-local editor override from backups. |
+| `Scripts/run-tests.sh` | `// FORK: file-navigator` | Register the model/editor-key harness and settings search source dependency. |
+| `Tests/settings-file-test.swift` | `// FORK: file-navigator` | Account for the new fileNavigator settings mirror section. |
+| `docs/README.md` | `// FORK: file-navigator` | Index the fork feature documentation. |
+| `docs/architecture.md` | `// FORK: file-navigator` | Record the fork coordinator and ownership. |
+| `docs/features/palette.md` | `// FORK: file-navigator` | Document the path route, mode and navigator key ownership. |
+| `docs/features/terminal-instances.md` | `// FORK: file-navigator` | Document editor-role geometry, keys and Browse here origin. |
+| `docs/features/settings-file.md` | `// FORK: file-navigator` | Document mirror keys and local persistence boundaries. |
+| `docs/testing.md` | `// FORK: file-navigator` | Register the harness contract and deferred acceptance sweep. |
 | `Scripts/run-tests.sh` | `// FORK: agent-runs` | Register the AgentRuns decoding harness. |
 | `Tinycast/App/AppDelegate.swift` | `// FORK: previews` | Skip AppCore start and termination work when Xcode's canvas hosts the app. |
 | `Tinycast/App/AppCore.swift` | `// FORK: agent-runs` | Own the monitor, coordinator and presenter; stop work at termination. |

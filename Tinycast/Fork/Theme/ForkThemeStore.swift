@@ -31,7 +31,9 @@ final class ForkThemeStore {
             let previous = tokens
             guard newValue != previous else { return }
             ForkThemeState.shared.theme = newValue
-            if newValue.palette != previous.palette { ForkAppearance.current?.colors.theme = newValue.palette }
+            if newValue.palette != previous.palette {
+                ForkAppearance.current?.colors.theme = newValue.palette
+            }
             var stored = newValue.overrides.reduce(into: [String: Any]()) {
                 $0[$1.key.rawValue] = $1.value.propertyList
             }

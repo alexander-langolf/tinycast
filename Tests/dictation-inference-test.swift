@@ -19,7 +19,9 @@ struct DictationInferenceTest {
                 fatalError("Score selection changed the first maximum")
             }
         }
-        for scores in [try DictationTensor.zeros([1, 2]), try DictationTensor.zeros([2, 2], type: .float16)] {
+        for scores in [
+            try DictationTensor.zeros([1, 2]), try DictationTensor.zeros([2, 2], type: .float16)
+        ] {
             do {
                 _ = try DictationTensor.indexOfMaximum(in: scores)
                 fatalError("Score selection accepted an incompatible tensor")

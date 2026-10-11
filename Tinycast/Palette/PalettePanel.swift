@@ -11,6 +11,8 @@ final class PalettePanel: NSPanel {
 
     /// Bare backspace, which the field editor swallows before `onKeyPress` could see it.
     var onBareBackspace: (() -> Bool)?
+
+    var onFileNavigatorKey: ((NSEvent) -> Bool)?  // FORK: file-navigator
     /// Escape, which an `AVPlayerView` in the preview answers before `onKeyPress` could see it.
     var onEscape: (() -> Bool)?
     /// Command chords the field editor swallows, plus the ones no main menu handles.
@@ -177,6 +179,12 @@ final class PalettePanel: NSPanel {
             x: frame.minX, y: height - frame.maxY, width: frame.width, height: frame.height)
     }
 
+    // FORK: file-navigator
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if onFileNavigatorKey?(event) == true { return true }
+        return super.performKeyEquivalent(with: event)
+    }
+
     override func sendEvent(_ event: NSEvent) {
         if consumeMenuDismissal(event) { return }
         if event.type == .scrollWheel, paletteState?.mode.isNativeEditor == true {
@@ -192,6 +200,8 @@ final class PalettePanel: NSPanel {
         default: break
         }
         defer { applyCursorPolicy(for: event) }
+        // FORK: file-navigator
+        if event.type == .keyDown, onFileNavigatorKey?(event) == true { return }
         // Before every other rule, so the arrows' own policies apply to the chords too.
         if event.type == .keyDown, let arrow = Self.emacsArrow(for: event) {
             sendEvent(arrow)

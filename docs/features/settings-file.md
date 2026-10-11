@@ -30,6 +30,12 @@ in `Features/Settings/` (`Model/`, `Service/`, `SettingsFileSchema.swift`), the 
   the shortcuts and aliases of content, extensions and Apple Shortcuts, and what a room learns by
   being entered.
 
+<!-- // FORK: file-navigator -->
+The fork adds `fileNavigator.editor` (blank means `${EDITOR:-fresh}`) and `fileNavigator.commands`
+(Browse Files shortcut, alias and visibility). The editor string is a local shell command, including
+optional arguments; it is mirrored through AppSettings but excluded from settings backups.
+Navigator bookmarks/recent paths are bundle-local content, outside this mirror.
+
 ## Layout
 
 | File | Role |

@@ -220,7 +220,8 @@ struct FuzzTest {
                 == "ChatGPT")
         check(
             "past three letters an exact title beats any habit",
-            first("notes", [Item(name: "Search Notes", frecency: 900, terms: ["notes"]), Item(name: "Notes")])
+            first(
+                "notes", [Item(name: "Search Notes", frecency: 900, terms: ["notes"]), Item(name: "Notes")])
                 == "Notes")
         check(
             "at three letters an exact search term beats an exact title",
@@ -260,7 +261,8 @@ struct FuzzTest {
         check("…but not from two", first("cale", [Item(name: "Calendar"), short]) == "Calendar")
         check(
             "the stronger alignment wins before usage",
-            first("chrome", [Item(name: "Google Chrome", frecency: 800), Item(name: "Chrome Remote Desktop")])
+            first(
+                "chrome", [Item(name: "Google Chrome", frecency: 800), Item(name: "Chrome Remote Desktop")])
                 == "Chrome Remote Desktop")
         check(
             "frecency breaks an equal alignment",
@@ -463,7 +465,8 @@ struct FuzzTest {
         check(
             "a new user gets the built-ins, highest priority first",
             select(commands) == [
-                "Clipboard History", "Search Files", "My Schedule", "Search Emoji & Symbols", "Create Snippet"
+                "Clipboard History", "Search Files", "My Schedule", "Search Emoji & Symbols",
+                "Create Snippet"
             ])
         let used = [Candidate(name: "Safari", frecency: 40), Candidate(name: "Slack", frecency: 300)]
         check(

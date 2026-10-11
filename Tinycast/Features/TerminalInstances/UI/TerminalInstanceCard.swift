@@ -5,6 +5,7 @@ struct TerminalInstanceActions {
     var submit: () -> Void = {}
     var togglePinned: () -> Void = {}
     var openInTerminal: () -> Void = {}
+    var browseHere: () -> Void = {}  // FORK: file-navigator
     var close: () -> Void = {}
 }
 
@@ -20,12 +21,16 @@ struct TerminalInstanceCard<Output: View>: View {
     let showsOutput: Bool
     @Binding var input: String
     var actions = TerminalInstanceActions()
+    var isEditor = false  // FORK: file-navigator
     @ViewBuilder let output: Output
     @Environment(\.metrics) private var metrics
     @Environment(\.forkColorPreview) private var preview
     @FocusState private var fieldFocused: Bool
 
-    private var layout: TerminalInstanceMetrics { TerminalInstanceMetrics(metrics: metrics) }
+    // FORK: file-navigator
+    private var layout: TerminalInstanceMetrics {
+        TerminalInstanceMetrics(metrics: metrics, isEditor: isEditor)
+    }
     private var ink: ForkInk { ForkInk(preview) }
 
     var body: some View {
@@ -79,6 +84,7 @@ struct TerminalInstanceCard<Output: View>: View {
                 isPinned ? "pin.fill" : "pin.slash",
                 help: isPinned ? "Unpin  ⌘P" : "Pin on Top  ⌘P"
             ) { actions.togglePinned() }
+            barButton("folder", help: "Browse here") { actions.browseHere() }  // FORK: file-navigator
             barButton("arrow.up.forward.app", help: "Open in Ghostty  ⌘O") { actions.openInTerminal() }
             barButton("xmark", help: "Close  ⌘W") { actions.close() }
             gutter(layout.gutter)

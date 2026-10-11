@@ -109,8 +109,10 @@ run() {
             ;;
     esac
     case " $* " in
+        # // FORK: file-navigator
         *"/SettingsSearchCatalog.swift "*)
-            set -- "$@" Tinycast/Fork/ForkSettingsSearch.swift Tinycast/Fork/Theme/ForkThemeToken.swift \
+            set -- "$@" Tinycast/Features/FileNavigator/Settings/FileNavigatorSettingsSearch.swift \
+                Tinycast/Fork/ForkSettingsSearch.swift Tinycast/Fork/Theme/ForkThemeToken.swift \
                 Tinycast/Fork/Theme/ForkColorTheme.swift Tinycast/Fork/Theme/ForkColorThemePreset.swift "Tinycast/Fork/Theme/ForkColorThemePreset+Kitty.swift" \
                 Tinycast/Fork/Theme/ForkColorPalette.swift Tinycast/Fork/Theme/ForkThemeValue.swift
             ;;
@@ -171,6 +173,13 @@ run fork-layer-test Tinycast/Platform/Appearance.swift Tinycast/DesignSystem/The
 run fork-search-test Tinycast/Features/Launcher/Model/SearchRelevance.swift \
     Tinycast/Fork/Search/ForkFzf.swift Tinycast/Fork/Search/ForkSearch.swift \
     Tinycast/Features/FileSearch/Model/*.swift
+
+# // FORK: file-navigator
+run file-navigator-test Tinycast/Features/FileNavigator/Model/*.swift \
+    Tinycast/Features/TerminalInstances/Model/TerminalEditorKey.swift \
+    Tinycast/Features/FileSearch/Model/FileSearchResult.swift \
+    Tinycast/Features/Launcher/Model/SearchRelevance.swift \
+    Tinycast/Fork/Search/ForkFzf.swift Tinycast/Fork/Search/ForkSearch.swift
 
 L=Tinycast/Features/Launcher/Model
 run slow -O fuzz-test      $L/SearchRelevance.swift $L/ScriptRomanization.swift \

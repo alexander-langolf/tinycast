@@ -34,7 +34,9 @@ struct ForkInk {
 
     var textPrimary: Color { ink(.text, ramp: (1.0, 1.0), Theme.Colors.textPrimary) }
     var textSecondary: Color { ink(.secondaryText, ramp: (0.60, 0.60), Theme.Colors.textSecondary) }
-    var textTertiary: Color { ink(.secondaryText, alpha: 0.75, ramp: (0.40, 0.42), Theme.Colors.textTertiary) }
+    var textTertiary: Color {
+        ink(.secondaryText, alpha: 0.75, ramp: (0.40, 0.42), Theme.Colors.textTertiary)
+    }
     var selection: Color { ink(.accent, alpha: 0.28, ramp: (0.10, 0.09), Theme.Colors.selection) }
     var iconPlaceholder: Color { ink(.text, alpha: 0.06, ramp: (0.06, 0.06), Theme.Colors.iconPlaceholder) }
     var rowHover: Color { ink(.accent, alpha: 0.12, ramp: (0.05, 0.045), Theme.Colors.rowHover) }
@@ -54,7 +56,8 @@ struct ForkInk {
         if let palette { return Color(nsColor: palette.nsColor(slot, alpha: alpha)) }
         guard let tinycastIsDark else { return upstream }
         // Restates `Theme.Colors.ramp`, which a live theme intercepts.
-        return Color(nsColor: .srgbInk(tinycastIsDark ? 1 : 0, alpha: tinycastIsDark ? ramp.dark : ramp.light))
+        return Color(
+            nsColor: .srgbInk(tinycastIsDark ? 1 : 0, alpha: tinycastIsDark ? ramp.dark : ramp.light))
     }
 
     private func scrim(_ slot: ForkColorTheme.Slot, live: () -> AnyShapeStyle) -> AnyShapeStyle {

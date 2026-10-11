@@ -17,7 +17,8 @@ enum ForkSettingsSearch {
             .init(
                 .appearanceColors, "Colour theme",
                 keywords: ["color", "preset", "github", "ayu", "material", "cursor", "monokai", "slack"]),
-            .init(group: .appearanceColors, "Import theme", keywords: ["paste", "string", "vs code", "vscode"]),
+            .init(
+                group: .appearanceColors, "Import theme", keywords: ["paste", "string", "vs code", "vscode"]),
             .init(group: .appearanceColors, "Copy theme string", keywords: ["export", "share"]),
             .init(.appearanceColors, "Window gradient", keywords: ["fade", "background"])
         ]
@@ -36,7 +37,8 @@ enum ForkSettingsSearch {
     static let automation: [SettingsSearchEntry] = [
         .init(pane: .automation, keywords: ["mcp", "api", "tinycast://", "agent", "integration"]),
         .init(.automationClients, "Allow automation", keywords: ["mcp", "server", "enable", "listen"]),
-        .init(.automationClients, "Create Client", keywords: ["token", "keychain", "scope", "rotate", "revoke"]),
+        .init(
+            .automationClients, "Create Client", keywords: ["token", "keychain", "scope", "rotate", "revoke"]),
         .init(
             .automationConnect, "Connect an Agent",
             keywords: ["claude code", "codex", "cursor", "mcp add", "config", "bridge"]),

@@ -124,6 +124,8 @@ final class AppCore {
         showFailure: { [unowned self] in self.showMessage($0, tone: .danger) })
     @ObservationIgnored private(set) lazy var agentRunsPresenter =
         AgentRunsPanelPresenter(core: self)  // FORK: agent-runs
+    // FORK: file-navigator
+    @ObservationIgnored private(set) lazy var fileNavigator = FileNavigatorCoordinator(core: self)
     // FORK: terminal-instances
     @ObservationIgnored private(set) lazy var terminalInstances = TerminalInstancesCoordinator(core: self)
     @ObservationIgnored private(set) lazy var terminalInstancesPresenter =
@@ -294,7 +296,10 @@ final class AppCore {
         startForkAIWorkingDirectory()  // FORK: ai-working-directory
         // FORK: appearance-observation
         track(
-            forkAppearance, { _ = $0.fontFamily; _ = $0.monoFontFamily; _ = ForkTheme.current },
+            forkAppearance,
+            {
+                _ = $0.fontFamily; _ = $0.monoFontFamily; _ = ForkTheme.current
+            },
             reproject: { $0.windowController.applyInterfaceSize() })
         Signposts.interval("AppCore.start") {
             // Shorten AppKit's ~2–3s tooltip delay; registration domain, so a user default wins.
@@ -355,6 +360,7 @@ final class AppCore {
                 self?.appleShortcutCoordinator.refresh()
             }
             paletteCoordinator.onScreenOpening = { [weak self] mode in
+                if mode == .fileNavigator { self?.fileNavigator.resume() }  // FORK: file-navigator
                 switch mode {
                 case .menuSearch: self?.menuSearchCoordinator.load()
                 case .switchWindows: self?.windowSwitchCoordinator.load()
@@ -576,6 +582,7 @@ final class AppCore {
         if settings.dictationEnabled { dictationCoordinator.prepareForTermination() }
         settingsFile?.flush()
         agentRunsCoordinator.stop()  // FORK: agent-runs
+        fileNavigator.stop()  // FORK: file-navigator
         terminalInstances.closeAll()  // FORK: terminal-instances
         automation.stop()  // FORK: automation
         clipboardTextIndexer?.stop()

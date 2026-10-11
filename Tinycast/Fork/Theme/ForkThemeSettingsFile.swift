@@ -7,7 +7,8 @@ extension ForkThemeStore {
     }
 
     private static func json(_ theme: ForkTheme) -> SettingsFileJSON {
-        var components = ForkThemeToken.Component.allCases.compactMap { component -> SettingsFileJSON.Member? in
+        var components = ForkThemeToken.Component.allCases.compactMap {
+            component -> SettingsFileJSON.Member? in
             let members = component.tokens.compactMap { token in
                 theme.overrides[token].map { SettingsFileJSON.Member(key: token.name, value: json($0)) }
             }
@@ -25,7 +26,9 @@ extension ForkThemeStore {
             theme.slots[slot].map { SettingsFileJSON.Member(key: slot.rawValue, value: .string($0.hex)) }
         }
         members.append(.init(key: "slots", value: .object(slots)))
-        if let ansi = theme.ansi { members.append(.init(key: "ansi", value: .array(ansi.map { .string($0.hex) }))) }
+        if let ansi = theme.ansi {
+            members.append(.init(key: "ansi", value: .array(ansi.map { .string($0.hex) })))
+        }
         members.append(.init(key: "windowGradient", value: .bool(theme.windowGradient)))
         return .object(members)
     }

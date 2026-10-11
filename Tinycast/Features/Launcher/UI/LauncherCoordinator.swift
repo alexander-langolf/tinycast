@@ -186,6 +186,7 @@ final class LauncherCoordinator {
             core.clipboardCoordinator.pasteNextInSequence()
         case .searchEmoji:
             paletteCoordinator.togglePalette(mode: .emoji)
+        case .browseFiles: core.fileNavigator.show()  // FORK: file-navigator
         case .searchFiles:
             fileSearchCoordinator.show()
         case .searchMenuItems:

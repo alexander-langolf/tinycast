@@ -12,6 +12,7 @@ struct RootPaletteView: View {
     @Environment(CurrencyRateStore.self) private var currencyRates
     @Environment(EmojiIndex.self) private var emojiIndex
     @Environment(FrequentEmojiStore.self) private var frequentEmoji
+    @Environment(FileNavigatorCoordinator.self) private var fileNavigator  // FORK: file-navigator
     @Environment(FileSearchSession.self) private var fileSearch
     @Environment(DictionarySession.self) private var dictionary
     @Environment(MenuSearchSession.self) private var menuSearch
@@ -56,6 +57,10 @@ struct RootPaletteView: View {
     private var screen: any PaletteScreen {
         switch vm.mode {
         case .launcher:
+            // FORK: file-navigator
+            if FileNavigatorCoordinator.isPathQuery(vm.query) {
+                return FileNavigatorScreen(coordinator: fileNavigator, vm: vm, openActions: openActions)
+            }
             if let command = TerminalCommandQuery.command(in: vm.query) {  // FORK: terminal-instances
                 return TerminalCommandScreen(command: command, core: core)
             }
@@ -87,6 +92,9 @@ struct RootPaletteView: View {
                 index: emojiIndex, frequent: frequentEmoji, pinned: core.pinnedEmoji, core: core, vm: vm,
                 tone: settings.emojiSkinTone, defaultColumns: settings.emojiGridColumns,
                 openActions: openActions)
+        // FORK: file-navigator
+        case .fileNavigator:
+            return FileNavigatorScreen(coordinator: fileNavigator, vm: vm, openActions: openActions)
         case .fileSearch:
             return FileSearchScreen(
                 session: fileSearch, core: core, vm: vm, openActions: openActions)
@@ -398,10 +406,40 @@ struct RootPaletteView: View {
         refreshActionsMenu()
     }
 
+    // FORK: file-navigator
+    /// A launcher query that is a path belongs to the navigator; true when it took the query.
+    private func fileNavigatorTookQuery() -> Bool {
+        if vm.mode == .launcher, FileNavigatorCoordinator.isPathQuery(vm.query) {
+            fileNavigator.routeRootQuery(vm.query)
+            return true
+        }
+        if vm.mode == .fileNavigator { fileNavigator.updateInput(vm.query) }
+        return false
+    }
+
+    // FORK: file-navigator
+    private func fileNavigatorModeChanged() {
+        if vm.mode == .fileNavigator { fileNavigator.resume() } else { fileNavigator.stop() }
+    }
+
+    // FORK: file-navigator
+    private func fileNavigatorAppeared() {
+        if vm.mode == .launcher, FileNavigatorCoordinator.isPathQuery(vm.query) {
+            fileNavigator.routeRootQuery(vm.query)
+        } else if vm.mode == .fileNavigator {
+            fileNavigator.resume()
+        }
+    }
+
+    // FORK: file-navigator
+    private func fileNavigatorDisappeared() {
+        (hostWindow as? PalettePanel)?.onFileNavigatorKey = nil
+    }
+
     /// Split from `body` for the same reason `keyHandlers` is: one chain cannot carry them all.
     @ViewBuilder
     private func stateObservers(_ content: some View) -> some View {
-        emojiObservers(content)
+        emojiObservers(content.modifier(FileNavigatorPaletteObserver()))  // FORK: file-navigator
             // Every show bumps focusToken so the search field refocuses.
             .onChange(of: vm.focusToken) {
                 searchFocused = !screen.hidesSearchField
@@ -410,6 +448,7 @@ struct RootPaletteView: View {
             .modifier(PaletteHideObserver { if menuOpen { closeMenus() } })
             .onChange(of: vm.query) {
                 if vm.collapseQueryLineBreaks() { return }
+                if fileNavigatorTookQuery() { return }  // FORK: file-navigator
                 land(restoringNavigation: true)
                 if vm.mode == .fileSearch { fileSearch.search(vm.query, filter: vm.fileSearchFilter) }
                 if vm.mode == .dictionary { dictionary.lookUp(vm.query) }
@@ -434,6 +473,7 @@ struct RootPaletteView: View {
                 fileSearch.search(vm.query, filter: vm.fileSearchFilter)
             }
             .onChange(of: vm.mode) {
+                fileNavigatorModeChanged()  // FORK: file-navigator
                 vm.clipboardFilter = .all
                 vm.fileSearchFilter = .all
                 vm.emojiCategoryFilter = .all
@@ -492,9 +532,11 @@ struct RootPaletteView: View {
             .onDisappear {
                 menuPanel.hide()
                 (hostWindow as? PalettePanel)?.onHeaderFieldBoundaryArrow = nil
+                fileNavigatorDisappeared()  // FORK: file-navigator
             }
             // The first show builds this view after `prepare`, so no handler saw that reset.
             .onAppear {
+                fileNavigatorAppeared()  // FORK: file-navigator
                 searchFocused = !screen.hidesSearchField
                 land()
                 focusPendingArgument()
@@ -1437,6 +1479,10 @@ struct RootPaletteView: View {
     /// Right at an inline field's end and Left at its start continue the same ring as Tab.
     private func installHeaderArrowHandler(in window: NSWindow?) {
         guard let panel = window as? PalettePanel else { return }
+        // FORK: file-navigator
+        panel.onFileNavigatorKey = { event in
+            fileNavigator.handleKey(event, openActions: openActions)
+        }
         panel.onHeaderFieldBoundaryArrow = { boundary in
             guard !menuOpen, !vm.isControlListOpen, !isCollapsed,
                 let accessory = headerAccessory, !accessory.fieldNames.isEmpty

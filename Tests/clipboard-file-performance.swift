@@ -73,7 +73,8 @@ enum ClipboardSelectionBenchmark {
         let brokenLink = directory.appendingPathComponent("broken-link")
         for legacy in [false, true] {
             verify([], expected: nil, roots: roots, legacy: legacy)
-            verify([missing, volatile, volatileLink, brokenLink], expected: nil, roots: roots, legacy: legacy)
+            verify(
+                [missing, volatile, volatileLink, brokenLink], expected: nil, roots: roots, legacy: legacy)
             let valid = [durableLink] + Array(durable.prefix(40))
             let mixed = Array(repeating: missing, count: 40) + [volatile, volatileLink, brokenLink] + valid
             verify(

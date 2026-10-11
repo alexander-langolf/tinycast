@@ -50,7 +50,8 @@ private struct ForkThemeBackdrop: ViewModifier {
             .frame(maxWidth: .infinity)
             .background(
                 LinearGradient(colors: [.blue, .purple], startPoint: .top, endPoint: .bottom),
-                in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+                in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+            )
             .padding(.vertical, Theme.Spacing.xs)
     }
 }

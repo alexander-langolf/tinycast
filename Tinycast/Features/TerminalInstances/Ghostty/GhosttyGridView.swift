@@ -6,15 +6,18 @@ import SwiftUI
 /// FORK: libghostty prototype. Draws a `GhosttyTerminalGrid` with Core Text and forwards wheel and keys.
 struct GhosttyGridView: NSViewRepresentable {
     let session: TerminalSession
+    var isEditor = false  // FORK: file-navigator
 
     func makeNSView(context: Context) -> GhosttyGridNSView {
         let view = GhosttyGridNSView()
         view.session = session
+        view.isEditor = isEditor  // FORK: file-navigator
         return view
     }
 
     func updateNSView(_ view: GhosttyGridNSView, context: Context) {
         view.session = session
+        view.isEditor = isEditor  // FORK: file-navigator
         // Reading the revision here is what makes SwiftUI call this again after each change.
         _ = session.grid?.revision
         view.needsDisplay = true
@@ -26,6 +29,7 @@ struct GhosttyGridView: NSViewRepresentable {
 
 final class GhosttyGridNSView: NSView {
     weak var session: TerminalSession?
+    var isEditor = false  // FORK: file-navigator
     private var scrollRemainder: CGFloat = 0
     private var reportedColumns = 0
 
@@ -148,7 +152,15 @@ final class GhosttyGridNSView: NSView {
     override func keyDown(with event: NSEvent) {
         guard let session, session.phase == .running, let grid = session.grid else { return }
         let flags = event.modifierFlags.intersection([.command, .control, .option, .shift])
-        guard !flags.contains(.command) else { return }
+        // FORK: file-navigator
+        if flags.contains(.command) {
+            guard isEditor, flags.isDisjoint(with: [.control, .option]),
+                let letter = editorControlLetter(event), let key = Self.letterKey(letter)
+            else { return }
+            grid.scrollToBottom()
+            session.sendInput(grid.encode(key: key, mods: GhosttyMods(GHOSTTY_MODS_CTRL)))
+            return
+        }
         var mods: GhosttyMods = 0
         if flags.contains(.shift) { mods |= GhosttyMods(GHOSTTY_MODS_SHIFT) }
         if flags.contains(.control) { mods |= GhosttyMods(GHOSTTY_MODS_CTRL) }
@@ -170,6 +182,36 @@ final class GhosttyGridNSView: NSView {
         guard !bytes.isEmpty else { return }
         grid.scrollToBottom()
         session.sendInput(bytes)
+    }
+
+    // FORK: file-navigator
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        guard isEditor, session?.phase == .running, event.modifierFlags.contains(.command),
+            event.modifierFlags.isDisjoint(with: [.control, .option]), editorControlLetter(event) != nil
+        else { return super.performKeyEquivalent(with: event) }
+        keyDown(with: event)
+        return true
+    }
+
+    private func editorControlLetter(_ event: NSEvent) -> String? {
+        let letter =
+            ASCIIKeyboardLayout.character(for: event)?.lowercased()
+            ?? event.charactersIgnoringModifiers?.lowercased() ?? ""
+        return TerminalEditorKey.controlLetter(letter, shift: event.modifierFlags.contains(.shift))
+    }
+
+    private static func letterKey(_ letter: String) -> GhosttyKey? {
+        switch letter {
+        case "s": GHOSTTY_KEY_S
+        case "z": GHOSTTY_KEY_Z
+        case "y": GHOSTTY_KEY_Y
+        case "x": GHOSTTY_KEY_X
+        case "c": GHOSTTY_KEY_C
+        case "v": GHOSTTY_KEY_V
+        case "a": GHOSTTY_KEY_A
+        case "f": GHOSTTY_KEY_F
+        default: nil
+        }
     }
 
     private static func specialKey(_ code: UInt16) -> GhosttyKey? {

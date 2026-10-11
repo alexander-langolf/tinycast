@@ -786,7 +786,9 @@ struct AIProviderTests {
         expect(
             reasoningText(characters) == "reason" && answerText(characters) == "answer",
             "think tags: one character per delta preserves reasoning and answer")
-        let spaced = decodeContent([" \n", "<think> ", "\n", "reason \n</thi", "nk>\n", "\t", "answer", " \n"]
+        let spaced = decodeContent([
+            " \n", "<think> ", "\n", "reason \n</thi", "nk>\n", "\t", "answer", " \n"
+        ]
         )
         expect(
             reasoningText(spaced) == " \nreason \n" && answerText(spaced) == "answer \n",

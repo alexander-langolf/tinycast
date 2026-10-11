@@ -296,6 +296,11 @@ final class AppSettings {
         palettePositions[display] = [offset.x, offset.y]
     }
 
+    // FORK: file-navigator
+    var fileNavigatorEditor: String {
+        didSet { defaults.set(fileNavigatorEditor, forKey: Key.fileNavigatorEditor.rawValue) }
+    }
+
     // Feature switches, off out of the box, and off means fully off.
     var fileSearchEnabled: Bool {
         didSet { defaults.set(fileSearchEnabled, forKey: Key.fileSearchEnabled.rawValue) }
@@ -700,6 +705,8 @@ final class AppSettings {
             as? [String: [Double]] ?? [:]
         paletteExpandedCenterDisplays =
             Set(defaults.stringArray(forKey: Key.paletteExpandedCenterDisplays.rawValue) ?? [])
+        // FORK: file-navigator
+        fileNavigatorEditor = defaults.string(forKey: Key.fileNavigatorEditor.rawValue) ?? ""
         fileSearchEnabled = defaults.bool(forKey: Key.fileSearchEnabled.rawValue)
         // Unset seeds home; a stored empty array is a cleared list that searches nothing.
         fileSearchScopes =

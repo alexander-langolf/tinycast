@@ -122,6 +122,12 @@ text over pipes. The coordinator keeps microphone capture, UI and insertion in T
 store starts the helper on demand and reaps it after the selected idle delay or a model switch.
 `AppCore` owns the audio ducker and starts volume recovery on every launch, even when Dictation is off.
 
+<!-- // FORK: file-navigator -->
+AppCore also owns the lazy fork FileNavigatorCoordinator, injected through `paletteEnvironment`.
+It owns the navigator reducer, listing tasks, watcher, previews and a separate FileSearchSession for
+word queries. Its fork-owned adapter reuses upstream single-target actions and handles batches.
+The upstream FileSearch folder is unchanged; editor roles stay within TerminalInstances.
+
 ## Entry points and windows
 
 `TinycastApp` (`@main`) declares only two `MenuBarExtra` scenes — Tinycast's own item and the

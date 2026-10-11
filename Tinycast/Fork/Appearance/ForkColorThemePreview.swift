@@ -19,7 +19,8 @@ struct ForkColorThemePreview: View {
         .frame(maxWidth: .infinity)
         .background(
             LinearGradient(colors: [.blue, .purple], startPoint: .top, endPoint: .bottom),
-            in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+            in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+        )
         .padding(.vertical, Theme.Spacing.xs)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Theme preview")
@@ -31,7 +32,9 @@ private struct ForkColorThemePaletteRows: View {
     @Environment(\.forkColorPreview) private var preview
     @Environment(\.metrics) private var metrics
 
-    private static let rows = [("Terminal", "Application"), ("Tinycast Settings", "Command"), ("Notes", "Command")]
+    private static let rows = [
+        ("Terminal", "Application"), ("Tinycast Settings", "Command"), ("Notes", "Command")
+    ]
 
     var body: some View {
         let ink = ForkInk(preview)

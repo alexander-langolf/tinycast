@@ -63,6 +63,8 @@ enum SettingsFileKey: String, CaseIterable, Sendable {
     case dictationAdaptsCapitalization = "dictation.adaptsCapitalization"
     case dictationIdleRelease = "dictation.releaseAfterMinutes"
     case dictationLanguage = "dictation.language"
+    case fileNavigatorEditor = "fileNavigator.editor"  // FORK: file-navigator
+    case fileNavigatorCommands = "fileNavigator.commands"  // FORK: file-navigator
     case fileSearchEnabled = "fileSearch.enabled"
     case fileSearchScopes = "fileSearch.scopes"
     case fileSearchIgnorePatterns = "fileSearch.ignorePatterns"

@@ -17,10 +17,12 @@ struct TerminalInstanceView: View {
                 submit: { coordinator.submit(instance) },
                 togglePinned: { coordinator.togglePinned(instance) },
                 openInTerminal: { coordinator.openInTerminal(instance) },
-                close: { coordinator.close(instance) })
+                browseHere: { coordinator.browseHere(instance) },  // FORK: file-navigator
+                close: { coordinator.close(instance) }),
+            isEditor: instance.isEditor  // FORK: file-navigator
         ) {
             if session.grid != nil {
-                GhosttyGridView(session: session)  // FORK: libghostty prototype
+                GhosttyGridView(session: session, isEditor: instance.isEditor)  // FORK: file-navigator
             } else if let run = session.run {
                 TerminalLogView(run: run)
             }

@@ -827,7 +827,8 @@ struct NotesTests {
             "bare URLs never link inside code, a link or a word",
             spans("`https://a.com` [https://b.com](https://c.com) xhttps://d.com")
                 == [
-                    .init(.code, "https://a.com"), .init(.link(destination: "https://c.com"), "https://b.com")
+                    .init(.code, "https://a.com"),
+                    .init(.link(destination: "https://c.com"), "https://b.com")
                 ])
 
         let table = "| Folder | Holds |\n| --- | :---: |\n| `App/` | **root** |\nnot | a row\n\n| after |"

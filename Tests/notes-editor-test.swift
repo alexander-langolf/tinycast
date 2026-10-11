@@ -75,7 +75,8 @@ struct NotesEditorTests {
             "let x = 1", "```", "| a | b |", "| --- | --- |", "| 1 | 2 |", "", "last"
         ].joined(separator: "\n")
         let notes = [
-            ("list", "Ideas:\n- First\n- Second\n- Third"), ("mixed", mixed), ("trailing newline", "a\n- b\n")
+            ("list", "Ideas:\n- First\n- Second\n- Third"), ("mixed", mixed),
+            ("trailing newline", "a\n- b\n")
         ]
         for rendersMarkdown in [true, false] {
             for (name, source) in notes {

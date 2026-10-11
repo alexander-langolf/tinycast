@@ -977,7 +977,9 @@ struct AIChatTests {
                 && MarkdownMath.pieces(of: "$x$5") == [.text("$x$5")],
             "a dollar pair around prose or before a digit is currency")
         expect(
-            MarkdownMath.pieces(of: #"so \(x + \frac{1}{"#) == [.text("so "), .unclosed(#"\(x + \frac{1}{"#)],
+            MarkdownMath.pieces(of: #"so \(x + \frac{1}{"#) == [
+                .text("so "), .unclosed(#"\(x + \frac{1}{"#)
+            ],
             "an equation still streaming in shows as its source")
         let inline = MarkdownBlock.inline(#"**Bold \(x\)** and $\foo$ and [$y$](https://example.com)"#)
         let formulas = inline.runs.compactMap { $0[MathFormula.Attribute.self]?.source }

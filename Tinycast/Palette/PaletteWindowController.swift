@@ -154,6 +154,7 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
     }
 
     func hide(restoreFocus: Bool) {
+        core.fileNavigator.stop()  // FORK: file-navigator
         core.agentRunsPresenter.hide()  // FORK: agent-runs
         panel?.orderOut(nil)
         commandEscapeTap.disable()

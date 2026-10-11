@@ -69,8 +69,12 @@ enum AutomationClientSetup: String, CaseIterable, Identifiable {
     }
 
     private static func json(_ object: [String: Any]) -> String {
-        let options: JSONSerialization.WritingOptions = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
-        guard let data = try? JSONSerialization.data(withJSONObject: object, options: options) else { return "" }
+        let options: JSONSerialization.WritingOptions = [
+            .prettyPrinted, .sortedKeys, .withoutEscapingSlashes
+        ]
+        guard let data = try? JSONSerialization.data(withJSONObject: object, options: options) else {
+            return ""
+        }
         return String(bytes: data, encoding: .utf8) ?? ""
     }
 }

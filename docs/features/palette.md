@@ -90,6 +90,7 @@ every screen but two: the clipboard lands past its pins
 | `.clipboard`         | `ClipboardScreen`         | `ClipboardList` + preview                                                        |
 | `.calculatorHistory` | `CalculatorHistoryScreen` | `CalculatorHistoryList`                                                          |
 | `.emoji`             | `EmojiScreen`             | `EmojiGridView`                                                                  |
+| `.fileNavigator` | `FileNavigatorScreen` | Fork-owned path list + upstream preview; see [file-navigator.md](file-navigator.md). <!-- // FORK: file-navigator --> |
 | `.fileSearch`        | `FileSearchScreen`        | `FileSearchList` (see [file-search.md](file-search.md))                          |
 | `.schedule`          | `ScheduleScreen`          | `ScheduleList` (see [calendar.md](calendar.md))                                  |
 | `.eventEditor`       | `EventEditorScreen`       | `EventEditorView` (see [calendar.md](calendar.md#create-event)) |
@@ -110,6 +111,13 @@ their own fields), or the selected row declares arguments, in which case it walk
 below); every other mode stays off the ring, and is reached by a command or a global hotkey, with
 Uninstall only from a launcher app's Actions menu, scoped to that app. Chat is skipped whole when
 `aiEnabled` is off, which leaves the launcher ↔ clipboard flip the ring replaced.
+
+<!-- // FORK: file-navigator -->
+The fork routes root queries starting `~/` or `/` to File Navigator, beside `$` terminal commands.
+Browse Files and terminal Browse here also open that mode. Its path input owns Tab, Space picking,
+Ctrl-G origin cd, and the Escape trim/picks/close ladder; the palette still owns the actions menu.
+The feature forwards those keys at PalettePanel before a field editor or main-menu equivalent claims
+them. It stops listing, watcher and preview work on mode exit or palette hide.
 
 ### Navigation
 

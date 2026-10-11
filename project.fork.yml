@@ -38,6 +38,7 @@ targets:
           - Features/TerminalInstances/UI/TerminalInstanceCard.swift
           - Features/TerminalInstances/UI/TerminalInstanceMetrics.swift
           - Features/TerminalInstances/UI/TerminalInstancesPreviewData.swift
+          - Features/TerminalInstances/Model/TerminalEditorKey.swift # // FORK: file-navigator
           - Features/TerminalInstances/Model/TerminalSessionPhase.swift
           - Features/TerminalInstances/Model/TerminalMarkParser.swift
           - Features/TerminalInstances/Model/TerminalInstanceStack.swift
@@ -68,6 +69,7 @@ targets:
           - Fork/Theme/ForkColorThemePreset.swift
           - Fork/Theme/ForkColorThemePreset+Kitty.swift
           - Fork/Theme/ForkColorPalette.swift
+          - Platform/ASCIIKeyboardLayout.swift # // FORK: file-navigator
           - Platform/Appearance.swift
           - Features/CustomCommands/UI/CommandDuration.swift
           - Platform/ProcessExit.swift

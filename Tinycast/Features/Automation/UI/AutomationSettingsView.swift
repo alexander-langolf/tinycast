@@ -49,7 +49,8 @@ private struct AutomationConnectSection: View {
         } footer: {
             Text(
                 "The bridge reads the client's token from your login Keychain; macOS asks once "
-                    + "whether it may. The path is this build's, so rebuilding elsewhere means registering again.")
+                    + "whether it may. The path is this build's, so rebuilding elsewhere means registering again."
+            )
         }
     }
 
@@ -100,7 +101,8 @@ private struct AutomationLinksSection: View {
     private var links: [(operation: AutomationOperation, example: String)] {
         AutomationOperationCatalog.all.compactMap { operation in
             guard let host = operation.linkHost else { return nil }
-            let parameter = operation.inputSchema?.objectValue?["properties"]?.objectValue?.keys.sorted().first
+            let parameter = operation.inputSchema?.objectValue?["properties"]?.objectValue?.keys.sorted()
+                .first
             let query = parameter.map { "?\($0)=Hello%20from%20a%20link" } ?? ""
             return (operation, "tinycast://\(host)\(query)")
         }

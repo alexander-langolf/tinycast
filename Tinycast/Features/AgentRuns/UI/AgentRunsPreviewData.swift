@@ -34,51 +34,51 @@ enum AgentRunsPreviewData {
 }
 
 #if DEBUG
-extension AgentRunsPreviewData {
-    /// What the cards read from the environment: the shared metrics, over a desktop-like backdrop.
-    struct Canvas<Content: View>: View {
-        @ViewBuilder let content: Content
+    extension AgentRunsPreviewData {
+        /// What the cards read from the environment: the shared metrics, over a desktop-like backdrop.
+        struct Canvas<Content: View>: View {
+            @ViewBuilder let content: Content
 
-        var body: some View {
-            content
-                .padding(16)
-                .frame(width: 392)
-                .background(
-                    LinearGradient(colors: [.blue, .purple], startPoint: .top, endPoint: .bottom))
+            var body: some View {
+                content
+                    .padding(16)
+                    .frame(width: 392)
+                    .background(
+                        LinearGradient(colors: [.blue, .purple], startPoint: .top, endPoint: .bottom))
+            }
         }
     }
-}
 
-#Preview("Card · working, Opus") {
-    AgentRunsPreviewData.Canvas { AgentRunCard(run: AgentRunsPreviewData.working) {} }
-}
-
-#Preview("Card · blocked, Sonnet") {
-    AgentRunsPreviewData.Canvas { AgentRunCard(run: AgentRunsPreviewData.blocked) {} }
-}
-
-#Preview("Card · done, Haiku") {
-    AgentRunsPreviewData.Canvas { AgentRunCard(run: AgentRunsPreviewData.done) {} }
-}
-
-#Preview("Card · Codex model id") {
-    AgentRunsPreviewData.Canvas { AgentRunCard(run: AgentRunsPreviewData.codex) {} }
-}
-
-#Preview("Card · no model") {
-    AgentRunsPreviewData.Canvas { AgentRunCard(run: AgentRunsPreviewData.noModel) {} }
-}
-
-#Preview("Card · long title and detail") {
-    AgentRunsPreviewData.Canvas { AgentRunCard(run: AgentRunsPreviewData.longTitle) {} }
-}
-
-#Preview("Stack · four cards") {
-    AgentRunsPreviewData.Canvas {
-        AgentRunsStack().environment(
-            AgentRunsCoordinator(
-                monitor: AgentRunsMonitor(previewRuns: AgentRunsPreviewData.stack), showFailure: { _ in })
-        )
+    #Preview("Card · working, Opus") {
+        AgentRunsPreviewData.Canvas { AgentRunCard(run: AgentRunsPreviewData.working) {} }
     }
-}
+
+    #Preview("Card · blocked, Sonnet") {
+        AgentRunsPreviewData.Canvas { AgentRunCard(run: AgentRunsPreviewData.blocked) {} }
+    }
+
+    #Preview("Card · done, Haiku") {
+        AgentRunsPreviewData.Canvas { AgentRunCard(run: AgentRunsPreviewData.done) {} }
+    }
+
+    #Preview("Card · Codex model id") {
+        AgentRunsPreviewData.Canvas { AgentRunCard(run: AgentRunsPreviewData.codex) {} }
+    }
+
+    #Preview("Card · no model") {
+        AgentRunsPreviewData.Canvas { AgentRunCard(run: AgentRunsPreviewData.noModel) {} }
+    }
+
+    #Preview("Card · long title and detail") {
+        AgentRunsPreviewData.Canvas { AgentRunCard(run: AgentRunsPreviewData.longTitle) {} }
+    }
+
+    #Preview("Stack · four cards") {
+        AgentRunsPreviewData.Canvas {
+            AgentRunsStack().environment(
+                AgentRunsCoordinator(
+                    monitor: AgentRunsMonitor(previewRuns: AgentRunsPreviewData.stack), showFailure: { _ in })
+            )
+        }
+    }
 #endif

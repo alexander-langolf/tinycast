@@ -132,6 +132,19 @@ their bottom to the screen's visible-frame floor, so a tall stack can overlap th
 panel removes it from the stack; it grows down from its own top-left corner without that floor
 clamp, and the remaining cards close the gap.
 
+<!-- // FORK: file-navigator -->
+Browse here opens File Navigator at the session's OSC 7 directory, retaining a weak origin.
+Ctrl-G there sends quoted `cd --` back to a ready origin and focuses its panel. A busy or closed shell
+leaves the navigator open with a HUD.
+
+`open(command:directory:isEditor:)` marks editor instances before spawn. Their measured grid uses
+up to 680 scaled output points, screen-bounded, while normal terminals keep 340. Card, panel height
+and font-change resize all use that role. Fresh's requested Command shortcuts reach the encoder as
+Ctrl keys; Cmd-Shift-Z is Ctrl-Y under Fresh's default map. Ctrl-C reaches an editor's own copy action.
+Other Command chords keep their card meaning. With the log renderer selected, the navigator opens
+real Ghostty running `zsh -ilc`; no full-screen editor is attempted in TerminalLogView.
+See [file-navigator.md](file-navigator.md#edit-in-a-terminal-view) for keymap/Option caveats and review.
+
 ## Tab chips
 
 Tab in the collapsed compact launcher toggles chip mode, unless a menu or control list owns the

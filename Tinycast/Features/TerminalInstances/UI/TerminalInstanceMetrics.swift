@@ -5,6 +5,7 @@ import AppKit
 struct TerminalInstanceMetrics {
     let metrics: InterfaceMetrics
     var theme = ForkTheme.current
+    var isEditor = false  // FORK: file-navigator
 
     /// The four grid faces and the cell they measure, resolved once per Monospaced font and size.
     struct Faces {
@@ -76,7 +77,12 @@ struct TerminalInstanceMetrics {
         theme.flag(.terminalDivider) ? theme.points(.terminalDividerWidth, metrics) : 0
     }
     var gap: CGFloat { metrics.spacing.md }
-    var maxOutput: CGFloat { metrics.scaled(340) }
+    // FORK: file-navigator
+    var maxOutput: CGFloat {
+        guard isEditor else { return metrics.scaled(340) }
+        let available = NSScreen.main?.visibleFrame.height ?? metrics.scaled(680)
+        return max(Self.rowHeight * 8, min(metrics.scaled(680), available - barHeight - gap * 2))
+    }
     var columns: Int { max(20, Int((width - Self.logInset.width * 2) / Self.characterWidth)) }
     /// Viewport rows of the ghostty grid: whole rows that fit under `maxOutput` with the log's inset.
     var gridRows: Int { Int((maxOutput - Self.logInset.height * 2) / Self.rowHeight) }
