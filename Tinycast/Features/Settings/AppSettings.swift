@@ -306,6 +306,11 @@ final class AppSettings {
         didSet { defaults.set(fileSearchEngine.rawValue, forKey: Key.fileSearchEngine.rawValue) }
     }
 
+    /// Whether the ripgrep index lists dotfiles (`rg --hidden`); `.git` stays out either way.
+    var fileSearchHidden: Bool {
+        didSet { defaults.set(fileSearchHidden, forKey: Key.fileSearchHidden.rawValue) }
+    }
+
     // Feature switches, off out of the box, and off means fully off.
     var fileSearchEnabled: Bool {
         didSet { defaults.set(fileSearchEnabled, forKey: Key.fileSearchEnabled.rawValue) }
@@ -717,6 +722,7 @@ final class AppSettings {
             defaults.string(forKey: Key.fileSearchEngine.rawValue)
             .flatMap(ForkFileSearchEngine.init(rawValue:))
             ?? (ForkFileSearchEngine.executable() == nil ? .spotlight : .ripgrep)
+        fileSearchHidden = defaults.object(forKey: Key.fileSearchHidden.rawValue) as? Bool ?? true  // FORK: search
         fileSearchEnabled = defaults.bool(forKey: Key.fileSearchEnabled.rawValue)
         // Unset seeds home; a stored empty array is a cleared list that searches nothing.
         fileSearchScopes =

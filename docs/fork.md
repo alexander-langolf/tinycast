@@ -352,7 +352,7 @@ launcher changes live there without upstream hooks. The generated pbxproj except
 | `Tinycast/App/AppCore.swift` | `// FORK: search` | Own/wire the home index; refresh on palette opening, invalidate on preference changes, stop at quit and rerun visible searches. |
 | `Tinycast/Features/Settings/AppSettings.swift` | `// FORK: search` | Load/persist the engine preference and choose its discovery-dependent default. |
 | `Tinycast/Features/Settings/AppSettingsKey.swift` | `// FORK: search` | Name the bundle-local experimental engine preference. |
-| `Tinycast/Features/Settings/Model/SettingsFileKey.swift` | `// FORK: search` | Declare fileNavigator.searchEngine. |
+| `Tinycast/Features/Settings/Model/SettingsFileKey.swift` | `// FORK: search` | Declare fileNavigator.searchEngine and fileNavigator.searchHidden. |
 | `Tinycast/Features/Settings/SettingsFileSchema.swift` | `// FORK: search` | Bind the engine mirror. |
 | `Tinycast/Features/Settings/SettingsAnchor.swift` | `// FORK: search` | Search/scroll anchor for the fork-owned engine picker. |
 | `Tinycast/Features/Backup/Model/SettingsBackupCoverage.swift` | `// FORK: search` | Exclude the machine-dependent experiment from backups. |

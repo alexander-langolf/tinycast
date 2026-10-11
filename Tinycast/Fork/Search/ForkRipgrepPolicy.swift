@@ -3,9 +3,10 @@ import Foundation
 enum ForkRipgrepPolicy {
     nonisolated static func arguments(
         patterns: [String], home: String, subtree: Bool, depthLimit: Int? = nil,
-        directory: String? = nil
+        directory: String? = nil, hidden: Bool = true
     ) -> [String] {
-        var arguments = ["--files", "--hidden", "--no-messages", "--null", "--glob", "!.git/"]
+        var arguments = ["--files", "--no-messages", "--null", "--glob", "!.git/"]
+        if hidden { arguments.insert("--hidden", at: 1) }
         if let depthLimit { arguments += ["--max-depth", String(depthLimit)] }
         let directory = directory ?? home
         let prefix = directory == "/" ? "/" : directory + "/"

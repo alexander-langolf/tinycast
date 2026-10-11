@@ -86,6 +86,7 @@ enum SettingsFileSchema {
         // FORK: file-navigator
         case .fileNavigatorEditor: return bind(settings, \.fileNavigatorEditor)
         case .fileSearchEngine: return bind(settings, \.fileSearchEngine)  // FORK: search
+        case .fileSearchHidden: return bind(settings, \.fileSearchHidden)  // FORK: search
         case .fileNavigatorCommands: return launcher.commandsBinding(for: key, owner: .fileNavigator)
         case .fileSearchEnabled: return bind(settings, \.fileSearchEnabled)
         case .fileSearchScopes: return bind(settings, \.fileSearchScopes)

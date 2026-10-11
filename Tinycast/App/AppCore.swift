@@ -294,7 +294,8 @@ final class AppCore {
     func start() {
         // FORK: search
         forkRipgrepIndex.configure(
-            engine: settings.fileSearchEngine, patterns: settings.fileSearchIgnorePatterns)
+            engine: settings.fileSearchEngine, patterns: settings.fileSearchIgnorePatterns,
+            hidden: settings.fileSearchHidden)
         fileSearch.useForkIndex(forkRipgrepIndex)  // FORK: search
         forkAppearance.start()  // FORK: appearance-start
         forkTheme.start()  // FORK: appearance-theme
@@ -757,11 +758,12 @@ final class AppCore {
         // FORK: search
         track(
             {
-                _ = $0.fileSearchEngine; _ = $0.fileSearchIgnorePatterns
+                _ = $0.fileSearchEngine; _ = $0.fileSearchIgnorePatterns; _ = $0.fileSearchHidden
             },
             reproject: {
                 $0.forkRipgrepIndex.configure(
-                    engine: $0.settings.fileSearchEngine, patterns: $0.settings.fileSearchIgnorePatterns)
+                    engine: $0.settings.fileSearchEngine, patterns: $0.settings.fileSearchIgnorePatterns,
+                    hidden: $0.settings.fileSearchHidden)
                 $0.fileSearchCoordinator.applyPolicy()
                 $0.fileSearch.cancel()
                 if $0.palette.mode == .fileSearch && $0.palette.isVisible {

@@ -35,6 +35,7 @@ enum AppSettingsKey: String, CaseIterable {
     case paletteExpandedCenterDisplays = "paletteExpandedCenterDisplays"
     case fileNavigatorEditor = "forkFileNavigatorEditor"  // FORK: file-navigator
     case fileSearchEngine = "forkFileSearchEngine"  // FORK: search
+    case fileSearchHidden = "forkFileSearchHidden"  // FORK: search
     case fileSearchEnabled = "fileSearchEnabled"
     case fileSearchScopes = "fileSearchScopes"
     case fileSearchIgnorePatterns = "fileSearchIgnorePatterns"

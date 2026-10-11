@@ -76,6 +76,8 @@ enum SettingsBackupCoverage {
     static let deliberatelyExcluded: [String: String] = [
         AppSettingsKey.fileSearchEngine.rawValue:  // FORK: search
             "The experimental engine choice depends on ripgrep being installed on this Mac.",
+        AppSettingsKey.fileSearchHidden.rawValue:  // FORK: search
+            "Only changes what the ripgrep engine lists, so it travels with the engine choice, which stays out.",
         AppSettingsKey.fileNavigatorEditor.rawValue:  // FORK: file-navigator
             "Names a local editor command; the destination Mac may not have it.",
         AppSettingsKey.dictationEnabled.rawValue:

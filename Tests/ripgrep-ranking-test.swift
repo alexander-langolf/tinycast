@@ -58,6 +58,12 @@ struct RipgrepRankingTest {
                     "\(found.prefix(5))")
             }
         }
+        let on = ForkRipgrepPolicy.arguments(patterns: [], home: home.path, subtree: false)
+        let off = ForkRipgrepPolicy.arguments(patterns: [], home: home.path, subtree: false, hidden: false)
+        check("hidden files are listed by default", on.contains("--hidden"))
+        check(
+            "turning hidden off drops --hidden but keeps the .git exclusion",
+            !off.contains("--hidden") && off.contains("!.git/") && on.count == off.count + 1)
         check("an unrelated query lists nothing", try ids("zzqqxx", scopes: ["~"]).isEmpty)
         if failures > 0 {
             print("\(failures) FAILED"); try? FileManager.default.removeItem(at: home); exit(1)

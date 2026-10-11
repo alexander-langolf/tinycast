@@ -4,6 +4,7 @@ import OSLog
 @MainActor
 final class ForkRipgrepIndex {
     private var engine = ForkFileSearchEngine.spotlight
+    private var hidden = true
     private var patterns: [String] = []
     private let home: URL
     private(set) var paths: [String]?
@@ -38,10 +39,11 @@ final class ForkRipgrepIndex {
         refreshIfNeeded()
     }
 
-    func configure(engine: ForkFileSearchEngine, patterns: [String]) {
-        guard engine != self.engine || patterns != self.patterns else { return }
+    func configure(engine: ForkFileSearchEngine, patterns: [String], hidden: Bool = true) {
+        guard engine != self.engine || patterns != self.patterns || hidden != self.hidden else { return }
         self.engine = engine
         self.patterns = patterns
+        self.hidden = hidden
         stop()
         paths = nil
         builtAt = nil
@@ -67,9 +69,10 @@ final class ForkRipgrepIndex {
         let revision = revision
         let home = home
         let patterns = patterns
+        let hidden = hidden
         build = Task { [weak self] in
             let worker = Task.detached(priority: .utility) {
-                try await Self.load(executable: executable, home: home, patterns: patterns)
+                try await Self.load(executable: executable, home: home, patterns: patterns, hidden: hidden)
             }
             do {
                 let paths = try await withTaskCancellationHandler {
@@ -92,10 +95,13 @@ final class ForkRipgrepIndex {
     }
 
     @concurrent
-    private static func load(executable: URL, home: URL, patterns: [String]) async throws -> [String] {
+    private static func load(
+        executable: URL, home: URL, patterns: [String], hidden: Bool
+    ) async throws -> [String] {
         let runner = ForkRipgrepProcess(
             executable: executable, directory: home,
-            arguments: ForkRipgrepPolicy.arguments(patterns: patterns, home: home.path, subtree: false))
+            arguments: ForkRipgrepPolicy.arguments(
+                patterns: patterns, home: home.path, subtree: false, hidden: hidden))
         return try await withTaskCancellationHandler {
             defer { runner.finish() }
             try Task.checkCancellation()

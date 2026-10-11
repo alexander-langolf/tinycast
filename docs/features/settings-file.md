@@ -37,6 +37,7 @@ optional arguments; it is mirrored through AppSettings but excluded from setting
 Navigator bookmarks/recent paths are bundle-local content, outside this mirror.
 
 <!-- // FORK: search -->
+`fileNavigator.searchHidden` (default `true`) adds or drops `rg --hidden` for the ripgrep index; `.git` is skipped either way.
 `fileNavigator.searchEngine` selects `spotlight` or `ripgrep`; the pane uses the same AppSettings
 property. An unset preference chooses ripgrep if found, otherwise Spotlight. See [ripgrep search](ripgrep-search.md).
 

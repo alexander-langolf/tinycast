@@ -18,6 +18,13 @@ struct FileNavigatorSettingsView: View {
                             ? "ripgrep was not found. File search uses Spotlight."
                             : "Choose how Search Files and recursive folder search find files.")
                 }
+                Toggle(isOn: $settings.fileSearchHidden) {
+                    SettingsRowTitle(.fileNavigatorSearchHidden, "Search hidden files")
+                    Text(
+                        "Lists dotfiles and dot-folders such as .config. Applies to ripgrep only; .git is always skipped."
+                    )
+                }
+                .disabled(settings.fileSearchEngine != .ripgrep)
             } header: {
                 SettingsSectionHeader(.fileNavigatorSearchEngine)
             }
