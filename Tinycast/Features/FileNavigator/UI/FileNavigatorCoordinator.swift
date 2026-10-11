@@ -71,6 +71,11 @@ final class FileNavigatorCoordinator {
         updateInput(initial, force: true)
     }
 
+    /// Search Files' default action for a folder result: browse it here instead of handing it to Finder.
+    func openFolder(_ path: String) {
+        show(input: FileNavigatorPath.directoryInput(path, home: home))
+    }
+
     func showInNavigatorAction(for result: FileSearchResult) -> PopoverMenuItem {
         let action = FileNavigatorAction.showInNavigator
         return PopoverMenuItem(title: action.title, systemImage: action.symbol) { [weak self] in

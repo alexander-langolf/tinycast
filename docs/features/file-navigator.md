@@ -50,7 +50,7 @@ and rendered acceptance remain for Claude's verification pass.
   browsed, else `~`.
 - From a **terminal view**: a card action opens the navigator in that instance's current directory
   (OSC 7 cwd the session already tracks).
-- From **Search Files**: ⌘K → Show in File Navigator opens a folder result itself, and a
+- From **Search Files**: ↵ on a folder result opens it here (⌘↵ still reveals it in Finder). ⌘K → Show in File Navigator opens a folder result itself, and a
   file result's parent folder with the file row focused after loading.
 - Typing a path (`~/…` or `/…`) in the root palette routes here, as `$` routes to terminals.
 

@@ -226,7 +226,7 @@ not outlive the window.
 
 | Row | Chord | What it does |
 | --- | --- | --- |
-| Open File / Open Folder | ↵ | `NSWorkspace`'s asynchronous configuration API; hides the palette without restoring focus, and reports a failure through the dialog controller |
+| Open File / Open Folder | ↵ | A folder opens in the File Navigator (fork hook, `// FORK: file-navigator`); a file uses `NSWorkspace`'s asynchronous configuration API; hides the palette without restoring focus, and reports a failure through the dialog controller |
 | Show in Finder | ⌘↵ | reveals and dismisses |
 | Quick Look | ⌘Y | the in-panel overlay above |
 | Share… | — | `NSSharingServicePicker`, anchored to the palette's trailing edge so the row it was opened from stays visible beside it. Escape or a click elsewhere dismisses it, and the palette is never hidden, so the flow returns to the same row. There is no chord: the destinations are the system's, and it is the only place a system popover is right |

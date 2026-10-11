@@ -44,6 +44,11 @@ final class FileSearchCoordinator {
     }
 
     func open(_ result: FileSearchResult) {
+        // FORK: file-navigator
+        if result.isDirectory {
+            core.fileNavigator.openFolder(result.id)
+            return
+        }
         paletteCoordinator.hidePalette(restoreFocus: false)
         Task {
             do {
