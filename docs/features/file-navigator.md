@@ -66,8 +66,8 @@ and modifiers.
 | ⌘B | bookmarks + recent folders |
 | ⌘Y | hide / show the preview pane (shown by default) |
 | ⌘. | show hidden and ignored entries in direct listings; recursive exclusions remain enforced |
-| ⌘O | Ghostty tab in the current folder |
-| ⌘T | new terminal view in the current folder |
+| ⌘O | Ghostty app tab in the current folder |
+| ⌘T | Open Ghostty here: an embedded Ghostty terminal view in the current folder |
 | ⌘F | search below this folder: the last segment matches recursively (Swift walk + `ForkFzf`), rows show their subfolder; ⌘F again returns to the folder listing |
 | ⌃G | close and `cd` the originating terminal view into the current folder |
 | Esc | trim to the folder → clear picks → close (one step per press) |
@@ -84,9 +84,10 @@ row instead of claiming a folder is missing.
 
 An empty Bookmarks & Recent panel shows a disabled "No bookmarks or recent folders yet" row.
 
-⌘K actions: **Edit in Fresh** (files only; terminal view), Open with default app, Open Ghostty here, New terminal
-here, Quick Look, Copy path(s), Copy relative path(s), Reveal in Finder, Search below this folder,
-Hand to an agent (copy absolute-path context), Bookmark folder.
+⌘K actions: **Edit in Fresh** (files only; terminal view), Open with default app, Open Ghostty here
+(embedded terminal view, not the Ghostty app), Open in Ghostty app, Quick Look, Copy path(s), Copy
+relative path(s), Reveal in Finder, Search below this folder, Hand to an agent (copy absolute-path
+context), Bookmark folder.
 
 ## Edit in a terminal view
 

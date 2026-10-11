@@ -54,7 +54,7 @@ struct FileNavigatorScreen: PaletteScreen {
         switch shortcut {
         case .pin: coordinator.send(.hidden)
         case .quickLook: coordinator.send(.togglePreview)
-        case .openInApp: coordinator.perform(.ghostty)
+        case .openInApp: coordinator.perform(.ghosttyApp)
         case .showInFinder: coordinator.send(.subtree)
         case .copyPath: coordinator.perform(.copyPath)
         default: return false

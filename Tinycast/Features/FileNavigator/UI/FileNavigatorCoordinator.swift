@@ -419,10 +419,10 @@ final class FileNavigatorCoordinator {
                 core.paletteCoordinator.hidePalette(restoreFocus: false)
             }
         case .openDefault: try await FileNavigatorActionsAdapter.open(targets, core: core)
-        case .ghostty:
+        case .ghostty: core.terminalInstances.open(command: ":", directory: folder)
+        case .ghosttyApp:
             try await TerminalGhosttyLauncher.openShell(in: folder)
             core.paletteCoordinator.hidePalette(restoreFocus: false)
-        case .terminal: core.terminalInstances.open(command: ":", directory: folder)
         case .quickLook: quickLookResult = targets.first
         case .copyPath: FileNavigatorActionsAdapter.copyPaths(targets, core: core)
         case .copyRelative:
@@ -500,8 +500,8 @@ final class FileNavigatorCoordinator {
             case "b": send(.bookmarks); openActions()
             case "y": send(.togglePreview)
             case ".": send(.hidden)
-            case "o": perform(.ghostty)
-            case "t": perform(.terminal)
+            case "o": perform(.ghosttyApp)
+            case "t": perform(.ghostty)
             case "f": send(.subtree)
             default: return false
             }

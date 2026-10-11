@@ -66,7 +66,7 @@ struct FileNavigatorTest {
         state.reduce(.enter, rows: [swift], home: home, folders: folders)
         precondition(state.panel == .actions)
         precondition(FileNavigatorAction.actionsFor([folder]).first == .openDefault)
-        precondition(FileNavigatorAction.actionsFor([]) == [.ghostty, .terminal, .searchBelow, .bookmark])
+        precondition(FileNavigatorAction.actionsFor([]) == [.ghostty, .ghosttyApp, .searchBelow, .bookmark])
         precondition(FileNavigatorState.ranked([swift, folder], filter: "").first == folder)
         precondition(FileNavigatorState.ranked([swift, folder], filter: "^lib !kit") == [swift])
         precondition(FileNavigatorState.ranked([swift, folder], filter: "!kit") == [swift])
