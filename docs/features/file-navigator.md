@@ -14,7 +14,7 @@ navigator, not a file manager: no rename, move, copy-to or bulk delete in v1.
 
 - Launcher command **Browse Files** (and an optional global shortcut), starting in the last folder
   browsed, else `~`.
-- From **Search Files**: ⌘↵ on a result browses its containing folder with the result focused.
+- From **Search Files** *(optional hook)*: ⌘↵ on a result browses its containing folder with the result focused.
 - From a **terminal view**: a card action opens the navigator in that instance's current directory
   (OSC 7 cwd the session already tracks).
 - Typing a path (`~/…` or `/…`) in the root palette routes here, as `$` routes to terminals.
@@ -26,7 +26,7 @@ always belong to the filter, so commands use arrows and modifiers.
 
 | Key | Action |
 |---|---|
-| type | fuzzy-filter the current folder (same scorer as Search Files) |
+| type | fuzzy-filter the current folder (`ForkFzf`, fzf extended syntax: `'exact`, `^prefix`, `!exclude`) |
 | `~/…`, `/…` | path jump: walk to the deepest existing folder, keep the rest as the filter |
 | ↑ ↓ | move focus |
 | → | enter the focused folder |
@@ -70,7 +70,7 @@ editor chosen below). Constraints from the libghostty grid view, which this depe
 | Piece | Reused as |
 |---|---|
 | `FileSearchResult` (url, name, parent, isDirectory, home-abbreviated path) | the row value, built from a directory listing instead of Spotlight |
-| shared `FuzzyMatch` scorer | the in-folder filter ranking |
+| fork-owned `ForkFzf` / `ForkSearch` (`Tinycast/Fork/Search/`, fzf v2 + extended syntax) | the in-folder filter ranking, same syntax as every other list |
 | `FileSearchIgnoreList` (+ structural hidden / bundle rules) | default hiding; ⌘. reveals |
 | `FileSearchPreviewKind` + `FileSearchPreview` surfaces (plain text, PDF, Quick Look, media) | the preview pane |
 | `FileSearchCoordinator` actions (open, showInFinder, share, copyPath, copyName, copyFile, trash) | ⌘K actions, generalised to take one or many URLs |
@@ -79,14 +79,28 @@ editor chosen below). Constraints from the libghostty grid view, which this depe
 
 New pieces:
 
-- `FileNavigator/Model/FileNavigatorState.swift` — the pure reducer the prototype validates
+All new code is fork-owned under `Tinycast/Fork/FileNavigator/` (docs/fork.md: customisations live
+in `Tinycast/Fork/`). Upstream's Search Files files (24 upstream commits since 2026-08-01) are
+**used, never edited**; a thin fork adapter maps them so an upstream API change breaks the build in
+one place instead of producing merge conflicts.
+
+- `Fork/FileNavigator/Model/FileNavigatorState.swift` — the pure reducer the prototype validates
   (folder, filter, focus, picks, panel, hidden toggle, bookmarks, recent). Foundation-only, with a
   `file-navigator-test` harness, following the `Model/` purity rule.
-- `FileNavigator/Service/DirectoryLister.swift` — off-main listing with prefetched resource keys,
+- `Fork/FileNavigator/Service/DirectoryLister.swift` — off-main listing with prefetched resource keys,
   streamed in chunks, cancelling stale listings; `getattrlistbulk` only if large folders measure slow.
-- `FileNavigator/Service/FolderWatcher.swift` — a `DispatchSource` file-system object source on the
+- `Fork/FileNavigator/Service/FolderWatcher.swift` — a `DispatchSource` file-system object source on the
   visible folder only; picks keyed by path survive updates; vanished files drop out of picks.
-- `FileNavigator/UI/FileNavigatorScreen.swift` + coordinator, a new palette mode beside `.fileSearch`.
+- `Fork/FileNavigator/UI/FileNavigatorScreen.swift` + coordinator.
+
+Upstream integration points (each `// FORK: file-navigator`, listed in docs/fork.md):
+1. `PaletteMode.fileNavigator` case.
+2. `RootPaletteView.screen` routing: a root query starting `~/` or `/` opens the navigator
+   (Alfred's entry, beside the existing `$` → terminal hook).
+3. Launcher command registration for **Browse Files**.
+4. *(optional)* ⌘↵ on a Search Files result browses its folder — the only hook inside upstream's
+   Search Files; skip it if upstream churn there keeps conflicting.
+5. Terminal card action (already fork-owned code).
 
 ## Behaviour rules
 
@@ -119,9 +133,10 @@ New pieces:
    LSP, needs Ghostty Option-as-Alt), Helix (modal, diff gutter), Microsoft Edit (simplest); all
    unverified inside the grid, and the ⌘-key gap applies to each.
 3. **Search algorithm** — research (vault, 2026-10-11) recommends: in-folder filtering stays pure
-   Swift (`FileManager` + `FuzzyMatch`, add VS Code-style filename-tier ranking); ⌘F subtree search
-   streams a bundled `fd`/`rg --files` into `FuzzyMatch`, Spotlight stays the global fallback;
+   Swift (`FileManager` + `ForkFzf`); ⌘F subtree search
+   streams a bundled `fd`/`rg --files` into `ForkFzf`, Spotlight stays the global fallback;
    content search is a bundled `rg`. A Rust lib (`ignore` + nucleo via C ABI) only if a benchmark on
    `~/work` misses the latency target. Decide after that benchmark.
-4. Whether ↵ on a file should instead open the Monaco view once that exists (edit in place vs
+4. Ship the optional Search Files ⌘↵ hook (integration point 4), or keep Search Files untouched?
+5. Whether ↵ on a file should instead open the Monaco view once that exists (edit in place vs
    terminal editor).
