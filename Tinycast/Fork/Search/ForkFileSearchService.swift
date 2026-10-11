@@ -19,6 +19,11 @@ final class ForkFileSearchService {
         supplement = nil
     }
 
+    /// True while the index is the only source that can answer, so older rows must not stand in for it.
+    func awaitsIndex(policy: FileSearchPolicy) -> Bool {
+        index?.supports(policy) == true && index?.paths == nil
+    }
+
     func handles(_ query: String, policy: FileSearchPolicy) -> Bool {
         !query.isEmpty && (index?.supports(policy) == true || ForkSearch.fileNeedsGlob(query))
     }

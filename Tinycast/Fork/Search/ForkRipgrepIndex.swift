@@ -32,8 +32,9 @@ final class ForkRipgrepIndex {
         if paths == nil { refreshIfNeeded() }
     }
 
+    /// The first open after launch or a settings change builds the index while the query is still being typed.
     func paletteOpened() {
-        guard used else { return }
+        guard used || paths == nil else { return }
         refreshIfNeeded()
     }
 

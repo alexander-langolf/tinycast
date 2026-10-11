@@ -121,6 +121,7 @@ final class FileSearchSession {
                 if forkDefaultOperation && ForkSearch.isEnabled
                     && forkSearch.handles(request.query, policy: policy)
                 {  // FORK: search
+                    if forkSearch.awaitsIndex(policy: policy) { results = [] }
                     try await forkSearch.search(
                         query: request.query, policy: policy, filter: request.filter
                     ) { [weak self] candidates in
