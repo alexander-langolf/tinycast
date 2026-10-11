@@ -102,22 +102,24 @@ final class ForkRipgrepIndex {
             let ignore = FileSearchIgnoreList(patterns: FileSearchIgnoreList.defaults + patterns)
             var paths: [String] = []
             var directories = Set<String>()
+            let homePath = home.standardizedFileURL.path + "/"
+            let homeEnd = homePath.index(before: homePath.endIndex)
+            let libraryPrefix = homePath + "Library/"
             while let batch = try runner.next() {
                 for relative in batch {
                     try Task.checkCancellation()
-                    let url = home.appending(path: relative).standardizedFileURL
-                    let path = url.path
-                    guard path.hasPrefix(home.path + "/"),
-                        !path.hasPrefix(home.path + "/Library/"),
+                    // ripgrep prints clean paths relative to `home`, so string joins replace URL round trips.
+                    let path = homePath + relative
+                    guard !path.hasPrefix(libraryPrefix),
                         !ForkRipgrepPolicy.excludes(path, ignore: ignore, home: home.path)
                     else { continue }
                     paths.append(path)
-                    var directory = url.deletingLastPathComponent()
-                    while directory.path != home.path, directory.path.hasPrefix(home.path + "/") {
-                        let path = directory.path + "/"
-                        guard directories.insert(path).inserted else { break }
-                        paths.append(path)
-                        directory.deleteLastPathComponent()
+                    var end = path.endIndex
+                    while let slash = path[..<end].lastIndex(of: "/"), slash > homeEnd {
+                        let directory = String(path[...slash])
+                        guard directories.insert(directory).inserted else { break }
+                        paths.append(directory)
+                        end = slash
                     }
                 }
             }

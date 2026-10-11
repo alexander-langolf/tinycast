@@ -46,7 +46,9 @@ final class ForkFileSearchService {
             query: query, policy: policy, filter: filter, fuzzy: false)
         try Task.checkCancellation()
         guard revision == currentRevision else { return }
-        publish(FileSearchQuery.rank(initial, for: query, ignoring: policy.ignore))
+        let ranked = FileSearchQuery.rank(initial, for: query, ignoring: policy.ignore)
+        // An empty answer while the index builds would read as "No files found"; the index answers next.
+        if !(ranked.isEmpty && index != nil) { publish(ranked) }
         supplement = Task {
             if ForkSearch.fileNeedsGlob(query),
                 let additional = try? await Self.candidates(
@@ -54,10 +56,10 @@ final class ForkFileSearchService {
                 !Task.isCancelled, revision == currentRevision
             {
                 let merged = ForkSearch.mergePaths(initial, additional, id: { $0.id })
-                publish(
-                    FileSearchQuery.rank(
-                        merged.filter { !self.removed.contains($0.id) },
-                        for: query, ignoring: policy.ignore))
+                let ranked = FileSearchQuery.rank(
+                    merged.filter { !self.removed.contains($0.id) },
+                    for: query, ignoring: policy.ignore)
+                if !(ranked.isEmpty && index != nil) { publish(ranked) }
             }
             guard let paths = await index?.readyPaths(), !Task.isCancelled,
                 revision == currentRevision,
