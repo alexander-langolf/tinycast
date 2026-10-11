@@ -52,7 +52,6 @@ struct FileNavigatorScreen: PaletteScreen {
     func perform(_ shortcut: PaletteShortcut, at selection: Int) -> Bool {
         coordinator.focus(selection)
         switch shortcut {
-        case .pin: coordinator.send(.hidden)
         case .quickLook: coordinator.send(.togglePreview)
         case .openInApp: coordinator.perform(.ghosttyApp)
         case .showInFinder: coordinator.send(.subtree)

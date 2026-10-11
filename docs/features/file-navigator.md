@@ -23,7 +23,7 @@ and rendered acceptance remain for Claude's verification pass.
   retaining the current screen.
 - Application and installer packages are file rows. Logical symlink paths are preserved; canonical
   ancestor cycles are rejected and recursive traversal tracks canonical directories. Hidden and
-  ignored entries are suppressed by default; ⌘. admits them in direct listings only. Subtree walks
+  ignored entries are suppressed by default; ⌘⇧. admits them in direct listings only. Subtree walks
   always exclude hidden entries and ignored folders, including excluded roots; package roots cannot
   be browsed and package descendants stay excluded.
 - Only the visible folder is watched. Recursive walks stop at depth 8 or 50,000 visited entries and
@@ -68,7 +68,7 @@ and modifiers.
 | ⌘K | action panel for the picked files, else the focused row |
 | ⌘B | bookmarks + recent folders |
 | ⌘Y | hide / show the preview pane (shown by default) |
-| ⌘. | show hidden and ignored entries in direct listings; recursive exclusions remain enforced |
+| ⌘⇧. | show hidden and ignored entries in direct listings; recursive exclusions remain enforced |
 | ⌘O | Ghostty app tab in the current folder |
 | ⌘T | Open Ghostty here: an embedded Ghostty terminal view in the current folder |
 | ⌘F | search below this folder: the last segment matches recursively (Swift walk + `ForkFzf`), rows show their subfolder; ⌘F again returns to the folder listing |
@@ -140,7 +140,7 @@ missing-editor errors visible. No editor is run in the old log renderer.
 |---|---|
 | `FileSearchResult` (url, name, parent, isDirectory, home-abbreviated path) | the row value, built from a directory listing instead of Spotlight |
 | fork-owned `ForkFzf` / `ForkSearch` (`Tinycast/Fork/Search/`, fzf v2 + extended syntax) | the in-folder filter ranking, same syntax as every other list |
-| `FileSearchIgnoreList` (+ structural hidden / bundle rules) | default hiding; ⌘. reveals only in direct listings; recursive exclusions always apply |
+| `FileSearchIgnoreList` (+ structural hidden / bundle rules) | default hiding; ⌘⇧. reveals only in direct listings; recursive exclusions always apply |
 | `FileSearchPreviewKind` + `FileSearchPreview` surfaces (plain text, PDF, Quick Look, media) | the preview pane (always present, focused row only, debounced) |
 | `FileSearchCoordinator` actions (open, showInFinder, share, copyPath, copyName, copyFile, trash) | ⌘K actions, generalised to take one or many URLs |
 | `FileSearchFilter` (type filter) | not in v1 |
@@ -210,7 +210,7 @@ palette and focuses that terminal. A busy or closed origin produces a HUD and le
    running Fresh on it, usable inside the grid (renders, saves with ⌃S, quits).
 3. Picks made in two folders survive navigation and reach ⌘K → Hand to an agent as copied file context.
 4. A 10,000-entry folder lists without blocking the main thread; typing stays responsive.
-5. In direct listings, ⌘. reveals `.git`, `.env`, `node_modules`; ⌘. again hides them. Subtree walks
+5. In direct listings, ⌘⇧. reveals `.git`, `.env`, `node_modules`; ⌘⇧. again hides them. Subtree walks
    skip hidden/ignored entries and package contents regardless of that toggle.
 6. A file deleted on disk while visible disappears from the list and from picks.
 7. Harness `file-navigator-test` covers the reducer cases in the prototype's walkthroughs.

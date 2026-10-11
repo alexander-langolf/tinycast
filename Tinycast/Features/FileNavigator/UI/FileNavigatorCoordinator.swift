@@ -506,12 +506,13 @@ final class FileNavigatorCoordinator {
             ASCIIKeyboardLayout.character(for: event)?.lowercased()
             ?? event.charactersIgnoringModifiers?.lowercased()
         if flags == .control, key == "g" { cdToOrigin(); return true }
+        // Finder's own chord for hidden files.
+        if flags == [.command, .shift], key == "." { send(.hidden); return true }
         if flags == .command {
             switch key {
             case "a": send(.selectAll)
             case "b": send(.bookmarks); openActions()
             case "y": send(.togglePreview)
-            case ".": send(.hidden)
             case "o": perform(.ghosttyApp)
             case "t": perform(.ghostty)
             case "f": send(.subtree)
