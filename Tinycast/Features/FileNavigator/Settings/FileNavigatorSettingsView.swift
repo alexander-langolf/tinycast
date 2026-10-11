@@ -18,6 +18,10 @@ struct FileNavigatorSettingsView: View {
                             ? "ripgrep was not found. File search uses Spotlight."
                             : "Choose how Search Files and recursive folder search find files.")
                 }
+            } header: {
+                SettingsSectionHeader(.fileNavigatorSearchEngine)
+            }
+            Section {
                 Toggle(isOn: $settings.fileSearchHidden) {
                     SettingsRowTitle(.fileNavigatorSearchHidden, "Search hidden files")
                     Text(
@@ -26,7 +30,7 @@ struct FileNavigatorSettingsView: View {
                 }
                 .disabled(settings.fileSearchEngine != .ripgrep)
             } header: {
-                SettingsSectionHeader(.fileNavigatorSearchEngine)
+                SettingsSectionHeader(.fileNavigatorSearchHidden)
             }
             Section {
                 TextField(text: $settings.fileNavigatorEditor, prompt: Text("fresh")) {
