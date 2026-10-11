@@ -14,6 +14,12 @@ struct FileNavigatorTest {
         let folder = FileSearchResult(
             url: URL(filePath: home + "/github/agentkit"), isDirectory: true,
             homeDirectory: URL(filePath: home))
+        precondition(
+            FileNavigatorPath.destination(for: folder) == (home + "/github/agentkit", nil),
+            "a folder opens itself in Show in File Navigator")
+        precondition(
+            FileNavigatorPath.destination(for: swift) == (home + "/github/agentkit", swift.id),
+            "a file opens its parent with the file selected")
         var state = FileNavigatorState(home: home)
         state.setInput("~/github/agentkit/li", home: home, folders: folders)
         precondition(state.folder == home + "/github/agentkit" && state.filter == "li")

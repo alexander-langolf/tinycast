@@ -50,8 +50,8 @@ and rendered acceptance remain for Claude's verification pass.
   browsed, else `~`.
 - From a **terminal view**: a card action opens the navigator in that instance's current directory
   (OSC 7 cwd the session already tracks).
-- From **Search Files**: ⌘K → Show in File Navigator opens the result's parent folder with the
-  file or folder row focused after loading.
+- From **Search Files**: ⌘K → Show in File Navigator opens a folder result itself, and a
+  file result's parent folder with the file row focused after loading.
 - Typing a path (`~/…` or `/…`) in the root palette routes here, as `$` routes to terminals.
 
 ## Interaction model
@@ -103,8 +103,8 @@ An empty Bookmarks & Recent panel shows a disabled "No bookmarks or recent folde
 (embedded terminal view, not the Ghostty app), Open in Ghostty app, Quick Look, Copy path(s), Copy
 relative path(s), Reveal in Finder, Show in File Navigator (one target in global or ⌘F subtree search
 only; no shortcut), Search below this folder, Hand to an agent (copy absolute-path context), Bookmark
-folder. Show in File Navigator replaces the input with the target's parent folder, leaves subtree
-search, and focuses the target after loading; plain folder listings omit it. Picks and terminal origin
+folder. Show in File Navigator replaces the input with the target folder (a file's parent), leaves subtree
+search, and focuses a file target after loading; plain folder listings omit it. Picks and terminal origin
 survive this navigation.
 
 ## Expanded preview and scrolling
@@ -234,7 +234,7 @@ and permission-error classification. The recursive reveal policy is independent 
 
 Actions use `FileNavigatorActionsAdapter` for multi-target open, reveal and copy, retaining upstream
 single-target actions. Relative copies compute paths from the current folder (including `../`).
-Show in File Navigator seeds `state.pendingFocus` with the target's absolute logical path and forces
+Show in File Navigator seeds `state.pendingFocus` with a file target's absolute logical path (none for a folder, which opens itself) and forces
 a direct listing; the existing batch receiver applies that focus and clears it on the final batch.
 Quick Look opens the first target in the upstream overlay; the preview still follows only the focused
 row. Agent context is a short header and one absolute path per line; a HUD says

@@ -75,9 +75,10 @@ final class FileNavigatorCoordinator {
         let action = FileNavigatorAction.showInNavigator
         return PopoverMenuItem(title: action.title, systemImage: action.symbol) { [weak self] in
             guard let self else { return }
+            let destination = FileNavigatorPath.destination(for: result)
             self.show(
-                input: FileNavigatorPath.directoryInput(FileNavigatorPath.parent(result.id), home: self.home),
-                focus: result.id)
+                input: FileNavigatorPath.directoryInput(destination.folder, home: self.home),
+                focus: destination.focus)
         }
     }
 
@@ -434,7 +435,7 @@ final class FileNavigatorCoordinator {
         let folder = state.folder
         let validationFolder =
             action == .showInNavigator && targets.count == 1
-            ? FileNavigatorPath.parent(targets[0].id) : folder
+            ? FileNavigatorPath.destination(for: targets[0]).folder : folder
         let revision = revision
         actionWork?.cancel()
         actionIdentity = UUID()
@@ -491,7 +492,8 @@ final class FileNavigatorCoordinator {
         case .reveal: FileNavigatorActionsAdapter.reveal(targets, core: core)
         case .showInNavigator:
             guard targets.count == 1, let target = targets.first else { return }
-            chooseFolder(FileNavigatorPath.parent(target.id), focus: target.id)
+            let destination = FileNavigatorPath.destination(for: target)
+            chooseFolder(destination.folder, focus: destination.focus)
         case .searchBelow:
             core.palette.rewriteQuery(FileNavigatorPath.directoryInput(folder, home: home))
             state.setInput(core.palette.query, home: home, folders: folders)

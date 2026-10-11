@@ -24,6 +24,11 @@ enum FileNavigatorPath: Equatable, Sendable {
         URL(filePath: path).deletingLastPathComponent().path
     }
 
+    /// "Show in File Navigator": a folder opens itself; a file opens its parent with the file selected.
+    static func destination(for result: FileSearchResult) -> (folder: String, focus: String?) {
+        result.isDirectory ? (result.id, nil) : (parent(result.id), result.id)
+    }
+
     static func display(_ path: String, home: String) -> String {
         if path == home { return "~" }
         return path.hasPrefix(home + "/") ? "~" + path.dropFirst(home.count) : path
