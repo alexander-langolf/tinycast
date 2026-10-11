@@ -16,7 +16,7 @@ struct TerminalInstanceView: View {
             actions: TerminalInstanceActions(
                 submit: { coordinator.submit(instance) },
                 togglePinned: { coordinator.togglePinned(instance) },
-                openInKitty: { coordinator.openInKitty(instance) },
+                openInTerminal: { coordinator.openInTerminal(instance) },
                 close: { coordinator.close(instance) })
         ) {
             if session.grid != nil {

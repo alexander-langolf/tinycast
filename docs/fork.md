@@ -135,6 +135,8 @@ The [automation feature](features/automation.md) is fork-owned under `Tinycast/F
 store, approval queue, question store and HTTP endpoint. It is separate from the MCP client. The
 `tinycast` stdio bridge is its own target in `project.fork.yml`, sources in `TinycastCLI/`, embedded
 in the app's `Contents/Helpers`.
+Tinycast owns UI tools and approved terminal commands; background dispatch belongs to the separate
+agentkit MCP ([Agentkit MCP](../../agentkit/README.md#agentkit-mcp)).
 
 ## Search
 
@@ -197,6 +199,8 @@ owns the coordinator and presenter and asks every shell to hang up at terminatio
 a bare `$` shows an instruction. Opening a command replaces the palette with an independent,
 initially pinned panel running the feature's own persistent `forkpty` zsh session. The upstream
 `Platform/PseudoTerminal.swift` and `TerminalLogView` remain unchanged.
+`TerminalGhosttyLauncher` owns ⌘O's separate Ghostty shell, with the running bundle path, escaped
+AppleScript and coordinator-owned cancellation described in the feature doc.
 
 ## Palette chips
 
@@ -366,6 +370,7 @@ unless they have an explicit symbol-only allowance. The audit is a static guard,
 | `Tinycast/Windows/Dialog/DialogController.swift` | `// FORK: automation` | `approveAutomation`, its width, and the hook that lets an expired approval close its dialog. |
 | `Tinycast/Windows/Dialog/DialogView.swift` | `// FORK: automation` | Render the approval's labelled fields. |
 | `Tinycast/Info.plist` | `FORK: automation` (XML comment) | Claim the bundle id as a second URL scheme so automation links reach one channel. |
+| `Tinycast/Info.plist` | `// FORK: terminal-ghostty` | Preserve the system-action permission explanation and add Ghostty handoff. |
 | `Tinycast/Palette/RootPaletteView.swift` | `// FORK: terminal-instances` | Route standalone `$` launcher queries to the terminal command screen. |
 | `Tinycast/Palette/RootPaletteView.swift` | `// FORK: palette-chips` | Toggle chips with Tab in the collapsed bar; handle empty-query Escape; set pill radius, show the `⌘1–4` hint and hide compact favourites. |
 | `Tinycast/Palette/PaletteWindowController.swift` | `// FORK: palette-chips` | Route number-row favourite slots to active chips and consume unused slots; set collapsed pill width. |

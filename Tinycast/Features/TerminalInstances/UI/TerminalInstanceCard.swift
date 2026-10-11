@@ -4,7 +4,7 @@ import SwiftUI
 struct TerminalInstanceActions {
     var submit: () -> Void = {}
     var togglePinned: () -> Void = {}
-    var openInKitty: () -> Void = {}
+    var openInTerminal: () -> Void = {}
     var close: () -> Void = {}
 }
 
@@ -63,7 +63,7 @@ struct TerminalInstanceCard<Output: View>: View {
             commandArea
                 .frame(maxWidth: .infinity, alignment: .leading)
             if isFullScreen {
-                Text("Full-screen program · ⌘O opens kitty")
+                Text("Full-screen program · ⌘O opens Ghostty")
                     .font(metrics.typography.rowTrailing)
                     .foregroundStyle(ink.warning)
                     .lineLimit(1)
@@ -79,7 +79,7 @@ struct TerminalInstanceCard<Output: View>: View {
                 isPinned ? "pin.fill" : "pin.slash",
                 help: isPinned ? "Unpin  ⌘P" : "Pin on Top  ⌘P"
             ) { actions.togglePinned() }
-            barButton("arrow.up.forward.app", help: "Open in kitty  ⌘O") { actions.openInKitty() }
+            barButton("arrow.up.forward.app", help: "Open in Ghostty  ⌘O") { actions.openInTerminal() }
             barButton("xmark", help: "Close  ⌘W") { actions.close() }
             gutter(layout.gutter)
         }

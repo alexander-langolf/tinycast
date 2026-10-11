@@ -2,7 +2,6 @@ import AppKit
 import Carbon.HIToolbox
 import Observation
 
-/// Every terminal instance: opening one from the palette, its keys, pinning, kitty, closing.
 @MainActor
 @Observable
 final class TerminalInstancesCoordinator {
@@ -11,6 +10,7 @@ final class TerminalInstancesCoordinator {
     @ObservationIgnored private unowned let core: AppCore
 
     @ObservationIgnored private var isTrackingMonoFont = false
+    @ObservationIgnored private var terminalLaunches: [UUID: Task<Void, Never>] = [:]
 
     init(core: AppCore) {
         self.core = core
@@ -90,6 +90,7 @@ final class TerminalInstancesCoordinator {
     }
 
     func close(_ instance: TerminalInstance) {
+        terminalLaunches[instance.id]?.cancel()
         instance.session.terminate()
         instances.removeAll { $0.id == instance.id }
         core.terminalInstancesPresenter.dismiss(instance.id)
@@ -97,7 +98,12 @@ final class TerminalInstancesCoordinator {
 
     /// At quit: hang up every shell; the panels go with the process.
     func closeAll() {
+        for task in terminalLaunches.values { task.cancel() }
         for instance in instances { instance.session.terminate() }
+    }
+
+    isolated deinit {
+        for task in terminalLaunches.values { task.cancel() }
     }
 
     func togglePinned(_ instance: TerminalInstance) {
@@ -109,13 +115,21 @@ final class TerminalInstancesCoordinator {
         instance.isExpanded.toggle()
     }
 
-    func openInKitty(_ instance: TerminalInstance) {
+    func openInTerminal(_ instance: TerminalInstance) {
+        let id = instance.id
+        guard instances.contains(where: { $0.id == id }), terminalLaunches[id] == nil else { return }
         let directory = instance.session.directory
-        Task { [weak self] in
+        terminalLaunches[id] = Task { [weak self] in
+            defer { self?.terminalLaunches[id] = nil }
             do {
-                try await TerminalKittyLauncher.openShell(in: directory)
+                try await TerminalGhosttyLauncher.openShell(in: directory)
+            } catch is CancellationError {
+                return
             } catch {
-                self?.core.showMessage("Couldn’t open kitty: \(error.localizedDescription)", tone: .danger)
+                guard !Task.isCancelled, let self, self.instances.contains(where: { $0.id == id }) else {
+                    return
+                }
+                self.core.showMessage("Couldn’t open Ghostty: \(error.localizedDescription)", tone: .danger)
             }
         }
     }
@@ -132,7 +146,7 @@ final class TerminalInstancesCoordinator {
                 close(instance)
                 return true
             case "o":
-                openInKitty(instance)
+                openInTerminal(instance)
                 return true
             case "p":
                 togglePinned(instance)

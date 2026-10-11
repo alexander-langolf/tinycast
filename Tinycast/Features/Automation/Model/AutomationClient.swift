@@ -13,3 +13,15 @@ struct AutomationClient: Codable, Identifiable, Sendable, Equatable {
         return now >= expiresAt
     }
 }
+
+extension AutomationClient {
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        label = try container.decode(String.self, forKey: .label)
+        let grants = try container.decode([String].self, forKey: .scopes)
+        scopes = Set(grants.compactMap(AutomationScope.init(rawValue:)))
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
+        expiresAt = try container.decodeIfPresent(Date.self, forKey: .expiresAt)
+    }
+}

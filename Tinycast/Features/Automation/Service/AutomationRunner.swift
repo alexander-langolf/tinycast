@@ -10,14 +10,12 @@ final class AutomationRunner {
 
     private unowned let core: AppCore
     private let questions: AutomationQuestionStore
-    private let profiles: AutomationAgentProfileStore
     /// Which client started each terminal; `terminal_focus` reaches only a client's own.
     private var startedBy: [UUID: UUID] = [:]
 
-    init(core: AppCore, questions: AutomationQuestionStore, profiles: AutomationAgentProfileStore) {
+    init(core: AppCore, questions: AutomationQuestionStore) {
         self.core = core
         self.questions = questions
-        self.profiles = profiles
     }
 
     /// Validates what the call will do and writes the exact words an approval will show.
@@ -44,34 +42,6 @@ final class AutomationRunner {
                     .init(label: "Folder", value: directory)
                 ]
             }
-        case AutomationOperationCatalog.agentDispatch.name:
-            let name = arguments["agent"]?.stringValue ?? ""
-            let profiles = profiles
-            let found = await Task.detached { profiles.profile(named: name) }.value
-            guard let profile = found else {
-                return .failure(
-                    PrepareFailure(
-                        "No agent profile named “\(name)”. Read tinycast://agent-profiles for the names."))
-            }
-            let prompt = AutomationText.displaySafe(
-                arguments["prompt"]?.stringValue ?? "", limit: Int.max)
-            guard !prompt.isEmpty else { return .failure(PrepareFailure("The prompt is empty.")) }
-            let directory = await Task.detached {
-                Self.resolveDirectory(arguments["cwd"]?.stringValue)
-            }.value
-            switch directory {
-            case .failure(let failure): return .failure(failure)
-            case .success(let directory):
-                let line = profile.shellLine(prompt: prompt)
-                prepared.command = line
-                prepared.directory = directory
-                prepared.approvalTitle = "Start \(profile.title ?? profile.name)?"
-                prepared.approvalDetails = [
-                    .init(label: "Requested by", value: call.caller.label),
-                    .init(label: "Command", value: line),
-                    .init(label: "Folder", value: directory)
-                ]
-            }
         default:
             break
         }
@@ -87,16 +57,14 @@ final class AutomationRunner {
         case AutomationOperationCatalog.paletteShow.name:
             showPalette(query: arguments["query"]?.stringValue ?? "")
             return .value(.object(["shown": .bool(true)]))
-        case AutomationOperationCatalog.terminalRun.name, AutomationOperationCatalog.agentDispatch.name:
+        case AutomationOperationCatalog.terminalRun.name:
             guard let command = prepared.command, let directory = prepared.directory,
                 let instance = core.terminalInstances.open(command: command, directory: directory)
             else { return .toolError("Could not start the terminal.") }
             let open = Set(core.terminalInstances.instances.map(\.id))
             startedBy = startedBy.filter { open.contains($0.key) }
             if let client = call.caller.clientID { startedBy[instance.id] = client }
-            var result: [String: JSONValue] = ["terminalId": .string(instance.id.uuidString)]
-            if let agent = arguments["agent"] { result["agent"] = agent }
-            return .value(.object(result))
+            return .value(.object(["terminalId": .string(instance.id.uuidString)]))
         case AutomationOperationCatalog.terminalFocus.name:
             guard let id = arguments["id"]?.stringValue.flatMap(UUID.init(uuidString:)),
                 let client = call.caller.clientID, startedBy[id] == client,
@@ -134,16 +102,6 @@ final class AutomationRunner {
             guard let client = call.caller.clientID else { return .toolError("Not available.") }
             return .value(
                 .object(["questions": .array(questions.visible(to: client).map(\.json))]))
-        case AutomationOperationCatalog.agentProfiles.name:
-            let profiles = profiles
-            let available = await Task.detached { profiles.profiles() }.value
-            return .value(
-                .object([
-                    "profiles": .array(
-                        available.map {
-                            .object(["name": .string($0.name), "title": .string($0.title ?? $0.name)])
-                        })
-                ]))
         case AutomationOperationCatalog.context.name:
             let app = NSWorkspace.shared.frontmostApplication
             return .value(

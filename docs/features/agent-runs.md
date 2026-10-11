@@ -40,7 +40,9 @@
 `AgentRunsMonitor.statusPath` is the single helper-path constant, resolved relative to
 `FileManager.default.homeDirectoryForCurrentUser`. `ShellCommandRunner.run` invokes it with
 `exec "$1"`, passing the executable path as a positional argument rather than interpolating it into
-shell text. Only stdout is decoded as a JSON array of `AgentRun` values:
+shell text. The helper reads `~/.agents/runs`; agent dispatch belongs to the separate agentkit MCP
+server ([Agentkit MCP](../../../agentkit/README.md#agentkit-mcp)). Only stdout is decoded as a JSON
+array of `AgentRun` values:
 
 | Field | Meaning |
 | --- | --- |

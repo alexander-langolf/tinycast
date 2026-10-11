@@ -160,7 +160,7 @@ extension TerminalInstancesPreviewData {
     TerminalInstancesPreviewData.Canvas {
         TerminalInstancesPreviewData.Card(
             phase: .starting,
-            startupNotice: "Shell hasn't reached a prompt: Cmd-O to open in kitty, Cmd-W to close")
+            startupNotice: "Shell hasn't reached a prompt: Cmd-O to open in Ghostty, Cmd-W to close")
     }
 }
 
