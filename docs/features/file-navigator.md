@@ -24,7 +24,7 @@ navigator, not a file manager: no rename, move, copy-to or bulk delete in v1.
 Follows Script Kit Next's File Search (`src/file_search/directory.rs`): **the input is the path.**
 `~/github/agentkit/li` lists `~/github/agentkit/` filtered by `li`; input that does not start with
 `~` or `/` searches everywhere. Single list (no Miller columns — the palette is narrow) plus an
-optional preview pane. The input owns letters, so commands use arrows, Tab and modifiers.
+preview pane, **on by default** (⌘Y hides it). The input owns letters, so commands use arrows, Tab and modifiers.
 
 | Key | Action |
 |---|---|
@@ -35,12 +35,12 @@ optional preview pane. The input owns letters, so commands use arrows, Tab and m
 | Tab | completes the focused row into the input (a folder descends) |
 | ⇧Tab | parent folder, with the folder you came from focused (from a mistyped path: back to the last real folder) |
 | ↑ ↓ | move focus |
-| ↵ | folder: descend. File: **edit in a terminal view** (`$EDITOR`). With picked files: edit all of them |
+| ↵ | folder: descend. File, or any picks: **open the ⌘K action panel** (first action: Edit in Fresh) |
 | Space | pick / unpick (the pick list survives folder changes, nnn-style) |
 | ⌘A | pick every visible row |
 | ⌘K | action panel for the picked files, else the focused row |
 | ⌘B | bookmarks + recent folders |
-| ⌘Y | toggle the preview pane |
+| ⌘Y | hide / show the preview pane (shown by default) |
 | ⌘. | show hidden and ignored entries |
 | ⌘O | Ghostty tab in the current folder |
 | ⌘T | new terminal view in the current folder |
@@ -50,16 +50,18 @@ optional preview pane. The input owns letters, so commands use arrows, Tab and m
 A mistyped folder (`~/nope/x`) shows "No folder ~/nope" and no rows; nothing is guessed. nnn's
 auto-enter does not apply in this model.
 
-⌘K actions: Edit in terminal (files only), Open with default app, Open Ghostty here, New terminal
+⌘K actions: **Edit in Fresh** (files only; terminal view), Open with default app, Open Ghostty here, New terminal
 here, Quick Look, Copy path(s), Copy relative path(s), Reveal in Finder, Search Files from here,
 Hand to an agent (agentkit `agent_dispatch`, files as context), Bookmark folder.
 
 ## Edit in a terminal view
 
-↵ on a file calls `TerminalInstancesCoordinator.open(command:directory:)` with
+**Edit in Fresh** (the first ⌘K action; ↵ on a file opens the panel with it focused, so ↵↵ edits) calls `TerminalInstancesCoordinator.open(command:directory:)` with
 `$EDITOR '<file>'…` in the file's folder (paths shell-quoted, relative to that folder). The login
-`zsh -il` provides `$EDITOR`; if it is unset the command falls back to a setting (default: the
-editor chosen below). Constraints from the libghostty grid view, which this depends on:
+`zsh -il` provides `$EDITOR`; Tinycast runs `${EDITOR:-fresh}` and has a setting to override it.
+**Default editor: [Fresh](https://github.com/sinelaw/fresh)** (decided 2026-10-11): non-modal,
+Ctrl-key driven (fits the ⌘-key gap below), `brew install fresh-editor`; needs Ghostty's
+`macos-option-as-alt = left`, which the libghostty grid must honour too. Constraints from the libghostty grid view, which this depends on:
 
 - The grid renders full-screen programs and forwards keys, but **drops every ⌘ combination**
   (`GhosttyGridView.keyDown`). The editor must save and quit with ⌃/⌥ keys or modal keys; ⌘S will
@@ -77,7 +79,7 @@ editor chosen below). Constraints from the libghostty grid view, which this depe
 | `FileSearchResult` (url, name, parent, isDirectory, home-abbreviated path) | the row value, built from a directory listing instead of Spotlight |
 | fork-owned `ForkFzf` / `ForkSearch` (`Tinycast/Fork/Search/`, fzf v2 + extended syntax) | the in-folder filter ranking, same syntax as every other list |
 | `FileSearchIgnoreList` (+ structural hidden / bundle rules) | default hiding; ⌘. reveals |
-| `FileSearchPreviewKind` + `FileSearchPreview` surfaces (plain text, PDF, Quick Look, media) | the preview pane |
+| `FileSearchPreviewKind` + `FileSearchPreview` surfaces (plain text, PDF, Quick Look, media) | the preview pane (always present, focused row only, debounced) |
 | `FileSearchCoordinator` actions (open, showInFinder, share, copyPath, copyName, copyFile, trash) | ⌘K actions, generalised to take one or many URLs |
 | `FileSearchFilter` (type filter) | not in v1 |
 | `FileSearchScope` / Spotlight session | not used for browsing; ⌘F hands the current folder to Search Files as a one-off scope |
@@ -121,8 +123,9 @@ Upstream integration points (each `// FORK: file-navigator`, listed in docs/fork
 ## Acceptance criteria
 
 1. `~/github/agentkit/lib` reachable in ≤ 8 keystrokes from the root palette via path jump.
-2. ↵ on a file opens a terminal view in its folder running `$EDITOR` on it; the editor is usable
-   (renders, saves, quits) inside the grid.
+2. ↵ on a file opens the ⌘K actions; ↵ again (Edit in Fresh) opens a terminal view in its folder
+   running Fresh on it, usable inside the grid (renders, saves with ⌃S, quits).
+8. The preview pane shows the focused row by default (text, PDF, Quick Look) without stalling navigation.
 3. Picks made in two folders survive navigation and reach ⌘K → Hand to an agent as file context.
 4. A 10,000-entry folder lists without blocking the main thread; typing stays responsive.
 5. ⌘. reveals `.git`, `.env`, `node_modules`; ⌘. again hides them.
@@ -133,14 +136,11 @@ Upstream integration points (each `// FORK: file-navigator`, listed in docs/fork
 
 1. ~~nnn auto-enter~~ — moot: Sasha chose the Script Kit model (input is the path) on 2026-10-11;
    the nnn folder + filter model stays in the prototype only for comparison.
-2. **Default editor** when `$EDITOR` is unset — research (vault, 2026-10-11) ranks Fresh (non-modal,
-   LSP, needs Ghostty Option-as-Alt), Helix (modal, diff gutter), Microsoft Edit (simplest); all
-   unverified inside the grid, and the ⌘-key gap applies to each.
+2. ~~Default editor~~ — **Fresh** (Sasha, 2026-10-11).
 3. **Search candidates** — matching is settled (2026-10-11): **`ForkFzf` only, no Rust fuzzy
    libraries** (no nucleo/skim/FFI). Still open: where ⌘F subtree candidates come from — a
    `FileManager` walk in Swift, or a bundled `fd`/`rg --files` streamed into `ForkFzf` (Spotlight
    stays the global fallback; content search would be a bundled `rg`). Decide after benchmarking
    both on `~/work`.
 4. Ship the optional Search Files ⌘↵ hook (integration point 4), or keep Search Files untouched?
-5. Whether ↵ on a file should instead open the Monaco view once that exists (edit in place vs
-   terminal editor).
+5. ~~↵ on a file~~ — opens the ⌘K actions for now (Sasha, 2026-10-11); revisit once a Monaco view exists.

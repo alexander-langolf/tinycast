@@ -57,7 +57,7 @@
 <body>
 <main>
   <h1>File Navigator Prototype</h1>
-  <p class="intro"><span class="tag">PROTOTYPE · throwaway</span>Default model follows Script Kit: the input <em>is</em> the path (<code>~/github/agentkit/li</code> = folder <code>~/github/agentkit</code>, filter <code>li</code>); words without <code>~</code> or <code>/</code> search everywhere. Untick the checkbox to compare nnn's folder + separate filter. Question: does an nnn-style keyboard model feel right inside Tinycast's palette — type to filter, arrows to move between folders, a selection that survives folder changes, and a ⌘K action panel — and is "Enter on a file opens it in <code>$EDITOR</code> in a Ghostty terminal view" the right default? Everything runs on a small made-up file tree; nothing touches your disk. Use the keyboard (click the navigator first) or the buttons.</p>
+  <p class="intro"><span class="tag">PROTOTYPE · throwaway</span>Default model follows Script Kit: the input <em>is</em> the path (<code>~/github/agentkit/li</code> = folder <code>~/github/agentkit</code>, filter <code>li</code>); words without <code>~</code> or <code>/</code> search everywhere. Untick the checkbox to compare nnn's folder + separate filter. Question: does an nnn-style keyboard model feel right inside Tinycast's palette — type to filter, arrows to move between folders, a selection that survives folder changes, and a ⌘K action panel — with Enter on a file opening the ⌘K actions (first: Edit in Fresh in a terminal view) and a preview pane on by default? Everything runs on a small made-up file tree; nothing touches your disk. Use the keyboard (click the navigator first) or the buttons.</p>
 
   <div class="grid">
     <div class="card palette" id="nav" tabindex="0">
@@ -158,7 +158,7 @@ const Nav = (() => {
   }
 
   const initial = (opts = {}) => ({
-    cwd: HOME, filter: "", cursor: 0, selection: [], showHidden: false, preview: false,
+    cwd: HOME, filter: "", cursor: 0, selection: [], showHidden: false, preview: true,
     panel: null, panelCursor: 0, bookmarks: ["/Users/sasha/github/agentkit", "/Users/sasha/LangolfVault"],
     recent: [], autoEnter: !!opts.autoEnter, open: true, output: null, changed: [],
     model: opts.model || "path", input: "~/", global: null,
@@ -216,9 +216,9 @@ const Nav = (() => {
         return { ...next, cursor: Math.max(idx, 0) };
       }
       case "enter":
-        if (s.selection.some(p => !isDir(p))) return run(s, "edit");
+        if (s.selection.length) return { ...s, panel: "actions", panelCursor: 0 }; // picks: act on them
         if (!r) return { ...s, output: { warn: true, text: "No row to open — nothing matches." } };
-        return r.dir ? withInput(s, dirInput(r.path)) : run(s, "edit");
+        return r.dir ? withInput(s, dirInput(r.path)) : { ...s, panel: "actions", panelCursor: 0 }; // a file opens the ⌘K actions
       case "esc":
         if (s.global !== null && s.input) return withInput(s, "~/");
         if (s.filter) return withInput(s, dirInput(s.cwd));
@@ -242,7 +242,7 @@ const Nav = (() => {
     const targets = state.selection.length ? state.selection.map(p => ({ path: p, dir: isDir(p) })) : (focused ? [focused] : []);
     const files = targets.filter(t => !t.dir);
     const list = [];
-    if (files.length) list.push({ id: "edit", label: `Edit in terminal ($EDITOR ${files.length > 1 ? files.length + " files" : "file"})` });
+    if (files.length) list.push({ id: "edit", label: `Edit in Fresh (terminal view${files.length > 1 ? ", " + files.length + " files" : ""})` });
     if (targets.length) list.push({ id: "openDefault", label: "Open with default app" });
     list.push({ id: "ghostty", label: "Open Ghostty here  ⌘O" });
     list.push({ id: "terminal", label: "New terminal view here  ⌘T" });
@@ -263,7 +263,7 @@ const Nav = (() => {
         if (!files.length) return { ...state, output: { warn: true, text: "Nothing to edit: folders open, they don't edit." } };
         const dir = parent(files[0]);
         const args = files.map(f => f.startsWith(dir + "/") ? f.slice(dir.length + 1) : f).map(a => `'${a}'`).join(" ");
-        return out(`Palette closes → terminal view opens in ${tilde(dir)} and runs: $EDITOR ${args}`, { open: false, selection: [] });
+        return out(`Palette closes → terminal view opens in ${tilde(dir)} and runs: ${"$"}{EDITOR:-fresh} ${args}`, { open: false, selection: [] });
       }
       case "openDefault": return out(`NSWorkspace opens ${paths.join(", ")} (FileSearchCoordinator.open)`, { open: false });
       case "ghostty": return out(`Ghostty tab opens in ${tilde(state.cwd)} (TerminalGhosttyLauncher)`, { open: false });
@@ -326,9 +326,9 @@ const Nav = (() => {
       }
       case "enter": {
         const r = rows[s.cursor];
-        if (s.selection.some(p => !isDir(p))) return run(s, "edit"); // a picked file wins over the focused row
+        if (s.selection.length) return { ...s, panel: "actions", panelCursor: 0 };
         if (!r) return { ...s, output: { warn: true, text: "No row to open — the filter matches nothing." } };
-        return r.dir ? enterDir(s, r.path) : run(s, "edit");
+        return r.dir ? enterDir(s, r.path) : { ...s, panel: "actions", panelCursor: 0 };
       }
       case "space": {
         const r = rows[s.cursor];
@@ -397,7 +397,9 @@ function render() {
   }
   if (state.preview && !state.panel) {
     const r = rows[state.cursor];
-    panel += `<div class="panel"><div class="crumb">Preview (QLPreviewView / FileSearchPreview)</div>${r ? (r.dir ? escapeHtml(r.name) + "/ — folder" : "Quick Look of " + escapeHtml(r.name)) : "—"}</div>`;
+    const kidsOf = (path) => (Nav.listing({ ...state, model: "split", cwd: path, filter: "", global: null }) || []).map(k => k.name + (k.dir ? "/" : ""));
+    const body = !r ? "—" : r.dir ? "Folder · " + (kidsOf(r.path).slice(0, 6).map(escapeHtml).join(", ") || "empty") : /\.(ts|md|json|txt|exs)$/.test(r.name) ? "Text preview (FileSearchPreview · PlainTextSurface): first lines of " + escapeHtml(r.name) : "Quick Look (QuickLookSurface) of " + escapeHtml(r.name);
+    panel += `<div class="panel"><div class="crumb">Preview · ⌘Y hides</div>${body}</div>`;
   }
   $("panel").innerHTML = panel;
   $("out").innerHTML = state.output ? `<div class="out ${state.output.warn ? "warn" : ""}">${escapeHtml(state.output.text)}</div>` : "";
@@ -456,11 +458,11 @@ $("nav").addEventListener("keydown", (e) => {
 const T = (text) => ({ type: "type", text });
 const SCENARIOS = [
   { name: "Script Kit: the path is the input", desc: "Type a path and the list follows it. ⌫ across a “/” lands in the parent, already filtered by the folder you left; Tab completes the focused row into the input; ⇧Tab goes to the parent.",
-    steps: [["Type “github/agentkit/li”", T("github/agentkit/li")], ["⌫ “i”", { type: "backspace" }], ["⌫ “l” (filter empty)", { type: "backspace" }], ["⌫ “/” (parent, filtered “agentkit”)", { type: "backspace" }], ["Tab (complete agentkit/)", { type: "tab" }], ["Type “li”", T("li")], ["Tab (into lib/)", { type: "tab" }], ["↓", { type: "down" }], ["↵ edit codex-run.ts", { type: "enter" }]] },
+    steps: [["Type “github/agentkit/li”", T("github/agentkit/li")], ["⌫ “i”", { type: "backspace" }], ["⌫ “l” (filter empty)", { type: "backspace" }], ["⌫ “/” (parent, filtered “agentkit”)", { type: "backspace" }], ["Tab (complete agentkit/)", { type: "tab" }], ["Type “li”", T("li")], ["Tab (into lib/)", { type: "tab" }], ["↓", { type: "down" }], ["↵ on codex-run.ts → actions", { type: "enter" }], ["↵ Edit in Fresh", { type: "enter" }]] },
   { name: "Script Kit: words search everywhere", desc: "Input that doesn't start with ~ or / is a global search (Script Kit runs Spotlight; simulated here). Rows show their folder; ↵ on a file edits it. Start with ⌫⌫ to clear the “~/”.",
     steps: [["⌫", { type: "backspace" }], ["⌫ (input empty)", { type: "backspace" }], ["Type “sessionlog”", T("sessionlog")], ["↓", { type: "down" }], ["Esc (back to ~/)", { type: "esc" }], ["Type “Downloads/”", T("Downloads/")], ["Space select report.pdf", { type: "space" }], ["⌘K actions", { type: "actions" }]] },
-  { name: "nnn · Happy path: edit a file", reset: { model: "split" }, desc: "From home, filter to agentkit's lib and edit a file. Watch: Enter on a folder walks in, Enter on a file closes the palette and opens a terminal view running $EDITOR in the file's folder.",
-    steps: [["Type “git”", T("git")], ["↵ into github", { type: "enter" }], ["Type “agk”", T("agk")], ["↵ into agentkit", { type: "enter" }], ["Type “lib”", T("lib")], ["↵ into lib", { type: "enter" }], ["↓", { type: "down" }], ["↵ edit session-log.ts", { type: "enter" }]] },
+  { name: "nnn · Happy path: edit a file", reset: { model: "split" }, desc: "From home, filter to agentkit's lib and edit a file. Watch: Enter on a folder walks in; Enter on a file opens the actions, whose first item edits it in Fresh in a terminal view.",
+    steps: [["Type “git”", T("git")], ["↵ into github", { type: "enter" }], ["Type “agk”", T("agk")], ["↵ into agentkit", { type: "enter" }], ["Type “lib”", T("lib")], ["↵ into lib", { type: "enter" }], ["↓", { type: "down" }], ["↵ on session-log.ts → actions", { type: "enter" }], ["↵ Edit in Fresh", { type: "enter" }]] },
   { name: "nnn · Path jump", reset: { model: "split" }, desc: "Typing a path jumps straight to the deepest folder that exists and keeps the rest as the filter, like Alfred's / and ~ entry.",
     steps: [["Type “~/work/st”", T("~/work/st")], ["↵ into stardust-design-system", { type: "enter" }], ["Type “/Users/sasha/github/tinycast/docs/f”", T("/Users/sasha/github/tinycast/docs/f")], ["Type “/nope/x” (no such folder)", T("/nope/x")]] },
   { name: "nnn · Selection across folders → agent", reset: { model: "split" }, desc: "nnn's selection survives folder changes. Pick a file in lib/, walk to lib/mcp, pick another, then hand both to an agent via ⌘K. Watch the Selection field.",
