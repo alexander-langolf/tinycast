@@ -37,8 +37,9 @@
 
 In launcher mode, `RootPaletteView.screen` routes a terminal query to `TerminalCommandScreen`.
 Return or a click on its command row calls `TerminalInstancesCoordinator.open`. The coordinator
-captures the palette's top-left corner, hides it without restoring external focus, pops to root,
-and presents the new instance there. Each new shell starts in the user's home directory.
+captures the palette's top-left corner lowered by the input bar (`compactHeight`), hides the palette
+without restoring external focus, pops to root, and presents the new instance there, just below
+where the command was typed. Each new shell starts in the user's home directory.
 Spawning runs in a detached task; the initial command waits for the first OSC 133 A prompt mark.
 
 `TerminalShellShim` rewrites four files in the temporary directory's `<bundle id>-zdotdir` folder

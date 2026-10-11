@@ -50,7 +50,9 @@ final class TerminalInstancesCoordinator {
     ) -> TerminalInstance? {
         let command = command.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !command.isEmpty else { return nil }
-        let anchor = core.paletteCoordinator.panelFrame.map { CGPoint(x: $0.minX, y: $0.maxY) }
+        // Below the palette's input bar, so the command just typed stays where the eye left it.
+        let inputBar = core.settings.interfaceSize.metrics.size.compactHeight
+        let anchor = core.paletteCoordinator.panelFrame.map { CGPoint(x: $0.minX, y: $0.maxY - inputBar) }
         core.paletteCoordinator.hidePalette(restoreFocus: false)
         core.paletteCoordinator.popToRootNow()
         // FORK: file-navigator
