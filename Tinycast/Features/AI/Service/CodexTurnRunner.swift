@@ -17,6 +17,7 @@ final class CodexTurnRunner {
 
     var connect: (@MainActor ([AIToolServer]) async throws -> [ChatGPTSubscription.Model])?
     var onTurnEnded: (@MainActor () -> Void)?
+    var forkQuickAIRoot: ForkQuickAIRoot?  // FORK: quick-ai-root
 
     private struct Conversation {
         let id: UUID
@@ -71,7 +72,10 @@ final class CodexTurnRunner {
         client.onElicitation = { [weak self] elicitation in
             await self?.consent(to: elicitation) ?? false
         }
-        client.onRelaunch = { [weak self] in self?.endStrandedTurns() }
+        client.onRelaunch = { [weak self] in
+            self?.forkQuickAIRoot?.serverUnavailable(reason: .serverRelaunched)  // FORK: quick-ai-root
+            self?.endStrandedTurns()
+        }
     }
 
     var isActive: Bool { !turns.isEmpty }
@@ -100,6 +104,7 @@ final class CodexTurnRunner {
     }
 
     func reset() {
+        forkQuickAIRoot?.serverUnavailable(reason: .unavailable)  // FORK: quick-ai-root
         conversations.removeAll()
         for (key, turn) in turns { interrupt(turn, key: key) }
     }
@@ -328,6 +333,45 @@ final class CodexTurnRunner {
         }
     }
 
+    // FORK: quick-ai-root
+    func warmQuickAIRoot(
+        for request: AIRequest, model: String, toolServers: AIToolServerSession? = nil,
+        isCurrent: @MainActor () -> Bool = { true }
+    ) async {
+        guard let root = forkQuickAIRoot, root.canWarm else { return }
+        let servers = await toolServers?.servers() ?? []
+        guard !Task.isCancelled, isCurrent() else { return }
+        do {
+            let models = try await connect?(servers) ?? []
+            try Task.checkCancellation()
+            guard root.canWarm, isCurrent() else { return }
+            guard !model.isEmpty, models.isEmpty || models.contains(where: { $0.id == model }) else {
+                throw AIProviderError.unavailable("No matching Codex model is available.")
+            }
+            let instructions = developerInstructions(for: request, hasTools: !servers.isEmpty)
+            await root.warm(
+                model: model, webSearch: request.webSearch, instructions: instructions,
+                isCurrent: isCurrent
+            ) { parameters in
+                let response = try await client.request(
+                    method: "thread/start",
+                    params: threadStartParameters(
+                        model: parameters.model, webSearch: parameters.webSearch,
+                        instructions: parameters.instructions, hasTools: !servers.isEmpty))
+                guard let threadID = response["thread"]?.objectValue?["id"]?.stringValue else {
+                    throw CodexAppServerClient.ClientError.requestFailed(
+                        "Codex returned no generation thread.")
+                }
+                return threadID
+            }
+        } catch is CancellationError {
+            return
+        } catch {
+            guard !Task.isCancelled, isCurrent() else { return }
+            root.prewarmFailed()
+        }
+    }
+
     private func prepareThread(
         for request: AIRequest, promptIndex: Int, model: String, turn: Turn, key: ObjectIdentifier
     ) async throws {
@@ -341,18 +385,23 @@ final class CodexTurnRunner {
         {
             turn.threadID = previous.threadID
             turn.conversation = previous
+        } else if history.isEmpty,  // FORK: quick-ai-root
+            let root = forkQuickAIRoot?.claim(
+                conversationID: request.conversationID, model: model,
+                webSearch: request.webSearch, instructions: instructions)
+        {
+            turn.threadID = root.threadID
+            if let id = request.conversationID {
+                turn.conversation = Conversation(
+                    id: id, threadID: root.threadID, model: model, instructions: instructions,
+                    webSearch: request.webSearch, messages: history)
+            }
         } else {
             let threadResponse = try await client.request(
                 method: "thread/start",
-                params: [
-                    "model": model,
-                    "cwd": client.cwd.path,  // FORK: ai-working-directory
-                    "approvalPolicy": turn.servers.isEmpty ? "never" : "untrusted",
-                    "sandbox": "read-only",
-                    "ephemeral": true,
-                    "config": ["web_search": request.webSearch ? "live" : "disabled"],
-                    "developerInstructions": instructions
-                ])
+                params: threadStartParameters(  // FORK: quick-ai-root
+                    model: model, webSearch: request.webSearch, instructions: instructions,
+                    hasTools: !turn.servers.isEmpty))
             guard let threadID = threadResponse["thread"]?.objectValue?["id"]?.stringValue else {
                 throw CodexAppServerClient.ClientError.requestFailed(
                     "Codex returned no generation thread.")
@@ -378,6 +427,21 @@ final class CodexTurnRunner {
         }
         turn.conversation?.messages.append(
             AIMessage(role: .user, text: request.messages[promptIndex].text))
+    }
+
+    // FORK: quick-ai-root
+    private func threadStartParameters(
+        model: String, webSearch: Bool, instructions: String, hasTools: Bool
+    ) -> [String: Any] {
+        [
+            "model": model,
+            "cwd": client.cwd.path,  // FORK: ai-working-directory
+            "approvalPolicy": hasTools ? "untrusted" : "never",
+            "sandbox": "read-only",
+            "ephemeral": true,
+            "config": ["web_search": webSearch ? "live" : "disabled"],
+            "developerInstructions": instructions
+        ]
     }
 
     private func developerInstructions(for request: AIRequest, hasTools: Bool) -> String {

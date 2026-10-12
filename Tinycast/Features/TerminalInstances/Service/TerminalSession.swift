@@ -5,6 +5,14 @@ import Observation
 @MainActor
 @Observable
 final class TerminalSession {
+    struct Executable: Sendable {
+        let path: String
+        let arguments: [String]
+        let environment: [String: String]
+    }
+
+    @ObservationIgnored var onClose: (@MainActor () -> Void)?
+    @ObservationIgnored private var directExecutable = false
     private(set) var phase: TerminalSessionPhase = .starting
     private(set) var directory: String
     /// The command on screen; a new one replaces it, so the log view redraws whole.
@@ -41,8 +49,14 @@ final class TerminalSession {
         if GhosttyRenderer.isEnabled { grid = GhosttyTerminalGrid(columns: columns, rows: rowCap) }
     }
 
-    func start() {
+    func start(executable: Executable? = nil, command: String? = nil) {
         guard reader == nil else { return }
+        directExecutable = executable != nil
+        if let command, executable != nil {
+            run = CommandRun(
+                commandID: UUID(), name: command, commandText: command, symbol: "terminal",
+                startedAt: Date())
+        }
         startupTimeout = Task { [weak self] in
             do {
                 try await Task.sleep(for: .seconds(10))
@@ -58,16 +72,28 @@ final class TerminalSession {
         let rows = rowCap
         reader = Task { [weak self] in
             let spawned = await Task.detached(priority: .userInitiated) {
-                TerminalProcess.spawn(directory: directory, columns: columns, rows: rows)
+                if let executable {
+                    return TerminalProcess.spawn(
+                        executable: executable.path, arguments: executable.arguments,
+                        environment: executable.environment, directory: directory,
+                        columns: columns, rows: rows)
+                }
+                return TerminalProcess.spawn(directory: directory, columns: columns, rows: rows)
             }.value
             guard let process = spawned else {
                 self?.phase = .ended
                 self?.clearStartupNotice()
+                self?.finishAttachment()
                 return
             }
             guard let self, !self.isTerminated else {
                 process.terminate()
                 return
+            }
+            if self.directExecutable {
+                self.phase = .running
+                self.commandStarted = true
+                self.clearStartupNotice()
             }
             self.process = process
             self.attachGrid(to: process)
@@ -79,7 +105,7 @@ final class TerminalSession {
 
     /// Sent at once at a prompt, or held for the first prompt while zsh is still starting.
     func run(_ command: String) {
-        guard phase.acceptsCommand, !isTerminated else { return }
+        guard phase.acceptsCommand, !isTerminated, !directExecutable else { return }
         guard phase != .starting, let process else {
             queued = command
             return
@@ -127,6 +153,8 @@ final class TerminalSession {
         clearStartupNotice()
         queued = nil
         process?.terminate()
+        phase = .ended
+        finishAttachment()
     }
 
     private func send(_ command: String, to process: TerminalProcess) {
@@ -148,9 +176,17 @@ final class TerminalSession {
             phase = .ended
             clearStartupNotice()
             process = nil
+            finishAttachment()
         case .marks(let marks):
+            guard !directExecutable else { return }
             for mark in marks { apply(mark) }
         }
+    }
+
+    private func finishAttachment() {
+        let callback = onClose
+        onClose = nil
+        callback?()
     }
 
     private func apply(_ mark: TerminalMarkParser.Event) {
@@ -181,13 +217,17 @@ final class TerminalSession {
 
     /// Raw command output goes to ghostty; its replies to queries go back to the pty.
     private func attachGrid(to process: TerminalProcess) {
-        guard let grid else { return }
-        grid.writeToPty = { [weak process] bytes in process?.send(bytes: bytes) }
+        guard grid != nil || directExecutable else { return }
+        grid?.writeToPty = { [weak process] bytes in process?.send(bytes: bytes) }
         rawReader = Task { [weak self] in
             for await bytes in process.rawOutput {
                 guard let self else { return }
-                grid.feed(bytes)
-                self.syncRows()
+                if let grid = self.grid {
+                    grid.feed(bytes)
+                    self.syncRows()
+                } else {
+                    self.append(String(decoding: bytes, as: UTF8.self))
+                }
             }
         }
     }

@@ -323,6 +323,97 @@ XcodeGen owns it and adds the new files from `project.yml`'s source directory. I
 `project.fork.yml` also adds the pure editor-key policy and its ASCII keyboard-layout helper to
 TinycastPreviews' explicit source list.
 
+## Quick AI Start Work
+
+`Tinycast/Fork/QuickAIRoot/ForkQuickAIHandoff.swift` builds the handoff text and a single-line zsh
+command using ANSI-C quoting for every argument. The first user message stays verbatim at the
+front; later turns and attachment placeholders spill into the existing log owner's handoff file
+when the inline prompt exceeds 32 KB of UTF-8. The first message is never shortened.
+
+`AppCore` owns `ForkQuickAIHandoffCoordinator`. Quick AI resolves Claude Code and Codex lazily,
+caching executable lookup results for the current command-path override. A set path wins or fails.
+The action panel and ⌘↵ / ⌃⌘↵ use the same eligibility check; chats reopened from history are
+excluded. Start Work opens an interactive CLI in the working folder (home when unset or missing),
+logs only handoff metadata, clears the composer and calls `QuickAICoordinator.startNewChat()`.
+Overflow writes revalidate the source chat, draft, attachments, settings and directory before
+launching; a stale result leaves the current chat untouched. Start Work retires the warm root
+with reason `newChat` through `startNewChat`, which also prewarms the next root.
+
+## Claude session chat
+
+Groups 1–4 of [Claude session chat](features/claude-session-chat.md) live in
+`Tinycast/Fork/ClaudeSession/`: the background host, hook settings writer, atomic metadata registry,
+transcript reader, hidden attach writer and chat provider. `AppCore` owns their coordinator,
+loads the registry cache and prepares hooks at launch. Termination cancels readers and closes attach
+clients without stopping daemon sessions. Groups 3–4 are implemented, unverified. Quick AI's existing handoff
+uses the same fork-owned executable resolver, with its override and missing-path behaviour preserved.
+
+Storage is channel-specific under `AppPaths.applicationSupport()/ClaudeSessions/`. All seven hooks
+append stdin to one `events.jsonl`, whose payloads carry `session_id`; transcript paths come from the
+agents listing or hook payloads. `registry.json` maps chat UUIDs to session metadata and offsets,
+without message text; an optional ended flag persists End Session. A registered chat selects the session provider synchronously from the cache;
+other chats keep upstream routing. Readers are connected on first provider use and retained for
+foreign turns. Claude Start Work registers a background session and moves the chat to AI Chat; its first reply
+is read without typing the handoff prompt again. Approvals offer Attach, which pauses the writer
+until its terminal closes or exits. Session chats replace the model picker with a folder label
+and offer Open in Terminal, End Session and Resume. Deferred launch reconciliation checks one
+`agents --json --all` listing, reconnects live readers through that same provider path and marks
+stopped or missing sessions ended; the writer's attach client still starts only on demand.
+Resume already runs in the saved folder and retains the offset for an unchanged transcript path.
+Deletion offers stop-and-remove, chat-only deletion, or cancellation through Tinycast's dialog
+presenter. Only stop-and-remove runs `claude rm`; both deletion choices unregister and disconnect
+before removing history. Bulk deletion preserves pinned chats and uses the original target IDs.
+
+The reader watches the shared events file, filters by session ID, and polls the transcript every
+0.5 seconds during a turn. It retains incomplete lines and waits for Stop plus a final assistant
+text block, with a two-second deadline. A foreign turn's persisted offset stays at its user record
+until its messages are appended, so reading part of a turn does not lose its user text on restart.
+Foreign turns that precede a queued send are inserted before that send; a turn after a delivered
+reply waits for its streaming bubble to finish before appending.
+
+The writer directly spawns `claude attach <shortID>` through `TerminalProcess`, with the host's
+clean environment and a PTY TERM value. Direct children expose raw output without shell marks;
+shell instances keep their existing parser. The writer waits for bracketed-paste mode, queues behind
+turns, approvals and an open Attach terminal, and checks the guard again before Return. Delivery
+requires a matching UserPromptSubmit within five seconds; failure uses the chat's existing Retry
+path and never resends automatically. The client drops after ten idle minutes. Group 3 can publish
+Attach state with `setAttachTerminalOpen(_:chatID:)` and read `queuedCount(chatID:)`.
+Registered chats skip upstream automatic title requests, which would otherwise start a separate
+noninteractive provider invocation.
+
+`ForkClaudeSessionDebug.swift` is a temporary `#if DEBUG` scratch hook, marked for removal before
+merge. Its callable entry point and the manual Group 1 verification steps are in the spec.
+
+## Quick AI warm root
+
+`AppCore` owns `ForkQuickAIRoot`, wired to `CodexTurnRunner` at startup. The fork-owned state
+machine has a pure reducer and logs warmed, claimed and retired roots through the existing log.
+Retirement forgets the root and invalidates any pending warming result; it deletes no Codex thread.
+Turning the preference off retires the root without changing the runner's normal send path.
+
+Quick AI showing and starting a new chat schedule a background prewarm owned by the root.
+`AIChatCoordinator.forkRootSnapshot` reuses the send route, composer address and scoped tool-server
+session; `AIChatState.forkRequestSnapshot` is shared with normal replies. Its caller supplies the
+selected Codex model and a Quick AI `AIRequest` snapshot carrying the current web-search flag, request instructions and system messages, plus the same scoped tool-server
+session a send would use. The runner resolves that session's servers and computes the exact existing
+`developerInstructions(for:hasTools:)` text. It supplies thread creation as a closure to the root;
+the fork never owns or accesses the client. Warming and ordinary sends share one parameter builder,
+including the client's working folder, ephemeral flag, sandbox, approval policy and search config.
+
+Only a fresh Quick AI first send can claim a ready root: identity uses `chats.quickAI.holds(id)`,
+the existing reopened-chat marker excludes history chats, and the request must have no preceding
+non-system messages. Model, web search and complete developer instructions must match. Claiming
+skips thread creation and history injection; later turns use the existing conversation cache.
+A mismatch retires the ready root and falls through to ordinary thread preparation. Automatic
+prewarming never blocks the palette. While warm root is enabled the app-server skips idle shutdown;
+turning it off re-arms the existing 10-minute timer. New-chat entry points retire once with `newChat`,
+including Start Work and the open policy. Server resets and relaunches invalidate the root with
+`unavailable` or `serverRelaunched`, logging retirement and fallback metadata. The runner clears its
+conversation cache as before, so a dead claimed thread takes ordinary preparation on the next send.
+The next show retries warming, including when the current chat has a transcript. Reopened history
+chats remain excluded. Prewarm cancellation and operation identity reject stale results; connection
+and any tool-list relaunch finish before warming starts. Termination cancels owned prewarming.
+
 ## Merge playbook
 
 1. Work from `main` and run `git merge upstream/main`. Never rebase.
@@ -395,6 +486,14 @@ launcher changes live there without upstream hooks. The generated pbxproj except
 | `docs/features/terminal-instances.md` | `// FORK: file-navigator` | Document editor-role geometry, keys and Browse here origin. |
 | `docs/features/settings-file.md` | `// FORK: file-navigator` | Document mirror keys and local persistence boundaries. |
 | `docs/testing.md` | `// FORK: file-navigator` | Register the harness contract and deferred acceptance sweep. |
+| `Tinycast/App/AppCore.swift` | `// FORK: claude-session-chat` | Own the Claude host, registry and session coordinator; load the registry cache, write hooks and schedule session reconciliation at launch; close readers and attach clients at termination without stopping daemon sessions. |
+| `Tinycast/Features/AI/UI/AIChatSurfacesState.swift` | `// FORK: claude-session-chat` | Intercept single and bulk deletion for registered Claude chats; defer history removal until the session choice and unregistering finish, preserving pinned chats and the requested target IDs. |
+| `Tinycast/Features/AI/UI/AIChatCoordinator.swift` | `// FORK: claude-session-chat` | Expose session controls, select the session provider for registered chat IDs, keep ended sessions read-only, reject file staging and regeneration, and skip separate automatic title requests. |
+| `Tinycast/Features/AI/UI/AIChatState.swift` | `// FORK: claude-session-chat` | Start the already-submitted handoff reply without duplicating its user turn; append and save foreign turns, preserving a queued user message and its streaming reply. |
+| `Tinycast/Features/AI/UI/AIChatDetailView.swift` | `// FORK: claude-session-chat` | Render fork-owned session labels and approval notices; replace the ended session composer with Resume. |
+| `Tinycast/Features/AI/UI/AIChatWindowChrome.swift` | `// FORK: claude-session-chat` | Add session actions to the chat menu and suppress session regeneration. |
+| `Tinycast/Features/AI/UI/AIChatSidebarView.swift` | `// FORK: claude-session-chat` | Show an approval badge on a session chat. |
+| `Tinycast/Features/TerminalInstances/Service/TerminalProcess.swift` | `// FORK: claude-session-chat` | Spawn an executable directly with supplied arguments and environment; capture its raw output without shell marks while preserving shell instances. |
 | `Scripts/run-tests.sh` | `// FORK: agent-runs` | Register the AgentRuns decoding harness. |
 | `Tinycast/App/AppDelegate.swift` | `// FORK: previews` | Skip AppCore start and termination work when Xcode's canvas hosts the app. |
 | `Tinycast/App/AppCore.swift` | `// FORK: agent-runs` | Own the monitor, coordinator and presenter; stop work at termination. |
@@ -514,6 +613,20 @@ launcher changes live there without upstream hooks. The generated pbxproj except
 | `Tinycast/Features/Settings/SettingsFileSchema.swift` | `// FORK: ai-working-directory` | Bind the mirror with the folder rule. |
 | `Tinycast/Features/Backup/Model/SettingsBackupCoverage.swift` | `// FORK: ai-working-directory` | Keep the folder out of backups. |
 | `Tinycast/Features/Settings/SettingsSearchCatalog.swift` | `// FORK: ai-working-directory` | Make the row searchable. |
+| `Tinycast/App/AppCore.swift` | `// FORK: quick-ai-root` | Own the Quick AI root state machine, settings, log and handoff coordinator; wire the root to the runner at startup, start pruning at launch and stop pruning, prewarming and pending handoffs on termination. |
+| `Tinycast/Features/AI/Service/CodexTurnRunner.swift` | `// FORK: quick-ai-root` | Hold the injected fork root; expose explicit warming with existing developer instructions and runner-owned client effects; share thread-start parameters; claim matching fresh Quick AI roots before ordinary thread creation; invalidate roots on reset/exit and tool-list relaunch while retaining existing conversation cleanup. |
+| `Tinycast/Features/AI/Service/ChatGPTSubscriptionManager.swift` | `// FORK: quick-ai-root` | Accept the fork's keep-alive flag, cancel idle shutdown while enabled and re-arm the original timer when disabled. |
+| `Tinycast/Features/AI/UI/AIChatState.swift` | `// FORK: quick-ai-root` | Share the existing request snapshot builder between replies and prewarming. |
+| `Tinycast/Features/AI/UI/AIChatCoordinator.swift` | `// FORK: quick-ai-root` | Expose a prewarm snapshot using the existing model, provider, composer address, tool session, instructions, web search and context budget. |
+| `Tinycast/Features/AI/UI/AIScreen.swift` | `// FORK: quick-ai-root` | Add fork-owned Start Work menu items and secondary/tertiary actions; resolve engines in a view-owned task. |
+| `Tinycast/Features/AI/UI/QuickAICoordinator.swift` | `// FORK: quick-ai-root` | Expose the fork-owned handoff coordinator and mark history chats as reopened; schedule prewarming after show/new chat; retire roots on explicit new chat, open-policy reset and ask. |
+| `Tinycast/Features/AI/Settings/AISettingsView.swift` | `// FORK: quick-ai-root` | Show the fork-owned Quick AI settings section. |
+| `Tinycast/Features/Settings/AppSettingsKey.swift` | `// FORK: quick-ai-root` | Name the warm-root, Start Work engine and log-retention defaults keys. |
+| `Tinycast/Features/Settings/Model/SettingsFileKey.swift` | `// FORK: quick-ai-root` | Mirror the three preferences under `ai`. |
+| `Tinycast/Features/Settings/SettingsFileSchema.swift` | `// FORK: quick-ai-root` | Bind the three mirror keys to the fork-owned settings. |
+| `Tinycast/Features/Backup/Model/SettingsBackup.swift` | `// FORK: quick-ai-root` | Carry the three optional preferences; gather and restore them through fork-owned helpers. |
+| `Tinycast/Features/Backup/Model/SettingsBackupCoverage.swift` | `// FORK: quick-ai-root` | Include all three Quick AI root preferences in backups. |
+| `Tinycast/Features/Settings/SettingsSearchCatalog.swift` | `// FORK: quick-ai-root` | Add the fork-owned Quick AI settings search entries. |
 | `Tinycast/App/AppCore.swift` | `// FORK: appearance-theme` | Own the theme-token store and publish it at startup. |
 | `Tinycast/App/AppCore.swift` | `// FORK: color-theme` | A colour theme pins `NSApp.appearance` to its base; re-apply when it changes. |
 | `Tinycast/DesignSystem/InterfaceMetrics.swift` | `// FORK: appearance-theme` | Palette tokens at the metrics seam: `spacing.rowVertical`, `radius.row`, `size.headerPadding`, `typography.searchFieldSize`. |

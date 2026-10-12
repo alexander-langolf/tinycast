@@ -80,6 +80,12 @@ enum SettingsFileSchema {
         case .aiToolRounds: return bind(ai, \.toolRounds)
         case .aiWorkingDirectory:  // FORK: ai-working-directory
             return bind(ForkAIWorkingDirectory.current!, \.path, accept: folder)
+        case .quickAIWarmRoot:  // FORK: quick-ai-root
+            return bind(ForkQuickAIRootSettings.current!, \.warmRoot)
+        case .quickAIStartWorkEngine:  // FORK: quick-ai-root
+            return bind(ForkQuickAIRootSettings.current!, \.startWorkEngine)
+        case .quickAIRootRetention:  // FORK: quick-ai-root
+            return bind(ForkQuickAIRootSettings.current!, \.retention)
         case .aiCommands: return launcher.commandsBinding(for: key, owner: .ai)
         case .quickActionLanguage: return bind(quickActions, \.settings.targetLanguage)
         case .quickActionCommands: return launcher.commandsBinding(for: key, owner: .quickActions)

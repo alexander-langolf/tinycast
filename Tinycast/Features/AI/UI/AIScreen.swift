@@ -21,6 +21,8 @@ struct AIScreen: PaletteScreen {
 
     func actions(at selection: Int) -> PopoverMenuContent? {
         var items: [PopoverMenuItem] = []
+        // FORK: quick-ai-root
+        items += coordinator.forkHandoff.actions(chat: chat, composer: vm.query)
         if chat.isStreaming {
             items.append(
                 PopoverMenuItem(title: "Stop Response", systemImage: "stop.fill", shortcut: "⌘.") {
@@ -89,7 +91,15 @@ struct AIScreen: PaletteScreen {
         }
     }
 
-    func secondary(at selection: Int) -> Bool { false }
+    // FORK: quick-ai-root
+    func secondary(at selection: Int) -> Bool {
+        coordinator.forkHandoff.start(other: false, chat: chat, composer: vm.query)
+    }
+
+    // FORK: quick-ai-root
+    func tertiary(at selection: Int) -> Bool {
+        coordinator.forkHandoff.start(other: true, chat: chat, composer: vm.query)
+    }
 
     /// Raycast's chords where it has one; ⌘Y is History, as in Safari, and ⌘. is Stop.
     func perform(_ shortcut: PaletteShortcut, at selection: Int) -> Bool {
@@ -144,7 +154,11 @@ struct AIScreen: PaletteScreen {
                 availability: { chatCoordinator.availability(for: chat) },
                 onConfigure: chatCoordinator.showSettings,
                 onAppear: chatCoordinator.prepareForChat,
-                onChoose: { coordinator.send($0) }))
+                onChoose: { coordinator.send($0) }
+            )
+            .task(id: coordinator.forkHandoff.resolutionKey) {  // FORK: quick-ai-root
+                await coordinator.forkHandoff.prepare()
+            })
     }
 }
 

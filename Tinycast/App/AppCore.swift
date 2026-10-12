@@ -82,6 +82,11 @@ final class AppCore {
     let chatGPTSubscription = ChatGPTSubscriptionManager()
     let installedAI = InstalledAIManager()
     let forkAIWorkingDirectory = ForkAIWorkingDirectory()  // FORK: ai-working-directory
+    let forkQuickAIRootSettings = ForkQuickAIRootSettings()  // FORK: quick-ai-root
+    @ObservationIgnored private(set) lazy var forkQuickAIRootLog = ForkQuickAIRootLog(
+        settings: forkQuickAIRootSettings)  // FORK: quick-ai-root
+    // FORK: quick-ai-root
+    @ObservationIgnored private(set) lazy var forkQuickAIRoot = makeForkQuickAIRoot()
     @ObservationIgnored private var appliedLaunchRevisions: [InstalledAIKind: Int] = [:]
 
     /// Set when a layout editor should open with Settings; the pane consumes it.
@@ -251,6 +256,14 @@ final class AppCore {
     @ObservationIgnored private(set) lazy var quickAICoordinator = QuickAICoordinator(
         chats: aiChats, settings: settings, palette: palette,
         paletteCoordinator: paletteCoordinator, core: self)
+    @ObservationIgnored private(set) lazy var forkQuickAIHandoff = ForkQuickAIHandoffCoordinator(
+        core: self)  // FORK: quick-ai-root
+    // FORK: claude-session-chat
+    @ObservationIgnored private(set) lazy var forkClaudeSessionHost = makeForkClaudeSessionHost()
+    @ObservationIgnored private(set) lazy var forkClaudeSessionRegistry = ForkClaudeSessionRegistry(
+        directory: forkClaudeSessionDirectory)  // FORK: claude-session-chat
+    @ObservationIgnored private(set) lazy var forkClaudeSessions = ForkClaudeSessionCoordinator(
+        core: self)  // FORK: claude-session-chat
 
     // FORK: persistent-launcher
     @ObservationIgnored private(set) lazy var persistentLauncher = PersistentLauncherCoordinator(core: self)
@@ -302,6 +315,10 @@ final class AppCore {
         forkAppearance.start()  // FORK: appearance-start
         forkTheme.start()  // FORK: appearance-theme
         startForkAIWorkingDirectory()  // FORK: ai-working-directory
+        startForkQuickAIRoot()  // FORK: quick-ai-root
+        forkClaudeSessionHost.prepare()  // FORK: claude-session-chat
+        _ = forkClaudeSessionRegistry  // FORK: claude-session-chat
+        forkClaudeSessions.start()  // FORK: claude-session-chat
         // FORK: appearance-observation
         track(
             forkAppearance,
@@ -593,6 +610,11 @@ final class AppCore {
     func prepareForTermination() {
         windowController.stop()  // FORK: persistent-launcher
         persistentLauncher.stop()
+        forkClaudeSessionHost.cancelPreparation()  // FORK: claude-session-chat
+        forkClaudeSessions.stop()  // FORK: claude-session-chat
+        forkQuickAIRoot.stop()  // FORK: quick-ai-root
+        forkQuickAIHandoff.stop()  // FORK: quick-ai-root
+        forkQuickAIRootLog.stop()  // FORK: quick-ai-root
         if settings.dictationEnabled { dictationCoordinator.prepareForTermination() }
         settingsFile?.flush()
         agentRunsCoordinator.stop()  // FORK: agent-runs

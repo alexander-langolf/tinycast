@@ -64,7 +64,10 @@ enum SettingsBackupCoverage {
         "calendarMenuBarHidesWhenEmpty": .calendarMenuBarHidesWhenEmpty,
         "hideCurrentEvent": .hideCurrentEvent,
         "supportReminders": .supportReminders,
-        "appearanceTokens": .forkTheme  // FORK: appearance-theme
+        "appearanceTokens": .forkTheme,  // FORK: appearance-theme
+        "quickAIWarmRoot": .quickAIWarmRoot,  // FORK: quick-ai-root
+        "quickAIStartWorkEngine": .quickAIStartWorkEngine,  // FORK: quick-ai-root
+        "quickAIRootRetention": .quickAIRootRetention  // FORK: quick-ai-root
     ]
 
     /// The `SettingsData` fields no `AppSettings` key stands behind, and what they read instead.

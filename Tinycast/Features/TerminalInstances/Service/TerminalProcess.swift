@@ -23,6 +23,7 @@ final class TerminalProcess: @unchecked Sendable {
 
     private let descriptorState: Mutex<DescriptorState>
     private let parentEnd: Int32
+    private let capturesAllOutput: Bool  // FORK: claude-session-chat
     private let continuation: AsyncStream<Event>.Continuation
     private let rawContinuation: AsyncStream<[UInt8]>.Continuation
     /// Source and buffer state below is touched on this queue alone.
@@ -45,8 +46,10 @@ final class TerminalProcess: @unchecked Sendable {
     private static let flushDelay: DispatchTimeInterval = .milliseconds(30)
     private static let hangupGrace: DispatchTimeInterval = .seconds(2)
 
-    private init(parentEnd: Int32, processID: pid_t) {
+    // FORK: claude-session-chat
+    private init(parentEnd: Int32, processID: pid_t, capturesAllOutput: Bool = false) {
         self.parentEnd = parentEnd
+        self.capturesAllOutput = capturesAllOutput  // FORK: claude-session-chat
         descriptorState = Mutex(DescriptorState(descriptor: parentEnd))
         self.processID = processID
         queue = DispatchQueue(label: "com.tinycast.terminal-instance", qos: .userInitiated)
@@ -66,9 +69,20 @@ final class TerminalProcess: @unchecked Sendable {
         guard let shim = TerminalShellShim.install(in: shimRoot) else { return nil }
         let environment = TerminalShellShim.environment(
             base: ProcessInfo.processInfo.environment, shim: shim)
-        let argv = TerminalCStrings([shell, "-il"])
+        return spawn(
+            executable: shell, arguments: ["-il"], environment: environment,
+            directory: directory, columns: columns, rows: rows,
+            capturesAllOutput: false)  // FORK: claude-session-chat
+    }
+
+    // FORK: claude-session-chat
+    static func spawn(
+        executable: String, arguments: [String], environment: [String: String],
+        directory: String, columns: Int, rows: Int = 40, capturesAllOutput: Bool = true
+    ) -> TerminalProcess? {
+        let argv = TerminalCStrings([executable] + arguments)
         let envp = TerminalCStrings(environment.map { "\($0.key)=\($0.value)" })
-        let paths = TerminalCStrings([shell, directory])
+        let paths = TerminalCStrings([executable, directory])
         defer { withExtendedLifetime((argv, envp, paths)) {} }
         guard let executable = paths.pointers[0], let workingDirectory = paths.pointers[1] else {
             return nil
@@ -103,7 +117,9 @@ final class TerminalProcess: @unchecked Sendable {
         guard processID > 0 else { return nil }
         _ = fcntl(parentEnd, F_SETFL, fcntl(parentEnd, F_GETFL) | O_NONBLOCK)
         _ = fcntl(parentEnd, F_SETFD, FD_CLOEXEC)
-        let process = TerminalProcess(parentEnd: parentEnd, processID: processID)
+        // FORK: claude-session-chat
+        let process = TerminalProcess(
+            parentEnd: parentEnd, processID: processID, capturesAllOutput: capturesAllOutput)
         process.begin()
         return process
     }
@@ -234,13 +250,22 @@ final class TerminalProcess: @unchecked Sendable {
     private func drain() {
         let count = readBuffer.withUnsafeMutableBytes { Darwin.read(parentEnd, $0.baseAddress, $0.count) }
         if count > 0 {
-            let events = parser.feed(readBuffer[0..<count])
-            emitRaw()
-            enqueue(events)
+            consumeOutput(count)  // FORK: claude-session-chat
         } else if count == 0 || (errno != EAGAIN && errno != EINTR) {
             // EIO once every holder of the child end is gone; the exit source still reaps.
             stopReading()
         }
+    }
+
+    // FORK: claude-session-chat
+    private func consumeOutput(_ count: Int) {
+        if capturesAllOutput {
+            rawContinuation.yield(Array(readBuffer[0..<count]))
+            return
+        }
+        let events = parser.feed(readBuffer[0..<count])
+        emitRaw()
+        enqueue(events)
     }
 
     private func emitRaw() {
@@ -295,9 +320,7 @@ final class TerminalProcess: @unchecked Sendable {
                     Darwin.read(parentEnd, $0.baseAddress, $0.count)
                 }
                 guard count > 0 else { break }
-                let events = parser.feed(readBuffer[0..<count])
-                emitRaw()
-                enqueue(events)
+                consumeOutput(count)  // FORK: claude-session-chat
             }
         }
         flush()

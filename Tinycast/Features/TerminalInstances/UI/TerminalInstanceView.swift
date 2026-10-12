@@ -9,7 +9,8 @@ struct TerminalInstanceView: View {
 
     var body: some View {
         TerminalInstanceCard(
-            phase: session.phase, command: instance.lastCommand, directory: session.directory,
+            phase: session.phase, command: instance.displayTitle ?? instance.lastCommand,
+            directory: session.directory,
             startupNotice: session.startupNotice, isFullScreen: session.isFullScreen,
             isPinned: instance.isPinned, showsOutput: instance.showsOutput && session.run != nil,
             input: $instance.input,

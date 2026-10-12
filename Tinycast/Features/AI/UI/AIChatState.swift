@@ -79,13 +79,21 @@ final class AIChatState {
         return true
     }
 
-    private func startReply(
-        using provider: any AIProvider, webSearch: Bool, instructions: String?, contextBudget: Int
-    ) {
-        let request = AIRequest(
+    // FORK: quick-ai-root
+    func forkRequestSnapshot(
+        webSearch: Bool, instructions: String?, contextBudget: Int
+    ) -> AIRequest {
+        AIRequest(
             instructions: instructions,
             messages: session.requestMessages(textBudget: contextBudget), webSearch: webSearch,
             conversationID: session.id)
+    }
+
+    private func startReply(
+        using provider: any AIProvider, webSearch: Bool, instructions: String?, contextBudget: Int
+    ) {
+        let request = forkRequestSnapshot(  // FORK: quick-ai-root
+            webSearch: webSearch, instructions: instructions, contextBudget: contextBudget)
         session.append(ChatMessage(role: .assistant, text: "", state: .streaming))
         isStreaming = true
         isThinking = false
@@ -113,6 +121,38 @@ final class AIChatState {
                 self.finishLast(state: .failed, fallback: error.localizedDescription)
             }
         }
+    }
+
+    // FORK: claude-session-chat
+    func forkStartClaudeReply(pending: ChatMessage?, using provider: any AIProvider) {
+        guard !isStreaming else { return }
+        if let pending { session.append(pending) }
+        clearStaging()
+        notice = nil
+        startReply(
+            using: provider, webSearch: false, instructions: nil,
+            contextBudget: ChatSession.defaultTextBudget)
+    }
+
+    // FORK: claude-session-chat
+    func forkAppendClaudeTurn(user: String, assistant: String, waiting: Bool) {
+        session = Self.appendingClaudeTurn(
+            user: user, assistant: assistant, to: session, waiting: waiting)
+        history.save(session)
+    }
+
+    static func appendingClaudeTurn(
+        user: String, assistant: String, to session: ChatSession, waiting: Bool
+    ) -> ChatSession {
+        var messages = session.messages
+        var additions: [ChatMessage] = []
+        if !user.isEmpty { additions.append(ChatMessage(role: .user, text: user)) }
+        if !assistant.isEmpty { additions.append(ChatMessage(role: .assistant, text: assistant)) }
+        let index = waiting ? max(0, messages.count - 2) : messages.count
+        messages.insert(contentsOf: additions, at: index)
+        return ChatSession(
+            id: session.id, createdAt: session.createdAt, updatedAt: Date(),
+            messages: messages, model: session.model)
     }
 
     func report(_ message: String) {

@@ -114,6 +114,7 @@ enum SettingsSearchCatalog {
         + appleShortcuts + fallbacks + clipboard + snippets + fileSearch + windowManagement
         + navigation + notes + calendar + emoji + ai + quickActions + dictation + extensions
         + ForkSettingsSearch.automation  // FORK: automation-settings
+        + ForkSettingsSearch.quickAIRoot  // FORK: quick-ai-root
         + permissions
         + backup + about
 

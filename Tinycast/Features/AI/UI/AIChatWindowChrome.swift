@@ -238,7 +238,16 @@ enum AIChatActionsMenu {
             ClosureMenuItem("New Chat", symbol: "square.and.pencil", key: "n") {
                 coordinator.newChat()
             })
-        if canRegenerate(chat) {
+        // FORK: claude-session-chat
+        for action in coordinator.forkClaudeSessions.actions(chatID: chat.session.id) {
+            let symbol: String
+            if case .symbol(let name) = action.icon { symbol = name } else { symbol = "terminal" }
+            let item = ClosureMenuItem(action.title, symbol: symbol, action.action)
+            item.isEnabled = action.isSelectable
+            menu.addItem(item)
+        }
+        // FORK: claude-session-chat
+        if canRegenerate(chat), coordinator.forkClaudeSessions.entry(chatID: chat.session.id) == nil {
             menu.addItem(
                 ClosureMenuItem("Regenerate Response", symbol: "arrow.clockwise", key: "r") {
                     coordinator.regenerate(in: chat)

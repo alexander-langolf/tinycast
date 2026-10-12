@@ -87,6 +87,8 @@ final class AIChatCoordinator {
     var history: ChatHistoryStore { core.chatHistory }
     var aiSettings: AISettingsStore { core.aiSettings }
     var dictation: DictationCoordinator { core.dictationCoordinator }
+    // FORK: claude-session-chat
+    var forkClaudeSessions: ForkClaudeSessionCoordinator { core.forkClaudeSessions }
 
     func focusExisting() -> Bool {
         window.focus()
@@ -208,6 +210,8 @@ final class AIChatCoordinator {
 
     /// Asked on the first send, again after an answer if that failed, and never over a rename.
     private func nameIfNeeded(_ chat: AIChatState) {
+        // FORK: claude-session-chat
+        if (try? core.forkClaudeSessionRegistry.cachedEntry(chatID: chat.session.id)) != nil { return }
         let session = chat.session
         guard let conversation = core.chatHistory.conversation(id: session.id),
             conversation.customTitle == nil, conversation.generatedTitle == nil,
@@ -271,6 +275,8 @@ final class AIChatCoordinator {
     @discardableResult
     func send(_ input: String, in chat: AIChatState) -> Bool {
         guard settings.aiEnabled else { return false }
+        // FORK: claude-session-chat
+        if let sent = forkClaudeSessions.send(input, in: chat) { return sent }
         do {
             let address = MCPComposerAddress.parse(input, slugs: core.mcpCoordinator.slugs)
             let sent = chat.send(
@@ -290,6 +296,8 @@ final class AIChatCoordinator {
     /// The same question, asked of whichever model is selected now, of the server it named.
     func regenerate(in chat: AIChatState) {
         guard settings.aiEnabled else { return }
+        // FORK: claude-session-chat
+        guard forkClaudeSessions.entry(chatID: chat.session.id) == nil else { return }
         let scope = chat.session.messages.last { $0.role == .user }?.toolScope
         do {
             chat.regenerate(
@@ -299,6 +307,24 @@ final class AIChatCoordinator {
         } catch {
             chat.report(error.localizedDescription)
         }
+    }
+
+    // FORK: quick-ai-root
+    func forkRootSnapshot(
+        in chat: AIChatState, composer: String
+    )
+        -> (request: AIRequest, provider: CodexInstalledProvider)?
+    {
+        guard settings.aiEnabled, case .codex? = model(for: chat) else { return nil }
+        let address = MCPComposerAddress.parse(composer, slugs: core.mcpCoordinator.slugs)
+        guard let route = try? provider(for: chat, scopedTo: address.slug),
+            let provider = route as? CodexInstalledProvider
+        else { return nil }
+        return (
+            chat.forkRequestSnapshot(
+                webSearch: webSearch(for: chat), instructions: instructions,
+                contextBudget: contextBudget(for: chat)), provider
+        )
     }
 
     private func webSearch(for chat: AIChatState) -> Bool {
@@ -313,6 +339,8 @@ final class AIChatCoordinator {
 
     /// A turn's route and its tools: a CLI with its own client is handed servers, others the loop.
     private func provider(for chat: AIChatState, scopedTo slug: String?) throws -> any AIProvider {
+        // FORK: claude-session-chat
+        if let provider = try core.forkClaudeSessions.provider(chatID: chat.session.id) { return provider }
         guard model(for: chat)?.runsItsOwnTools == true else {
             return toolAware(try provider(for: chat), scopedTo: slug, in: chat)
         }
@@ -392,6 +420,8 @@ final class AIChatCoordinator {
 
     /// What the chat's model can take; the composer offers only what applies.
     func capabilities(for chat: AIChatState) -> AIModelCapabilities {
+        // FORK: claude-session-chat
+        if forkClaudeSessions.entry(chatID: chat.session.id) != nil { return .none }
         switch model(for: chat) {
         case .appleIntelligence?: return .appleIntelligence
         case .codex?: return .codex
@@ -436,6 +466,8 @@ final class AIChatCoordinator {
 
     /// ⌘V stages a file, read off-main; false hands the chord back to the field editor.
     func attachPastedFile(files: [URL], to chat: AIChatState) -> Bool {
+        // FORK: claude-session-chat
+        guard forkClaudeSessions.entry(chatID: chat.session.id) == nil else { return false }
         let pasteboard = NSPasteboard.general
         // A copied text selection often carries a TIFF too; only a board with no string is a picture.
         let pasted =
@@ -457,6 +489,8 @@ final class AIChatCoordinator {
 
     /// A drop or the paperclip: the same refusals as a paste, since the route is what decides.
     func attach(files: [URL], to chat: AIChatState) {
+        // FORK: claude-session-chat
+        guard forkClaudeSessions.entry(chatID: chat.session.id) == nil else { return }
         let files = files.filter(\.isFileURL)
         guard !files.isEmpty else { return }
         if let refusal = unattachable(files, in: chat) {
@@ -689,6 +723,10 @@ final class AIChatCoordinator {
     }
 
     func availability(for chat: AIChatState) -> String? {
+        // FORK: claude-session-chat
+        if forkClaudeSessions.entry(chatID: chat.session.id) != nil {
+            return forkClaudeSessions.isEnded(chatID: chat.session.id) ? "Session ended" : nil
+        }
         do {
             _ = try provider(for: chat)
             return nil

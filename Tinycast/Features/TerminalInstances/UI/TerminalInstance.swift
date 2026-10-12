@@ -9,6 +9,8 @@ final class TerminalInstance: Identifiable {
     let session: TerminalSession
     var input = ""
     private(set) var lastCommand: String
+    /// A name for the header in place of the command, until another command is typed.
+    var displayTitle: String?
     var isPinned = true
     var isExpanded = true
     let isEditor: Bool  // FORK: file-navigator
@@ -32,6 +34,7 @@ final class TerminalInstance: Identifiable {
 
     func begin(_ command: String) {
         lastCommand = command
+        displayTitle = nil
         input = ""
         isExpanded = true
         session.run(command)
