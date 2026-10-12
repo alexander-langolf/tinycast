@@ -4,10 +4,10 @@
 
 - **The status snapshot owns card lifetime.** Every returned run is eligible regardless of state;
   a run missing from the next successful snapshot disappears immediately. Nothing is persisted.
-- **Polling belongs to palette visibility, plus one lease.** While an automation client holds a
+- **Polling belongs to logical palette activity, plus one lease.** While an automation client holds a
   `subscriptions/listen` stream, `AgentRunsMonitor.setAutomationHold` keeps polling after the palette
   hides, and `refreshOnce()` serves a read when nothing polls. Without a lease, the rule below holds.
-  **Polling belongs to palette visibility.** Opening starts an immediate read, then reads every two
+  **Polling belongs to logical palette activity.** Opening starts an immediate read, then reads every two
   seconds without overlapping within a polling task. `PaletteWindowController` calls the coordinator's
   `paletteDidShow()` / `paletteDidHide()` beside Calendar's lifecycle calls and `palette.noteVisible`.
   `PaletteState.isVisible` remains the visibility flag. Hiding cancels polling but keeps the last
@@ -20,8 +20,9 @@
 - **A failed read keeps the last good snapshot until the next successful read.** Failures go
   to the `AgentRuns` logger; an unavailable helper does not interrupt launcher use.
 - **Runs live in a separate, non-activating child panel.** `AgentRunsPanelPresenter` owns its frame
-  and attaches it with `addChildWindow`. It is visible only with a visible palette and nonempty
-  snapshot, including other palette modes and the compact bar. Cards never enter `PaletteRowIndex`,
+  and attaches it with `addChildWindow`. It is visible only with a settled active palette and nonempty
+  snapshot, including other palette modes and the compact bar. Opening header travel and the passive
+  resting field never show its child window. Cards never enter `PaletteRowIndex`,
   favorites, search results or keyboard navigation, and never take key status or search focus.
 - **The stack sits below the palette when it fits the screen's visible frame.** It matches the
   palette width with the Agent Card margin (12 points by default) between them. Otherwise it sits top-aligned beside the palette, at 360 points

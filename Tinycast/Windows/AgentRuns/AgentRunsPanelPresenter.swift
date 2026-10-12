@@ -38,7 +38,10 @@ final class AgentRunsPanelPresenter {
 
     func update(_ panel: NSPanel?, metrics: InterfaceMetrics) {
         let count = core.agentRunsCoordinator.runs.count
-        guard let panel, panel.isVisible, count > 0, let screen = panel.screen else {
+        // FORK: persistent-launcher
+        guard core.persistentLauncher.policy.phase == .active,
+            let panel, panel.isVisible, count > 0, let screen = panel.screen
+        else {
             hide()
             return
         }

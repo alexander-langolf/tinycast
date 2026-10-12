@@ -252,6 +252,15 @@ rows, capped at the standard height) and a footer policy (`.shown`, or `.hidden`
 acting). `PalettePresentationResolver` maps the active mode and query to one; the `$` terminal
 command declares `.bar` with a hidden footer. See [palette-presentation.md](features/palette-presentation.md).
 
+## Persistent launcher field
+
+`AppCore.persistentLauncher` owns the fork passive panel and presentation state. The inactive field
+is a neutral header at uniform half scale, top-centred below menu/notch-safe space. Invocation gives
+key status to the existing mounted palette editor at its normal destination and hands off one
+travelling header; dismissal ends the session immediately and returns a neutral header to rest.
+See [persistent-launcher-field.md](features/persistent-launcher-field.md) for lifecycle boundaries,
+geometry and the automated/runtime evidence split.
+
 ## Palette motion
 
 The palette window animates between presentations, and its header glyph, placeholder, Quick AI
@@ -401,6 +410,16 @@ launcher changes live there without upstream hooks. The generated pbxproj except
 | `Tinycast/Features/FileSearch/Model/FileSearchQuery.swift` | `// FORK: search` | Optional supplemental glob, fuzzy root matching and filename/folder ranking. |
 | `Tinycast/Features/FileSearch/Service/FileSearchService.swift` | `// FORK: search` | Run either predicate and return batches before the display cap for the merge. |
 | `Tinycast/Features/FileSearch/Service/FileSearchSession.swift` | `// FORK: search` | Attach the shared index and route production nonblank queries to the fork service; injected operations and recents remain upstream. |
+| `Tinycast/App/AppCore.swift` | `// FORK: persistent-launcher` | Own, start, reconcile and stop the passive presentation coordinator. |
+| `Tinycast/Palette/PalettePanel.swift` | `// FORK: persistent-launcher` | Establish native search focus synchronously before immediate typing. |
+| `Tinycast/Palette/PaletteWindowController.swift` | `// FORK: persistent-launcher` | Logical sessions, mounted-editor handoff, guarded focus, reverse dismissal and teardown. |
+| `Tinycast/Palette/PaletteCoordinator.swift` | `// FORK: persistent-launcher` | Ignore duplicate inactive hides before cancelling searches. |
+| `Tinycast/Palette/RootPaletteView.swift` | `// FORK: persistent-launcher` | Reveal body/footer only after header travel; retain the real editor. |
+| `Tinycast/Windows/AgentRuns/AgentRunsPanelPresenter.swift` | `// FORK: persistent-launcher` | Gate observed child-window updates on settled active presentation. |
+| `Scripts/run-tests.sh` | `// FORK: persistent-launcher` | Compile the shipped pure presentation slices and coordinator lifecycle harness. |
+| `Scripts/run-tests.sh` | `// FORK: ripgrep-ranking` | Register the existing whole-path file ranking regression harness. |
+| `Tinycast/Features/FileSearch/UI/FileSearchCoordinator.swift` | `// FORK: file-navigator` | Route folder activation to the existing File Navigator. |
+| `docs/features/file-search.md` | `// FORK: file-navigator` | Document existing folder activation and File Navigator actions. |
 | `AGENTS.md` | `// FORK: documentation` | Link the fork maintenance guide. |
 | `Tinycast/DesignSystem/Scrolling/OverflowFade.swift` | `// FORK: overflow-double` | Compile fix: explicit `Double` for the fade strengths. |
 | `Scripts/run-tests.sh` | `// FORK: fork-harness` | Register the fork-layer harness. |

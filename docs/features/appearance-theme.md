@@ -268,3 +268,10 @@ Interface Size; reset one token and a whole section; quit and relaunch to check 
 settings.json on, edit `appearance.tokens` (including `null`, an unknown token and a bad value) and
 change a token in the app to see it written; export and import a backup. Check over a light desktop
 in both appearances. The previews in Settings are the real card views over sample data.
+
+## Persistent launcher appearance
+
+The resting field resolves the same Interface Size, launcher fonts, scrim, corner radius and border
+tokens, then scales the entire header to 0.5. Its host observes live appearance without mounting
+RootPaletteView. Font/token edits reconcile endpoints during travel; the interactive palette keeps
+its existing appearance scope behavior. See [persistent-launcher-field.md](persistent-launcher-field.md).

@@ -7,12 +7,12 @@ swaps the body animates through the same path.
 
 ## Invariants
 
-- The top edge never moves. The window grows and shrinks from its anchored top, so the search
+- The active palette's top edge never moves. The window grows and shrinks from its anchored top, so the search
   bar holds still during the compact swap (testing.md, compact swap).
 - While the window moves, the content lays out at the larger of the two heights and the window
   clips it. Rows, the empty state and the footer never reflow per frame; the edge reveals them.
 - A hidden window, Reduce Motion or an unchanged frame jumps straight to the target, as before.
-  The first frame of a summon is always placed without animation.
+  The real editor is placed immediately; the fork header travels separately on summon.
 - A shrink waits `collapseDelay`, so the body and footer have faded before the edge passes them.
   A move in flight is retargeted with its velocity carried over, never restarted.
 - A leaving block renders its last content until its fade ends and takes no clicks meanwhile.
@@ -25,6 +25,7 @@ All numbers live in `PaletteMotion`.
 
 | Token | Value | Used for |
 | --- | --- | --- |
+| `handoffDuration` | 0.34 s | Uniform header scale and translation |
 | `windowSpring` | `Spring(duration: 0.34, bounce: 0)` | The window frame and corner radius |
 | `collapseDelay` | 0.08 s | Hold before a shrink starts |
 | `stagger` | 0.035 s per `order` | Delay between the window starting and a block entering |
@@ -84,3 +85,13 @@ Run against Tinycast Dev with Window mode set to Compact, then repeat with Reduc
 - ⎋ back: the body and footer fade, then the panel collapses to the bar.
 - Type one letter, then delete it: the results expand and collapse the same way.
 - With Reduce Motion: every resize is instant and the blocks only cross-fade.
+
+## Persistent field travel
+
+The fork presentation coordinator uses `PaletteMotion.handoffDuration` (0.34 seconds) and the
+non-bouncing window spring for uniform header scale and screen-space translation. A display link
+exists only during travel; reversal retargets current geometry and invalidates the old identity.
+The real editor stays at its active destination, unscaled and mounted. Body/footer reveal there
+through their existing slots. Reduce Motion completes geometry immediately, with no travel or
+completion-time focus reset. Dismissal ends the session before returning neutral presentation.
+See [persistent-launcher-field.md](persistent-launcher-field.md) for snapshot lifetime and focus.

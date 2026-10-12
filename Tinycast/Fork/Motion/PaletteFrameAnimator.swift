@@ -40,10 +40,10 @@ final class PaletteFrameAnimator: NSObject {
     }
 
     /// Hidden windows, Reduce Motion and unchanged frames jump; a move in flight retargets smoothly.
-    func move(_ window: NSWindow, to frame: NSRect, radius: CGFloat) {
+    func move(_ window: NSWindow, to frame: NSRect, radius: CGFloat, animated: Bool = true) {
         if let flight, flight.to == frame, flight.toRadius == radius { return }
         let current = window.frame
-        guard window.isVisible, !PaletteMotion.reduceMotion, current != frame else {
+        guard animated, window.isVisible, !PaletteMotion.reduceMotion, current != frame else {
             settle(window, at: frame, radius: radius)
             return
         }
@@ -95,6 +95,11 @@ final class PaletteFrameAnimator: NSObject {
         window.invalidateShadow()
         if layoutHeight != nil { layoutHeight = nil }
         if cornerRadius != radius { cornerRadius = radius }
+    }
+
+    func cancel() {
+        stop()
+        layoutHeight = nil
     }
 
     private func stop() {

@@ -15,8 +15,11 @@ struct FormInputTests {
 
     static func main() {
         _ = NSApplication.shared
-        testSingleLine()
-        testCapAlignment()
+        for appearance in [NSAppearance.Name.aqua, .darkAqua] {
+            NSApp.appearance = NSAppearance(named: appearance)
+            testSingleLine()
+            testCapAlignment()
+        }
         testTextArea()
         testCodeFont()
         if failures > 0 { exit(1) }
@@ -149,7 +152,7 @@ struct FormInputTests {
         for y in 0..<image.pixelsHigh {
             for x in 0..<image.pixelsWide {
                 if let color = image.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB),
-                    color.alphaComponent > 0.2, color.redComponent > 0.2
+                    color.alphaComponent > 0.2
                 {
                     result = result.union(CGRect(x: x, y: y, width: 1, height: 1))
                 }

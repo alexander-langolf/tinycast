@@ -812,3 +812,14 @@ tccutil reset Accessibility com.tinycast.app.dev 2>/dev/null || true
 - Quit and relaunch: everything created above persisted
 - Nothing was written outside `com.tinycast.app.dev/`. Channel isolation is not negotiable — a Dev build
   writing into the stable app's directory is a defect even though the data is disposable
+
+## Persistent launcher field verification
+
+Focused checks: `./Scripts/run-tests.sh persistent-launcher-test`,
+`./Scripts/run-tests.sh persistent-launcher-lifecycle-test` and
+`./Scripts/run-tests.sh persistent-launcher-input-test`. They exercise shipped geometry/policy,
+the real summon coordinator with injected effects, and the native panel/editor handoff.
+The Dev acceptance matrix in `openspec/changes/persistent-launcher-field/tasks.md` is separate:
+visual handoff, IME/candidate placement, Spaces/fullscreen/display removal and focus/feature workflows
+must distinguish native observations from injected tests. See
+[persistent-launcher-verification.md](persistent-launcher-verification.md) for the delivered evidence.

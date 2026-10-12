@@ -44,6 +44,26 @@ final class PalettePanel: NSPanel {
         fieldEditor?.moveToEndOfDocument(nil)
     }
 
+    // FORK: persistent-launcher
+    @discardableResult
+    func focusSearchField() -> Bool {
+        guard let contentView, !searchFieldRect.isEmpty else { return false }
+        let point = CGPoint(x: searchFieldRect.midX, y: searchFieldRect.midY)
+        guard let field = editableField(in: contentView, at: point) else { return false }
+        if let editor = field.currentEditor(), firstResponder === editor { return true }
+        return makeFirstResponder(field)
+    }
+
+    private func editableField(in view: NSView, at point: CGPoint) -> NSTextField? {
+        guard !view.isHidden, view.alphaValue > 0 else { return nil }
+        if let field = view as? NSTextField, field.isEditable, field.isEnabled,
+            field.bounds.contains(field.convert(point, from: nil))
+        {
+            return field
+        }
+        return view.subviews.lazy.compactMap { self.editableField(in: $0, at: point) }.first
+    }
+
     /// Nil while a selection can still collapse normally, or when the caret is not at an edge.
     private func headerFieldBoundary(for event: NSEvent) -> HeaderFieldBoundary? {
         guard event.modifierFlags.isDisjoint(with: [.command, .option, .control, .shift]),

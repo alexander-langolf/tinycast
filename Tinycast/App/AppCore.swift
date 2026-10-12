@@ -252,6 +252,8 @@ final class AppCore {
         chats: aiChats, settings: settings, palette: palette,
         paletteCoordinator: paletteCoordinator, core: self)
 
+    // FORK: persistent-launcher
+    @ObservationIgnored private(set) lazy var persistentLauncher = PersistentLauncherCoordinator(core: self)
     @ObservationIgnored private lazy var windowController = PaletteWindowController(core: self)
     @ObservationIgnored private lazy var messageHUD = MessageHUDController(settings: settings)
     private(set) var isShowingDialog = false
@@ -314,6 +316,9 @@ final class AppCore {
             dictationAudioDucker.recover()
             applyAppearance()
             observeEffectiveAppearance()
+            persistentLauncher.onGeometryChange = { [weak self] in self?.windowController.reconcileDisplay() }
+            persistentLauncher.onSettled = { [weak self] in self?.windowController.presentationDidSettle() }
+            persistentLauncher.start()  // FORK: persistent-launcher
             pinnedEmoji.onPersistenceFailure = { [weak self] in
                 self?.showMessage("Couldn't save Emoji & Symbols pins", tone: .danger)
             }
@@ -586,6 +591,8 @@ final class AppCore {
     }
 
     func prepareForTermination() {
+        windowController.stop()  // FORK: persistent-launcher
+        persistentLauncher.stop()
         if settings.dictationEnabled { dictationCoordinator.prepareForTermination() }
         settingsFile?.flush()
         agentRunsCoordinator.stop()  // FORK: agent-runs

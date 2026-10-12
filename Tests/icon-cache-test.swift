@@ -167,6 +167,40 @@ struct IconCacheTests {
         }
     }
 
+    static func rowsUseTheCapturedSource() {
+        IconCache.invalidateStyled()
+        let path = "icon-cache-fixture-" + UUID().uuidString
+        var reads = 0
+        let load: (String) -> NSImage = { _ in
+            reads += 1
+            let color: NSColor = reads == 1 ? .red : .blue
+            return NSImage(size: NSSize(width: 48, height: 48), flipped: false) { rect in
+                color.setFill()
+                rect.fill()
+                return true
+            }
+        }
+        let full = IconCache.icon(forFile: path, load: load)
+        for scale: CGFloat in [1, 2] {
+            for points: CGFloat in [24, 26, 29] {
+                let size = IconSize(points: points, scale: scale)
+                let row = IconCache.icon(forFile: path, size: size, load: load)
+                expect(
+                    rendered(full, size: size) == rendered(row, size: size),
+                    "rows resize the captured icon even when a later native read changes")
+            }
+        }
+        expect(reads == 1, "changing row size never refetches the captured source")
+        _ = IconCache.icon(forFile: path, stamp: 1, size: IconSize(points: 26, scale: 2), load: load)
+        expect(reads == 2, "a new file stamp captures a fresh source")
+        let nextFull = IconCache.icon(forFile: path, stamp: 1, load: load)
+        expect(reads == 2, "a row-first load shares its capture with full-size consumers")
+        expect(bitmap(full) != bitmap(nextFull), "the stamp adopts changed native artwork")
+        IconCache.invalidateStyled()
+        _ = IconCache.icon(forFile: path, size: IconSize(points: 24, scale: 2), load: load)
+        expect(reads == 3, "a restyle captures a fresh source")
+    }
+
     static func fittedAlphaThreshold() {
         let size = IconSize(points: 48, scale: 2)
         for alpha in 0...255 {
@@ -218,6 +252,7 @@ struct IconCacheTests {
         rowSizes()
         rowLifetime()
         rowRendering()
+        rowsUseTheCapturedSource()
         fittedAlphaThreshold()
         await asynchronousRows()
         semanticSymbolNames()

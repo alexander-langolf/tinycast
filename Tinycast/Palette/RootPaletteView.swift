@@ -53,6 +53,9 @@ struct RootPaletteView: View {
         PalettePresentationResolver.current(mode: vm.mode, query: vm.query)
     }
 
+    // FORK: persistent-launcher
+    private var showsActiveContent: Bool { core.persistentLauncher.policy.phase == .active }
+
     /// The current mode's screen: its rows are the visible order the flat selection indexes.
     private var screen: any PaletteScreen {
         switch vm.mode {
@@ -331,22 +334,33 @@ struct RootPaletteView: View {
                 Group {
                     // FORK: palette-presentation
                     PaletteRevealSlot(  // FORK: palette-motion
-                        .body, isPresented: !isCollapsed && presentation.showsRows, key: vm.mode,
+                        .body, isPresented: !isCollapsed && presentation.showsRows,
+                        key: vm.mode,
                         fills: true
                     ) {
                         screen.body(selection: sel, scroll: scroll)
                     }
+                    .opacity(showsActiveContent ? 1 : 0)
+                    .allowsHitTesting(showsActiveContent)
+                    .accessibilityHidden(!showsActiveContent)
+                    .paletteReveal(.body, on: showsActiveContent)
                 }
                 .safeAreaInset(edge: .top, spacing: 0) { header }
                 .safeAreaInset(edge: .bottom, spacing: 0) {
                     // FORK: palette-presentation
-                    PaletteRevealSlot(.footer, isPresented: !isCollapsed && presentation.showsFooter) {  // FORK: palette-motion
+                    PaletteRevealSlot(
+                        .footer, isPresented: !isCollapsed && presentation.showsFooter
+                    ) {  // FORK: palette-motion
                         bottomBar(
                             pillLabel: screen.primaryActionTitle, showActionGroup: showActionGroup,
                             formPrimaryShortcut: screen.hidesSearchField && screen.actsWithoutRows,
                             primaryActionEnabled: screen.isPrimaryActionEnabled(at: sel),
                             showActions: screen.hasActions(at: sel))
                     }
+                    .opacity(showsActiveContent ? 1 : 0)
+                    .allowsHitTesting(showsActiveContent)
+                    .accessibilityHidden(!showsActiveContent)
+                    .paletteReveal(.footer, on: showsActiveContent)
                 }
                 // The panel has no title bar, so this thin top margin is the only place left to grab it.
                 .overlay(alignment: .top) { topDragStrip }
@@ -1223,6 +1237,8 @@ struct RootPaletteView: View {
 
     /// Drives the menu's window from the two pieces of state that decide what it shows.
     private func syncMenuPanel(presenting: Bool) {
+        guard vm.isVisible else { menuPanel.hide(); return }
+        core.persistentLauncher.finishOpening()
         guard let content = menuContent, let corner = menuCorner else {
             menuPanel.hide()
             return

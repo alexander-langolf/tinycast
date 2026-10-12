@@ -267,3 +267,11 @@ Applications, System Settings, System Actions, Commands — are thin wrappers ov
 `SettingsTab` and `SettingsSection` both identify by the case itself, never by an index. A selectable
 `List` flattens section and row IDs into one namespace, so overlapping `Int` IDs make SwiftUI drop
 whole sidebar groups; `Tests/settings-history-test.swift` pins the two namespaces apart.
+
+## Fork persistent launcher ownership
+
+`AppCore.persistentLauncher` owns one passive non-key panel, its header renderer, display/Space
+observations and bounded transition resources. `PaletteWindowController` keeps the real panel/editor
+and active session effects. Logical activity is opening/active; physical passive visibility never
+starts features or captures a target app. The pure policy/geometry and real coordinator are guarded
+by standalone harnesses. See [persistent-launcher-field.md](features/persistent-launcher-field.md).

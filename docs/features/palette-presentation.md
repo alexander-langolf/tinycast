@@ -45,3 +45,10 @@ case .myMode: return MyScreen.presentation
 
 The `$` terminal command uses `.bar()`. Add a new `Height` or `Footer` case in `PalettePresentation` and handle it in
 `windowHeight(metrics:)`, `showsRows` and `showsFooter`.
+
+## Resting header and handoff
+
+The passive fork host renders only the neutral launcher header at uniform 0.5 scale. The active
+controller still resolves compact/full and feature destinations using this presentation resolver.
+Body and footer reveal after travel reaches that destination; the real editor is never replaced
+by the passive host. See [persistent-launcher-field.md](persistent-launcher-field.md).

@@ -209,19 +209,28 @@ enum IconCache {
         }.value.image
     }
 
-    static func icon(forFile path: String, stamp: Int = 0, size: IconSize? = nil) -> NSImage {
-        if let size { return rowIcon(forFile: path, stamp: stamp, size: size) }
+    static func icon(
+        forFile path: String, stamp: Int = 0, size: IconSize? = nil,
+        load: (String) -> NSImage = { NSWorkspace.shared.icon(forFile: $0) }
+    ) -> NSImage {
+        if let size { return rowIcon(forFile: path, stamp: stamp, size: size, load: load) }
         let key = fileKey(path, stamp)
         if let cached = cache.object(forKey: key) { return cached }
-        let (icon, cost) = downsampled(NSWorkspace.shared.icon(forFile: path))
+        let (icon, cost) = downsampled(load(path))
         cache.setObject(icon, forKey: key, cost: cost)
         return icon
     }
 
-    private static func rowIcon(forFile path: String, stamp: Int, size: IconSize) -> NSImage {
+    private static func rowIcon(
+        forFile path: String, stamp: Int, size: IconSize, load: (String) -> NSImage
+    ) -> NSImage {
         if let warm = cached(forFile: path, stamp: stamp, size: size) { return warm }
         let (image, cost) = autoreleasepool { () -> (NSImage, Int) in
-            let (source, sourceCost) = downsampled(NSWorkspace.shared.icon(forFile: path))
+            let source = icon(forFile: path, stamp: stamp, load: load)
+            let bitmap = source.representations.first as? NSBitmapImageRep
+            let sourceCost =
+                bitmap.map { $0.bytesPerRow * $0.pixelsHigh }
+                ?? Int(displayPixel * displayPixel * 4)
             return resized(source, to: size) ?? (source, sourceCost)
         }
         rowCache.setObject(RowImage(size: size, image: image), forKey: fileKey(path, stamp), cost: cost)

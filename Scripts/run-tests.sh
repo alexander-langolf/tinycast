@@ -112,7 +112,8 @@ run() {
         # // FORK: file-navigator
         *"/SettingsSearchCatalog.swift "*)
             set -- "$@" Tinycast/Features/FileNavigator/Settings/FileNavigatorSettingsSearch.swift \
-                Tinycast/Fork/ForkSettingsSearch.swift Tinycast/Fork/Theme/ForkThemeToken.swift \
+                Tinycast/Fork/ForkSettingsSearch.swift Tinycast/Features/Automation/UI/AutomationSettingsAnchor.swift \
+                Tinycast/Fork/Theme/ForkThemeToken.swift \
                 Tinycast/Fork/Theme/ForkColorTheme.swift Tinycast/Fork/Theme/ForkColorThemePreset.swift "Tinycast/Fork/Theme/ForkColorThemePreset+Kitty.swift" \
                 Tinycast/Fork/Theme/ForkColorPalette.swift Tinycast/Fork/Theme/ForkThemeValue.swift
             ;;
@@ -314,6 +315,16 @@ run interface-size-test    Tinycast/Platform/Appearance.swift \
                            Tinycast/DesignSystem/InterfaceMetrics.swift \
                            Tinycast/Features/Settings/InterfaceSize.swift \
                            Tinycast/Features/Extensions/Model/ExtensionFormMetrics.swift
+# // FORK: persistent-launcher guards passive geometry and exactly-once active sessions.
+run persistent-launcher-test Tinycast/Fork/Palette/PersistentLauncherPolicy.swift Tinycast/Fork/Palette/PersistentLauncherGeometry.swift
+run persistent-launcher-input-test Tinycast/Platform/WindowLevel.swift \
+                           Tinycast/Platform/NotificationToken.swift \
+                           Tinycast/DesignSystem/Interaction/KeyboardFocus.swift \
+                           Tinycast/Palette/PalettePanel.swift \
+                           Tinycast/Fork/Palette/PersistentLauncherCoordinator.swift \
+                           Tinycast/Fork/Palette/PersistentLauncherPanel.swift \
+                           Tinycast/Fork/Palette/PersistentLauncherPolicy.swift \
+                           Tinycast/Fork/Palette/PersistentLauncherGeometry.swift
 run palette-placement-test Tinycast/Platform/Appearance.swift \
                            Tinycast/DesignSystem/Theme.swift \
                            Tinycast/DesignSystem/InterfaceMetrics.swift \
@@ -341,6 +352,22 @@ run palette-escape-test    Tinycast/Palette/PaletteMode.swift \
                            Tinycast/Features/Quicklinks/Model/QuicklinkDestination.swift \
                            Tinycast/Features/CustomCommands/Model/CustomCommand.swift
 run palette-navigation-test Tinycast/Palette/PaletteState.swift \
+                           Tinycast/Palette/PaletteMode.swift \
+                           Tinycast/Palette/HoverArming.swift \
+                           Tinycast/Features/Emoji/Model/EmojiCatalog.swift \
+                           Tinycast/Features/Clipboard/Model/ClipboardStore.swift \
+                           Tinycast/Features/Clipboard/Model/ClipboardFilter.swift \
+                           Tinycast/Features/Clipboard/Model/ClipboardFileKind.swift \
+                           Tinycast/Features/FileSearch/Model/FileSearchFilter.swift \
+                           Tinycast/Features/Clipboard/Model/ColorValue.swift \
+                           Tinycast/Features/Clipboard/Model/ColorFormat.swift \
+                           Tinycast/Features/Clipboard/Model/ColorSpaces.swift \
+                           Tinycast/Features/Quicklinks/Model/Quicklink.swift \
+                           Tinycast/Features/Quicklinks/Model/QuicklinkDestination.swift \
+                           Tinycast/Features/CustomCommands/Model/CustomCommand.swift
+run persistent-launcher-lifecycle-test Tinycast/Palette/PaletteCoordinator.swift \
+                           Tinycast/Fork/Palette/PersistentLauncherPolicy.swift \
+                           Tinycast/Palette/PaletteState.swift \
                            Tinycast/Palette/PaletteMode.swift \
                            Tinycast/Palette/HoverArming.swift \
                            Tinycast/Features/Emoji/Model/EmojiCatalog.swift \
