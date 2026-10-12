@@ -1,15 +1,16 @@
 # Signing
 
-Tinycast is signed with a **stable self-signed identity** called `Tinycast Self-Signed`. Keeping the
-_same_ identity on every build is what makes macOS remember the Accessibility permission across
-rebuilds and updates — ad-hoc signing changes every build and macOS forgets the grant.
+Tinycast uses a **stable self-signed identity** called `Tinycast Self-Signed` by default. Keeping the
+same identity and build location across builds lets macOS retain permissions tied to the signed app;
+ad-hoc signatures do not provide that stability. A checkout can opt into a local Apple Development
+identity for Debug without changing Release or another checkout.
 
 An Apple Developer ID certificate now exists, but nothing is signed with it yet. Why that switch is
 staged rather than immediate is [below](#the-developer-id-migration).
 
 You create this identity **once**. The same identity is used for:
 
-- **local dev builds** — so Accessibility persists while you develop (the Xcode project signs with it), and
+- **default local dev builds** — the Xcode project uses it unless this checkout opts in locally, and
 - **CI releases** — exported into two GitHub secrets the release workflow imports.
 
 ## 1. Create the `Tinycast Self-Signed` identity (once)
@@ -43,7 +44,36 @@ Verify it's there:
 security find-identity -p codesigning | grep "Tinycast Self-Signed"
 ```
 
-Now local builds (Xcode, VS Code F5, `xcodebuild`) sign with it, and you grant Accessibility once.
+Now default local builds (Xcode, VS Code F5, `xcodebuild`) sign with it. Grant Accessibility for that
+identity and build location once.
+
+## Switching a Debug checkout to Apple Development
+
+`Tinycast/DebugSigning.xcconfig` is tracked and defaults to `Tinycast Self-Signed`. It optionally includes
+`DebugSigning.local.xcconfig`, which is gitignored. To select an installed Apple Development identity
+for this checkout, put its **certificate SHA-1** and its actual **Team ID** in the local file:
+
+```xcconfig
+CODE_SIGN_IDENTITY = <certificate SHA-1>
+DEVELOPMENT_TEAM = <team ID from certificate subject OU>
+```
+
+Find the SHA-1 with `security find-identity -v -p codesigning`; inspect the certificate subject to
+find its `OU` for the Team ID. The parenthesized suffix of the identity's display name may differ
+from that Team ID. The local file is picked up by ordinary Xcode and
+`xcodebuild` Debug builds without command-line overrides or another XcodeGen run. The project-level
+Debug config applies to every target, including `TinycastPreviews`, `ClipboardTextHelper`,
+`DictationHelper` and `TinycastCLI`; Release still selects `Tinycast Self-Signed`.
+
+Switching from self-signed to Apple Development changes the app's signing requirement. macOS may ask
+again for Accessibility, Input Monitoring, Automation or other protected access, even when the bundle
+identifier and build path stay fixed. Approve the new Dev app in System Settings when prompted; an
+existing grant for the old signature is not proof that the new signature has it. The login Keychain
+may also prompt on first access to each existing Tinycast Dev item (automation-client tokens, AI/MCP
+credentials, and other saved secrets), because the requesting code identity changed. Choose the
+appropriate allow option for the signed app when prompted. Existing Keychain values and app data
+remain in place; this setup does not reset TCC, alter Keychain access lists, or migrate secrets.
+Once the new identity is used consistently for rebuilds, those decisions can persist.
 
 ## 2. Generate the CI secrets
 
@@ -127,9 +157,9 @@ network, and the updater verifies in a cache directory Gatekeeper has never asse
 Mac would refuse a bundle the chain already proves is ours.
 
 **The Developer ID identity stays a CI-only fact.** When the switch happens it is named on the
-release workflow's `xcodebuild` line and nowhere else: `project.yml` keeps signing with
-`Tinycast Self-Signed`, so a contributor keeps building with the one they created in §1 — same name,
-their own key, never shared. Nothing about local development changes.
+release workflow's `xcodebuild` line and nowhere else: Release keeps signing with
+`Tinycast Self-Signed`. An optional Apple Development identity affects only local Debug builds; it
+does not change release signing or the staged Developer ID migration.
 
 **Keep `Tinycast Self-Signed` in the login keychain after the switch.** It is the only way to ship a
 build that a copy predating the migration could still install.

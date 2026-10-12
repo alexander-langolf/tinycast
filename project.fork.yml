@@ -89,10 +89,6 @@ targets:
         SWIFT_INCLUDE_PATHS: "$(inherited) $(SRCROOT)/.tools/libghostty/ghostty-vt.xcframework/macos-arm64_x86_64/Headers"
         LIBRARY_SEARCH_PATHS: "$(inherited) $(SRCROOT)/.tools/libghostty/ghostty-vt.xcframework/macos-arm64_x86_64"
         OTHER_LDFLAGS: "$(inherited) -lghostty-vt"
-      configs:
-        Debug:
-          CODE_SIGN_IDENTITY: "-"
-
   TinycastCLI:
     type: tool
     platform: macOS

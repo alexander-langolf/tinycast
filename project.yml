@@ -7,16 +7,18 @@ options:
   createIntermediateGroups: true
   groupSortPosition: top
 
+configFiles:
+  Debug: Tinycast/DebugSigning.xcconfig
+
+fileGroups:
+  - Tinycast/DebugSigning.xcconfig
+
 settings:
   base:
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
     SWIFT_VERSION: "6.0"
-    DEVELOPMENT_TEAM: ""
     CODE_SIGN_STYLE: Manual
-    # Stable self-signed identity so macOS keeps the Accessibility grant across rebuilds.
-    # Create it once — see docs/signing.md.
-    CODE_SIGN_IDENTITY: "Tinycast Self-Signed"
     SWIFT_STRICT_CONCURRENCY: complete
     TINYCAST_BUNDLE_IDENTIFIER: com.tinycast.app
   configs:
@@ -24,6 +26,8 @@ settings:
       TINYCAST_BUNDLE_IDENTIFIER: com.tinycast.app.dev
       DICTATION_EXECUTABLE_NAME: Tinycast Dev Dictation
     Release:
+      DEVELOPMENT_TEAM: ""
+      CODE_SIGN_IDENTITY: "Tinycast Self-Signed"
       DICTATION_EXECUTABLE_NAME: Tinycast Dictation
       # Release-only: library validation refuses Debug's `.debug.dylib`, whose team never matches.
       ENABLE_HARDENED_RUNTIME: YES

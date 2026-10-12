@@ -20,6 +20,7 @@ struct PersistentLauncherInputTests {
         draft.focusToken = UUID()
         owner.open(panel)
         precondition(owner.policy.phase == .opening, "the test must cover travel, not settled input")
+        precondition(!owner.showsStatus && owner.headerImage != nil, "opening starts with the field")
         precondition(panel.alphaValue == 1, "the native input window must stay opaque during travel")
         precondition(panel.contentView?.layer?.opacity == 0, "only rendering is masked during travel")
         let accessory = NSTextField(frame: CGRect(x: 0, y: 0, width: 60, height: 30))
@@ -69,6 +70,15 @@ struct PersistentLauncherInputTests {
         precondition(accessory.currentEditor() === panel.firstResponder)
         precondition(owner.dismiss())
         owner.close(from: panel)
+        precondition(owner.policy.phase == .closing)
+        precondition(!owner.showsStatus, "status content waits until the field reaches the top")
+        precondition(owner.headerImage != nil, "closing retains the mounted header rendering")
+        precondition(owner.headerSize == CGSize(width: 750, height: 60))
+        let closingImage = owner.headerImage
+        draft.text = ""
+        precondition(owner.headerImage === closingImage, "palette reset cannot replace the flight image")
+        owner.reconcile()
+        precondition(owner.headerImage != nil && !owner.showsStatus, "retarget keeps the captured field")
         PaletteMotion.reduceMotion = true
         precondition(owner.summon())
         owner.open(panel)
@@ -77,6 +87,10 @@ struct PersistentLauncherInputTests {
         precondition(
             accessory.currentEditor() === panel.firstResponder,
             "animation completion cannot refocus a hidden search field")
+        precondition(owner.dismiss())
+        owner.close(from: panel)
+        precondition(owner.policy.phase == .resting && owner.showsStatus)
+        precondition(owner.headerImage == nil, "arrival releases the travelling field")
         print("persistent launcher native input presentation passed")
     }
 
@@ -112,6 +126,7 @@ private struct SearchInput: View {
 @MainActor final class AppCore {
     let settings = Settings()
     let paletteCoordinator = Coordinator()
+    let ghosttyStatus = GhosttyStatusCoordinator()
     final class Settings {
         let interfaceSize = Size()
         var openOnCursorScreen = false
@@ -133,8 +148,61 @@ struct InterfaceMetrics {
 @MainActor enum ForkTheme {
     static let current = Value()
     enum Token { case paletteCornerRadius }
-    struct Value { func points(_ token: Token, _ metrics: InterfaceMetrics) -> CGFloat { 16 } }
+    struct Value {
+        var paletteScrim: Color { .clear }
+        func points(_ token: Token, _ metrics: InterfaceMetrics) -> CGFloat { 16 }
+    }
 }
+@MainActor final class GhosttyStatusCoordinator {
+    var state: GhosttyStatusState = .closed
+    var onChange: (() -> Void)?
+    var tabs: [GhosttyTabSnapshot] = []
+    var applicationIcon: NSImage?
+    var associations: [GhosttyTerminalIdentity: GhosttyAgentKind] = [:]
+    func setResting(_ value: Bool) {}
+    func select(_ tab: GhosttyTabSnapshot) {}
+}
+struct GhosttyStatusBar: View {
+    let coordinator: GhosttyStatusCoordinator
+    let state: GhosttyStatusState
+    let width: CGFloat
+    let height: CGFloat
+    let openLauncher: () -> Void
+    let showOverflow: () -> Void
+    let tooltip: (String?, CGRect) -> Void
+    var body: some View { Color.clear.frame(width: width, height: height) }
+}
+struct GhosttyStatusCard: View {
+    let tab: GhosttyTabSnapshot
+    let agent: GhosttyAgentKind?
+    let icon: NSImage?
+    let height: CGFloat
+    let width: CGFloat
+    let tooltip: (String?, CGRect) -> Void
+    let select: () -> Void
+    var body: some View { Color.clear.frame(width: width, height: height) }
+}
+struct GhosttyStatusMetrics {
+    let metrics: InterfaceMetrics
+    let icon: CGFloat = 16
+    let gap: CGFloat = 4
+    let inset: CGFloat = 2
+    let cardWidth: CGFloat = 120
+    let rowHeight: CGFloat = 32
+    let overflowMaxHeight: CGFloat = 300
+    var restingHeight: CGFloat { metrics.size.compactHeight / 2 }
+    func fit(count: Int, width: CGFloat) -> GhosttyStatusLayout {
+        .fit(
+            tabCount: count, width: width, launcherWidth: 28, cardWidth: cardWidth,
+            overflowWidth: 30, gap: gap)
+    }
+}
+@MainActor final class GhosttyStatusTooltipPresenter {
+    func hover(_ text: String?, anchor: CGRect, metrics: InterfaceMetrics) {}
+    func hide() {}
+}
+extension EnvironmentValues { @Entry var metrics: InterfaceMetrics = .standard }
+struct GlassEffectView: View { var body: some View { Color.clear } }
 struct PersistentLauncherHeader: View {
     let metrics: InterfaceMetrics
     var body: some View {

@@ -27,6 +27,9 @@ buildServer.json
 build/
 dist/
 
+# Per-checkout Debug signing selection
+DebugSigning.local.xcconfig
+
 # Fastlane
 fastlane/report.xml
 fastlane/Preview.html

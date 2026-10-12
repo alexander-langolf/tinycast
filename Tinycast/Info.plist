@@ -74,7 +74,7 @@
 	<true/>
 	<key>NSAppleEventsUsageDescription</key>
 	<!-- // FORK: terminal-ghostty. Opening a tab in a running Ghostty requires Apple Events. -->
-	<string>Tinycast uses automation to perform system actions you explicitly run. It also opens Ghostty tabs and windows in your terminal's directory when you choose Open in Ghostty.</string>
+	<string>Tinycast uses automation to perform system actions you explicitly run, open Ghostty tabs when requested, and show or select existing Ghostty tabs after you allow access.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Tinycast shows a camera preview so you can check yourself, and take a photo to the clipboard.</string>
 	<key>NSMicrophoneUsageDescription</key>

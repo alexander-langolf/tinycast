@@ -1,0 +1,4 @@
+// Every checkout uses the stable self-signed identity unless it opts in locally.
+CODE_SIGN_IDENTITY = Tinycast Self-Signed
+DEVELOPMENT_TEAM =
+#include? "../DebugSigning.local.xcconfig"

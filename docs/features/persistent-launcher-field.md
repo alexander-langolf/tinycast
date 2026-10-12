@@ -5,15 +5,17 @@ OpenSpec change is `persistent-launcher-field`. No new preference or persisted g
 
 ## Invariants
 
-- Resting is a non-key, non-editable Open Tinycast button. Its neutral launcher header uses resolved
-  InterfaceMetrics, the live fork scrim, fonts, corner and border tokens. The whole header scales
-  uniformly to 0.5, including decoration; results, favourites, chips and retained text are excluded.
+- Resting is a non-key, non-editable Ghostty tab status bar with a separate Open Tinycast control.
+  It uses the former half-scale header footprint and resolved InterfaceMetrics. Results, favourites,
+  chips and retained search text are excluded. See [ghostty-tab-status.md](ghostty-tab-status.md)
+  for card, permission and selection behavior.
 - Exactly one passive panel is created at startup. Startup does not mount RootPaletteView or start
   a palette session. Its rounded content shape and panel frame match the scaled visible bounds.
 - The idle display is held until an invocation, removal or geometry change. The field is centred
   4 points below the lesser of visible-frame top and screen top minus safe-area inset. Origins
   align to backing pixels without rounding away the exact half-size dimensions.
-- Click and accessibility activation request the main launcher on the field's display. Hotkeys
+- Click and accessibility activation of Open Tinycast request the main launcher on the field's
+  display; tab cards select Ghostty without starting a palette session. Hotkeys
   preserve existing mode restoration and normal cursor/primary display selection. Cross-display
   invocation first relocates the resting endpoint and then animates on that display only.
 - The real PalettePanel and its hosting tree remain mounted between invocations. The editor stays
@@ -23,9 +25,12 @@ OpenSpec change is `persistent-launcher-field`. No new preference or persisted g
   bitmap captured from that mounted tree, refreshed during the bounded transition to include live
   text, selection and marked composition. Search focus and preserved-query selection are established
   synchronously on summon. Snapshotting never replaces the editor or moves focus.
-- Only the compact header rectangle is captured. Temporary images are released at handoff,
-  dismissal, cancellation and quit. The result body/footer reveal at the destination through the
-  existing motion slots. Bodies stay mounted according to their original compact/mode rules; travel
+- Only the compact header rectangle is captured. Opening swaps the status cards for the field at
+  the top before travel; closing captures the mounted header before dismissal resets its content,
+  keeps the field visible at uniform scale through travel, and swaps to cards only on arrival.
+  The resting status height may differ from the half-size header height. Temporary images are
+  released at completed handoff, cancellation and quit. The result body/footer reveal at the
+  destination through the existing motion slots. Bodies stay mounted according to their original compact/mode rules; travel
   gates opacity and hit testing rather than discarding native editor drafts. Opening a menu during travel completes the handoff before anchoring it.
 - Opening and closing retarget from current presentation geometry, with transition identities
   rejecting old completions. Input-session identity survives geometry retargets and changes on a

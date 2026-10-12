@@ -317,7 +317,16 @@ run interface-size-test    Tinycast/Platform/Appearance.swift \
                            Tinycast/Features/Extensions/Model/ExtensionFormMetrics.swift
 # // FORK: persistent-launcher guards passive geometry and exactly-once active sessions.
 run persistent-launcher-test Tinycast/Fork/Palette/PersistentLauncherPolicy.swift Tinycast/Fork/Palette/PersistentLauncherGeometry.swift
+run ghostty-tab-status-test Tinycast/Fork/GhosttyStatus/Model/GhosttyTabSnapshot.swift \
+                           Tinycast/Fork/GhosttyStatus/Model/GhosttyAgentDetection.swift \
+                           Tinycast/Fork/GhosttyStatus/Model/GhosttyScriptingCapabilities.swift
+run ghostty-status-lifecycle-test Tinycast/Fork/GhosttyStatus/Model/*.swift \
+                           Tinycast/Fork/GhosttyStatus/Service/*.swift \
+                           Tinycast/Fork/GhosttyStatus/UI/GhosttyStatusCoordinator.swift \
+                           Tinycast/Features/TerminalInstances/Service/TerminalGhosttyLauncher.swift \
+                           Tinycast/Platform/NotificationToken.swift
 run persistent-launcher-input-test Tinycast/Platform/WindowLevel.swift \
+                           Tinycast/Fork/GhosttyStatus/Model/GhosttyTabSnapshot.swift \
                            Tinycast/Platform/NotificationToken.swift \
                            Tinycast/DesignSystem/Interaction/KeyboardFocus.swift \
                            Tinycast/Palette/PalettePanel.swift \

@@ -275,3 +275,9 @@ observations and bounded transition resources. `PaletteWindowController` keeps t
 and active session effects. Logical activity is opening/active; physical passive visibility never
 starts features or captures a target app. The pure policy/geometry and real coordinator are guarded
 by standalone harnesses. See [persistent-launcher-field.md](features/persistent-launcher-field.md).
+
+`AppCore.ghosttyStatus` owns observation of the external Ghostty application while the passive bar
+rests. The model keys tabs by application launch, window and tab; the service shares the existing
+serialized Ghostty script queue. The coordinator publishes snapshots to compact cards without
+creating `AgentRun` records or extending an active palette session. See
+[ghostty-tab-status.md](features/ghostty-tab-status.md).

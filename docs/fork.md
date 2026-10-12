@@ -90,9 +90,12 @@ live in `project.fork.yml`; regenerate the Xcode project after changing them. Th
 `TinycastPreviews`, a small app target (bundle id `com.tinycast.previews`) that compiles only the
 AgentRuns UI, the terminal-instance card (`TerminalInstanceCard` and its metrics) and the design-system, fork-typography, theme-token and shell-runner files they read, so Xcode's canvas
 can preview without libghostty or AppCore. Its entry point is `PreviewsApp/`; run it for a card playground.
-Debug builds sign with upstream's `Tinycast Self-Signed` identity (create it once per `signing.md` §1;
-with OpenSSL 3+, add `-legacy` to `openssl pkcs12 -export` or `security import` fails its MAC check), so
-Accessibility and Keychain grants survive rebuilds. `TinycastPreviews` alone signs ad-hoc.
+Debug builds sign with upstream's `Tinycast Self-Signed` identity by default (create it once per
+`signing.md` §1; with OpenSSL 3+, add `-legacy` to `openssl pkcs12 -export` or `security import` fails
+its MAC check). This checkout can opt into an Apple Development identity through the ignored
+`DebugSigning.local.xcconfig`; the same selection applies to the app, previews and embedded helpers.
+See [signing.md](signing.md#switching-a-debug-checkout-to-apple-development) for the one-time
+permission migration.
 
 ## Appearance pane and theme tokens
 
@@ -255,11 +258,16 @@ command declares `.bar` with a hidden footer. See [palette-presentation.md](feat
 ## Persistent launcher field
 
 `AppCore.persistentLauncher` owns the fork passive panel and presentation state. The inactive field
-is a neutral header at uniform half scale, top-centred below menu/notch-safe space. Invocation gives
+is a compact Ghostty tab status bar in the former half-scale footprint, top-centred below
+menu/notch-safe space. Invocation gives
 key status to the existing mounted palette editor at its normal destination and hands off one
-travelling header; dismissal ends the session immediately and returns a neutral header to rest.
+travelling header; dismissal ends the session immediately and returns the status bar to rest.
 See [persistent-launcher-field.md](features/persistent-launcher-field.md) for lifecycle boundaries,
 geometry and the automated/runtime evidence split.
+
+`AppCore.ghosttyStatus` owns the external Ghostty inventory and bounded polling. Its pure tab model
+keeps Ghostty tab IDs distinct from agent runs. The [status feature note](features/ghostty-tab-status.md)
+records permission, selection and agent-association verification boundaries.
 
 ## Palette motion
 
@@ -510,6 +518,7 @@ launcher changes live there without upstream hooks. The generated pbxproj except
 | `Tinycast/Features/FileSearch/Service/FileSearchService.swift` | `// FORK: search` | Run either predicate and return batches before the display cap for the merge. |
 | `Tinycast/Features/FileSearch/Service/FileSearchSession.swift` | `// FORK: search` | Attach the shared index and route production nonblank queries to the fork service; injected operations and recents remain upstream. |
 | `Tinycast/App/AppCore.swift` | `// FORK: persistent-launcher` | Own, start, reconcile and stop the passive presentation coordinator. |
+| `Tinycast/App/AppCore.swift` | `// FORK: notch-status-bar` | Own, start and stop Ghostty status observation. |
 | `Tinycast/Palette/PalettePanel.swift` | `// FORK: persistent-launcher` | Establish native search focus synchronously before immediate typing. |
 | `Tinycast/Palette/PaletteWindowController.swift` | `// FORK: persistent-launcher` | Logical sessions, mounted-editor handoff, guarded focus, reverse dismissal and teardown. |
 | `Tinycast/Palette/PaletteCoordinator.swift` | `// FORK: persistent-launcher` | Ignore duplicate inactive hides before cancelling searches. |

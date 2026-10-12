@@ -179,9 +179,9 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
 
     func hide(restoreFocus: Bool) {
         guard core.persistentLauncher.dismiss() else { return }  // FORK: persistent-launcher
+        core.persistentLauncher.close(from: panel)
         panel?.onDismissMenu?()
         frameAnimator.cancel()
-        core.persistentLauncher.close(from: panel)
         core.fileNavigator.stop()  // FORK: file-navigator
         core.agentRunsPresenter.hide()  // FORK: agent-runs
         panel?.orderOut(nil)

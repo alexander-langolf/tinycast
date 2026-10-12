@@ -267,6 +267,7 @@ final class AppCore {
 
     // FORK: persistent-launcher
     @ObservationIgnored private(set) lazy var persistentLauncher = PersistentLauncherCoordinator(core: self)
+    let ghosttyStatus = GhosttyStatusCoordinator()  // FORK: notch-status-bar
     @ObservationIgnored private lazy var windowController = PaletteWindowController(core: self)
     @ObservationIgnored private lazy var messageHUD = MessageHUDController(settings: settings)
     private(set) var isShowingDialog = false
@@ -336,6 +337,7 @@ final class AppCore {
             persistentLauncher.onGeometryChange = { [weak self] in self?.windowController.reconcileDisplay() }
             persistentLauncher.onSettled = { [weak self] in self?.windowController.presentationDidSettle() }
             persistentLauncher.start()  // FORK: persistent-launcher
+            ghosttyStatus.start()  // FORK: notch-status-bar
             pinnedEmoji.onPersistenceFailure = { [weak self] in
                 self?.showMessage("Couldn't save Emoji & Symbols pins", tone: .danger)
             }
@@ -610,6 +612,7 @@ final class AppCore {
     func prepareForTermination() {
         windowController.stop()  // FORK: persistent-launcher
         persistentLauncher.stop()
+        ghosttyStatus.stop()  // FORK: notch-status-bar
         forkClaudeSessionHost.cancelPreparation()  // FORK: claude-session-chat
         forkClaudeSessions.stop()  // FORK: claude-session-chat
         forkQuickAIRoot.stop()  // FORK: quick-ai-root

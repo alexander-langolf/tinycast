@@ -14,9 +14,10 @@ verifying a change is [testing.md](testing.md).
 
 ## First-time setup
 
-Create the `Tinycast Self-Signed` code-signing identity once — builds sign with it, which is what keeps
-macOS from forgetting the Accessibility grant on every rebuild. Follow **[signing.md](signing.md) §1**,
-a few `openssl`/`security` commands.
+Debug builds use `Tinycast Self-Signed` by default. Create that identity once using
+**[signing.md](signing.md) §1**, or opt into an existing Apple Development identity for this checkout
+using the local config described there. Keep the same identity and build location across rebuilds so
+macOS can retain permissions associated with the signed app.
 
 That is the whole required setup. Editor configuration is personal and the repo does not prescribe it;
 the section below is a note for anyone who wants it, not a step.
@@ -68,8 +69,8 @@ reclaims it under disk pressure without saying so.
 Consequences worth knowing:
 
 - The dev build asks for Accessibility on its own the first time, and starts with **no** hotkeys bound
-  and onboarding unseen. Grant and bind once; it persists across rebuilds, because the fixed build path
-  and the `Tinycast Self-Signed` identity keep the TCC grant alive.
+  and onboarding unseen. Grant and bind once for a fixed build path and signing identity. Changing
+  either may require a new grant; see [signing.md](signing.md#switching-a-debug-checkout-to-apple-development).
 - Don't bind the same global hotkey in both — whichever registered first wins.
 - The Hyper Key's Caps Lock remap is `hidutil` state, which is **system-wide, not per-bundle**: quitting
   one build clears the remap for the other, which then needs a rebind or a relaunch to restore it.

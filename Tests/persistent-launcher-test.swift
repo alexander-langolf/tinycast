@@ -54,6 +54,15 @@ struct PersistentLauncherTests {
             precondition(PersistentLauncherGeometry.interpolate(rectangular, active, progress: 1) == active)
             let middle = PersistentLauncherGeometry.interpolate(rectangular, active, progress: 0.5)
             precondition(abs(middle.width / size.width - middle.height / size.height) < 0.00001)
+            let tallerStatus = PersistentLauncherGeometry.resting(
+                screen: screen, visible: visible, safeTop: 0, header: size,
+                restingHeight: size.height * 0.7)
+            let fieldRest = PersistentLauncherGeometry.travellingResting(
+                status: tallerStatus, header: size, visible: visible)
+            precondition(fieldRest.maxY == tallerStatus.maxY)
+            precondition(abs(fieldRest.width / size.width - fieldRest.height / size.height) < 0.00001)
+            let closingMiddle = PersistentLauncherGeometry.interpolate(active, fieldRest, progress: 0.5)
+            precondition(abs(closingMiddle.width / size.width - closingMiddle.height / size.height) < 0.00001)
         }
         let fractional = CGRect(x: 10.3, y: 100.4, width: 375, height: 30)
         for backing in [1.0, 2.0] {

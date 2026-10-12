@@ -75,7 +75,7 @@ enum TerminalGhosttyLauncher {
     }
 
     /// One script at a time: NSAppleScript is not safe to run concurrently from background threads.
-    private static let scriptQueue = DispatchQueue(
+    static let scriptQueue = DispatchQueue(
         label: "com.tinycast.ghostty-launcher", qos: .userInitiated)
 
     private nonisolated static func runScript(_ source: String) async throws {
