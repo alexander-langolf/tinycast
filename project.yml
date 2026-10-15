@@ -50,8 +50,12 @@ targets:
           - Features/Clipboard/Service/ClipboardTextHelper.swift
           - Features/Dictation/Helper
           - Resources/EmojiKeywords
+          - Resources/MonacoEditor
       # A folder reference keeps the packs in their own directory, which `EmojiIndex` lists.
       - path: Tinycast/Resources/EmojiKeywords
+        type: folder
+      # The offline Monaco page keeps its own directory so `loadFileURL` can scope read access to it.
+      - path: Tinycast/Resources/MonacoEditor
         type: folder
       # The MIT mark's licence asks the notice to travel with the binary, not just the repo.
       - path: NOTICE.md

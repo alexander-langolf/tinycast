@@ -61,8 +61,11 @@ final class AppCore {
     let agentRuns = AgentRunsMonitor()  // FORK: agent-runs
     let palette = PaletteState()
     let fileSearch = FileSearchSession()
-    @ObservationIgnored private(set) lazy var forkRipgrepIndex = ForkRipgrepIndex()  // FORK: search
     let dictionary = DictionarySession()
+    let chromeSearch = ChromeSearchSession(  // FORK: chrome-search
+        suggester: GoogleSuggestionClient(), chromeHistory: ChromeHistoryReader())
+    let chromeSearchHistory = GoogleSearchHistoryStore(  // FORK: chrome-search
+        fileURL: AppPaths.applicationSupport().appending(path: "google-search-history.json"))
     let menuSearch = MenuSearchSession()
     let windowSwitch = WindowSwitchSession()
     let activationPolicy = ActivationPolicy()
@@ -128,14 +131,15 @@ final class AppCore {
     @ObservationIgnored private(set) lazy var agentRunsCoordinator = AgentRunsCoordinator(
         monitor: agentRuns,
         showFailure: { [unowned self] in self.showMessage($0, tone: .danger) })
-    @ObservationIgnored private(set) lazy var agentRunsPresenter =
-        AgentRunsPanelPresenter(core: self)  // FORK: agent-runs
     // FORK: file-navigator
     @ObservationIgnored private(set) lazy var fileNavigator = FileNavigatorCoordinator(core: self)
     // FORK: terminal-instances
     @ObservationIgnored private(set) lazy var terminalInstances = TerminalInstancesCoordinator(core: self)
     @ObservationIgnored private(set) lazy var terminalInstancesPresenter =
         TerminalInstancesPresenter(core: self)
+    // FORK: monaco-editor
+    @ObservationIgnored private(set) lazy var monacoEditor = MonacoEditorCoordinator(core: self)
+    @ObservationIgnored private(set) lazy var monacoEditorPresenter = MonacoEditorPresenter(core: self)
     // FORK: automation
     @ObservationIgnored private(set) lazy var automation = AutomationCoordinator(core: self)
     // FORK: palette-chips
@@ -237,6 +241,9 @@ final class AppCore {
     @ObservationIgnored private(set) lazy var cameraCoordinator = CameraCoordinator(core: self)
     @ObservationIgnored private(set) lazy var dictionaryCoordinator = DictionaryCoordinator(
         paletteCoordinator: paletteCoordinator)
+    // FORK: chrome-search
+    @ObservationIgnored private(set) lazy var chromeSearchCoordinator = ChromeSearchCoordinator(
+        paletteCoordinator: paletteCoordinator, history: chromeSearchHistory)
     @ObservationIgnored private(set) lazy var updateCoordinator = UpdateCoordinator(
         store: updateChecker, core: self)
     @ObservationIgnored private(set) lazy var supportCoordinator = SupportCoordinator(
@@ -265,9 +272,8 @@ final class AppCore {
     @ObservationIgnored private(set) lazy var forkClaudeSessions = ForkClaudeSessionCoordinator(
         core: self)  // FORK: claude-session-chat
 
-    // FORK: persistent-launcher
-    @ObservationIgnored private(set) lazy var persistentLauncher = PersistentLauncherCoordinator(core: self)
-    let ghosttyStatus = GhosttyStatusCoordinator()  // FORK: notch-status-bar
+    let ghosttyStatus = GhosttyStatusCoordinator()  // FORK: notch-bar
+    @ObservationIgnored private(set) lazy var notchBar = NotchBarCoordinator(core: self)  // FORK: notch-bar
     @ObservationIgnored private lazy var windowController = PaletteWindowController(core: self)
     @ObservationIgnored private lazy var messageHUD = MessageHUDController(settings: settings)
     private(set) var isShowingDialog = false
@@ -308,11 +314,6 @@ final class AppCore {
     }
 
     func start() {
-        // FORK: search
-        forkRipgrepIndex.configure(
-            engine: settings.fileSearchEngine, patterns: settings.fileSearchIgnorePatterns,
-            hidden: settings.fileSearchHidden)
-        fileSearch.useForkIndex(forkRipgrepIndex)  // FORK: search
         forkAppearance.start()  // FORK: appearance-start
         forkTheme.start()  // FORK: appearance-theme
         startForkAIWorkingDirectory()  // FORK: ai-working-directory
@@ -334,10 +335,7 @@ final class AppCore {
             dictationAudioDucker.recover()
             applyAppearance()
             observeEffectiveAppearance()
-            persistentLauncher.onGeometryChange = { [weak self] in self?.windowController.reconcileDisplay() }
-            persistentLauncher.onSettled = { [weak self] in self?.windowController.presentationDidSettle() }
-            persistentLauncher.start()  // FORK: persistent-launcher
-            ghosttyStatus.start()  // FORK: notch-status-bar
+            notchBar.applyEnabled()  // FORK: notch-bar
             pinnedEmoji.onPersistenceFailure = { [weak self] in
                 self?.showMessage("Couldn't save Emoji & Symbols pins", tone: .danger)
             }
@@ -390,7 +388,6 @@ final class AppCore {
                 self?.appleShortcutCoordinator.refresh()
             }
             paletteCoordinator.onScreenOpening = { [weak self] mode in
-                self?.forkRipgrepIndex.paletteOpened()  // FORK: search
                 if mode == .fileNavigator { self?.fileNavigator.resume() }  // FORK: file-navigator
                 switch mode {
                 case .menuSearch: self?.menuSearchCoordinator.load()
@@ -610,9 +607,10 @@ final class AppCore {
     }
 
     func prepareForTermination() {
-        windowController.stop()  // FORK: persistent-launcher
-        persistentLauncher.stop()
-        ghosttyStatus.stop()  // FORK: notch-status-bar
+        fileSearch.stop()  // FORK: search
+        chromeSearch.reset()  // FORK: chrome-search
+        notchBar.stop()  // FORK: notch-bar
+        ghosttyStatus.stop()  // FORK: notch-bar
         forkClaudeSessionHost.cancelPreparation()  // FORK: claude-session-chat
         forkClaudeSessions.stop()  // FORK: claude-session-chat
         forkQuickAIRoot.stop()  // FORK: quick-ai-root
@@ -622,7 +620,6 @@ final class AppCore {
         settingsFile?.flush()
         agentRunsCoordinator.stop()  // FORK: agent-runs
         fileNavigator.stop()  // FORK: file-navigator
-        forkRipgrepIndex.stop()  // FORK: search
         terminalInstances.closeAll()  // FORK: terminal-instances
         automation.stop()  // FORK: automation
         clipboardTextIndexer?.stop()
@@ -734,6 +731,7 @@ final class AppCore {
         track(
             { _ = $0.clipboardTextSearchEnabled }, reproject: { $0.applyClipboardTextSearch() })
         track({ _ = $0.fileSearchEnabled }, reproject: { $0.fileSearchCoordinator.applyEnabled() })
+        track({ _ = $0.notchBarEnabled }, reproject: { $0.notchBar.applyEnabled() })  // FORK: notch-bar
         // Two features, one switch: each coordinator gates only its own command and mode.
         track(
             { _ = $0.navigationEnabled },
@@ -790,12 +788,9 @@ final class AppCore {
         // FORK: search
         track(
             {
-                _ = $0.fileSearchEngine; _ = $0.fileSearchIgnorePatterns; _ = $0.fileSearchHidden
+                _ = $0.fileSearchHidden
             },
             reproject: {
-                $0.forkRipgrepIndex.configure(
-                    engine: $0.settings.fileSearchEngine, patterns: $0.settings.fileSearchIgnorePatterns,
-                    hidden: $0.settings.fileSearchHidden)
                 $0.fileSearchCoordinator.applyPolicy()
                 $0.fileSearch.cancel()
                 if $0.palette.mode == .fileSearch && $0.palette.isVisible {

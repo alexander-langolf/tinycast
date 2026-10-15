@@ -1,0 +1,14 @@
+{
+  "name": "tinycast-monaco-bundle",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Builds the offline Monaco editor page Tinycast loads in a WKWebView.",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "monaco-editor": "0.57.0"
+  }
+}

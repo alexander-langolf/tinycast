@@ -296,16 +296,24 @@ final class AppSettings {
         palettePositions[display] = [offset.x, offset.y]
     }
 
+    // FORK: notch-bar
+    var notchBarEnabled: Bool {
+        didSet { defaults.set(notchBarEnabled, forKey: Key.notchBarEnabled.rawValue) }
+    }
+
     // FORK: file-navigator
     var fileNavigatorEditor: String {
         didSet { defaults.set(fileNavigatorEditor, forKey: Key.fileNavigatorEditor.rawValue) }
     }
 
-    // FORK: search
-    var fileSearchEngine: ForkFileSearchEngine {
-        didSet { defaults.set(fileSearchEngine.rawValue, forKey: Key.fileSearchEngine.rawValue) }
+    // FORK: monaco-editor
+    var fileNavigatorEditorKind: FileNavigatorEditorKind {
+        didSet {
+            defaults.set(fileNavigatorEditorKind.rawValue, forKey: Key.fileNavigatorEditorKind.rawValue)
+        }
     }
 
+    // FORK: search
     /// Whether the ripgrep index lists dotfiles (`rg --hidden`); `.git` stays out either way.
     var fileSearchHidden: Bool {
         didSet { defaults.set(fileSearchHidden, forKey: Key.fileSearchHidden.rawValue) }
@@ -715,13 +723,13 @@ final class AppSettings {
             as? [String: [Double]] ?? [:]
         paletteExpandedCenterDisplays =
             Set(defaults.stringArray(forKey: Key.paletteExpandedCenterDisplays.rawValue) ?? [])
+        notchBarEnabled = defaults.bool(forKey: Key.notchBarEnabled.rawValue)  // FORK: notch-bar
         // FORK: file-navigator
         fileNavigatorEditor = defaults.string(forKey: Key.fileNavigatorEditor.rawValue) ?? ""
+        fileNavigatorEditorKind =
+            defaults.string(forKey: Key.fileNavigatorEditorKind.rawValue)
+            .flatMap(FileNavigatorEditorKind.init) ?? .terminal  // FORK: monaco-editor
         // FORK: search
-        fileSearchEngine =
-            defaults.string(forKey: Key.fileSearchEngine.rawValue)
-            .flatMap(ForkFileSearchEngine.init(rawValue:))
-            ?? (ForkFileSearchEngine.executable() == nil ? .spotlight : .ripgrep)
         fileSearchHidden = defaults.object(forKey: Key.fileSearchHidden.rawValue) as? Bool ?? false  // FORK: search
         fileSearchEnabled = defaults.bool(forKey: Key.fileSearchEnabled.rawValue)
         // Unset seeds home; a stored empty array is a cleared list that searches nothing.

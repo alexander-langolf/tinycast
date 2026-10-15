@@ -31,6 +31,7 @@ extension View {
             .environment(core.fileNavigator)  // FORK: file-navigator
             .environment(core.fileSearch)
             .environment(core.dictionary)
+            .environment(core.chromeSearch)  // FORK: chrome-search
             .environment(core.menuSearch)
             .environment(core.windowSwitch)
             .environment(core.runningApps)

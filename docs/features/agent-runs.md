@@ -19,15 +19,8 @@
   only when the decoded array changes, like `RunningAppsMonitor`.
 - **A failed read keeps the last good snapshot until the next successful read.** Failures go
   to the `AgentRuns` logger; an unavailable helper does not interrupt launcher use.
-- **Runs live in a separate, non-activating child panel.** `AgentRunsPanelPresenter` owns its frame
-  and attaches it with `addChildWindow`. It is visible only with a settled active palette and nonempty
-  snapshot, including other palette modes and the compact bar. Opening header travel and the passive
-  resting field never show its child window. Cards never enter `PaletteRowIndex`,
-  favorites, search results or keyboard navigation, and never take key status or search focus.
-- **The stack sits below the palette when it fits the screen's visible frame.** It matches the
-  palette width with the Agent Card margin (12 points by default) between them. Otherwise it sits top-aligned beside the palette, at 360 points
-  wide: right if that fits, left otherwise. Run changes, palette moves, resizes, screen changes and
-  Interface Size changes recompute placement. These dimensions use the shared interface scale.
+- **The launcher shows no run cards.** The card child window was removed; runs stay readable through
+  the monitor and coordinator, and the card views remain for the Appearance previews.
 - **At most four run cards stack vertically, with transparent gaps (8 points by default).** Source
   order is preserved; a smaller `+N more` card counts the rest. Each run card is one launcher row plus
   vertical padding tall, or taller when larger fonts need it.
@@ -65,11 +58,8 @@ AgentRuns passes `Int.max` for complete JSON; the 8 KiB stderr limit and streami
 
 ## Presentation and attachment
 
-`Windows/AgentRuns/AgentRunsPanel` hosts `AgentRunsStack` with a transparent root and no shared
-background. `AgentRunsPanelPresenter` owns the child, run-count observation and all placement;
-`PaletteWindowController` only forwards lifecycle and geometry events through tagged fork hooks.
-`LauncherList` and the palette's own dimensions stay unchanged. If neither side has enough space,
-the left placement is clamped to the screen's visible frame, which can overlap the palette.
+`AgentRunsStack` and its cards are no longer shown beside the launcher; the views stay for the
+Appearance previews. Their layout is described below.
 
 Each card uses `PaletteBackground`'s behind-window material, adaptive scrim and edge treatment,
 clipped to the palette's continuous corner radius. The transparent panel supplies native shadows

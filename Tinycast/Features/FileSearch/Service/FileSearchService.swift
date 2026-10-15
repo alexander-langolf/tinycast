@@ -8,37 +8,13 @@ enum FileSearchService {
         case couldNotStartQuery
     }
 
-    /// An empty query is the blank screen: what was used or changed lately, newest first.
-    nonisolated static func search(
-        query rawQuery: String, policy: FileSearchPolicy, filter: FileSearchFilter = .all,
-        forkFuzzy: Bool = false, forkCandidates: Bool = false  // FORK: search
+    /// The blank screen: what was used or changed lately, newest first.
+    nonisolated static func recents(
+        policy: FileSearchPolicy, filter: FileSearchFilter = .all
     ) throws -> [FileSearchResult] {
-        try Signposts.interval("FileSearchService.search") {
-            let selection = resolveScopes(policy)
-            guard !rawQuery.isEmpty else {
-                return try recent(scopes: selection.directories, policy: policy, filter: filter)
-            }
-            var results = rootResults(selection, query: rawQuery, policy: policy, filter: filter)
-            guard
-                !selection.directories.isEmpty,
-                let expression = FileSearchQuery.expression(
-                    for: rawQuery, excluding: policy.ignore.spotlightNameExclusions, filter: filter,
-                    forkFuzzy: forkFuzzy)  // FORK: search
-            else { return FileSearchQuery.rank(results, for: rawQuery, ignoring: policy.ignore) }
-
-            var seen = Set(results.map(\.id))
-            // Excluded before the stat: an ignored tree then costs a string test, not a file read.
-            for path in try spotlightPaths(expression: expression, scopes: selection.directories)
-            where !FileSearchQuery.isExcludedPath(path, ignoring: policy.ignore)
-                && seen.insert(path).inserted
-            {
-                guard let result = resolve(path, homeDirectory: policy.homeDirectory) else {
-                    continue
-                }
-                results.append(result)
-            }
-            if ForkSearch.isEnabled && forkCandidates { return results }  // FORK: search
-            return FileSearchQuery.rank(results, for: rawQuery, ignoring: policy.ignore)
+        try Signposts.interval("FileSearchService.recents") {
+            try recent(
+                scopes: resolveScopes(policy).directories, policy: policy, filter: filter)
         }
     }
 
@@ -66,31 +42,6 @@ enum FileSearchService {
             .compactMap { resolve($0.key, homeDirectory: policy.homeDirectory) }
             .prefix(limit)
             .map { $0 }
-    }
-
-    private nonisolated static func rootResults(
-        _ selection: FileSearchScope.Selection, query: String, policy: FileSearchPolicy,
-        filter: FileSearchFilter
-    ) -> [FileSearchResult] {
-        selection.rootItems.compactMap { candidate in
-            guard
-                filter.accepts(
-                    contentType: candidate.contentType, isDirectory: candidate.isDirectory),
-                FileSearchQuery.matches(filename: candidate.url.lastPathComponent, query: query)
-            else { return nil }
-            return FileSearchResult(
-                url: candidate.url, isDirectory: candidate.isDirectory,
-                homeDirectory: policy.homeDirectory)
-        }
-    }
-
-    /// The path is the one attribute `MDQuery` hands back for free; every other one costs a fetch.
-    private nonisolated static func spotlightPaths(
-        expression: String, scopes: [URL]
-    ) throws -> [String] {
-        try execute(expression: expression, scopes: scopes, sortedBy: nil) { query, count in
-            (0..<count).compactMap { path(in: query, at: $0) }
-        }
     }
 
     /// Paired with the sort stamp, which is read for the first `dating` results and no further.

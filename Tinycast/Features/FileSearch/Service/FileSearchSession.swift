@@ -23,9 +23,8 @@ final class FileSearchSession {
     @ObservationIgnored private let homeDirectory: URL
     @ObservationIgnored private var policy: FileSearchPolicy
     @ObservationIgnored private let debounce: Duration
-    @ObservationIgnored private let forkSearch = ForkFileSearchService()  // FORK: search
-    @ObservationIgnored private var forkDefaultOperation = false  // FORK: search
     @ObservationIgnored private let searchOperation: SearchOperation
+    let client: FSearchClient
 
     private struct Request: Equatable {
         let query: String
@@ -38,19 +37,20 @@ final class FileSearchSession {
         let earliestStart: ContinuousClock.Instant
     }
 
-    func useForkIndex(_ index: ForkRipgrepIndex) { forkSearch.index = index }  // FORK: search
-
-    init() {
+    init(client: FSearchClient = FSearchClient()) {
         let homeDirectory = FileManager.default.homeDirectoryForCurrentUser
         self.homeDirectory = homeDirectory
         policy = FileSearchPolicy(
             scopes: FileSearchScope.defaultScopes, ignorePatterns: [],
             homeDirectory: homeDirectory)
-        forkDefaultOperation = true  // FORK: search
         debounce = .milliseconds(120)
+        self.client = client
         searchOperation = { query, filter, policy in
-            try await Task.detached(priority: .userInitiated) {
-                try FileSearchService.search(query: query, policy: policy, filter: filter)
+            guard query.isEmpty else {
+                return try await client.search(query: query, filter: filter, policy: policy)
+            }
+            return try await Task.detached(priority: .userInitiated) {
+                try FileSearchService.recents(policy: policy, filter: filter)
             }.value
         }
     }
@@ -59,6 +59,7 @@ final class FileSearchSession {
         policy: FileSearchPolicy, debounce: Duration,
         searchOperation: @escaping SearchOperation
     ) {
+        client = FSearchClient()
         homeDirectory = policy.homeDirectory
         self.policy = policy
         self.debounce = debounce
@@ -66,9 +67,10 @@ final class FileSearchSession {
     }
 
     /// Resolved here rather than per search, so glob compilation stays off the keystroke path.
-    func apply(scopes: [String], ignorePatterns: [String]) {
+    func apply(scopes: [String], ignorePatterns: [String], showsHidden: Bool = false) {
         let policy = FileSearchPolicy(
-            scopes: scopes, ignorePatterns: ignorePatterns, homeDirectory: homeDirectory)
+            scopes: scopes, ignorePatterns: ignorePatterns, homeDirectory: homeDirectory,
+            showsHidden: showsHidden)
         guard policy != self.policy else { return }
         self.policy = policy
         // A result found under the old rules must not publish, and the same query has to re-run.
@@ -80,7 +82,6 @@ final class FileSearchSession {
         let query = rawQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         let request = Request(query: query, filter: filter)
         guard request != self.request || state == .failed else { return }
-        forkSearch.cancel()  // FORK: search
         revision &+= 1
         self.request = request
         state = .searching
@@ -95,8 +96,9 @@ final class FileSearchSession {
         }
     }
 
+    func stop() { client.stop() }
+
     func cancel() {
-        forkSearch.cancel()  // FORK: search
         revision &+= 1
         pendingSearch = nil
         request = nil
@@ -106,7 +108,6 @@ final class FileSearchSession {
 
     /// A trashed row names a file that is gone, so it leaves the published results with it.
     func remove(_ result: FileSearchResult) {
-        forkSearch.remove(result.id)  // FORK: search
         results.removeAll { $0.id == result.id }
     }
 
@@ -118,21 +119,6 @@ final class FileSearchSession {
             pendingSearch = nil
             let request = pending.request
             do {
-                if forkDefaultOperation && ForkSearch.isEnabled
-                    && forkSearch.handles(request.query, policy: policy)
-                {  // FORK: search
-                    if forkSearch.awaitsIndex(policy: policy) { results = [] }
-                    try await forkSearch.search(
-                        query: request.query, policy: policy, filter: request.filter
-                    ) { [weak self] candidates in
-                        guard let self, self.revision == pending.revision, self.request == request else {
-                            return
-                        }
-                        self.results = candidates
-                        self.state = .ready
-                    }
-                    continue
-                }
                 let candidates = try await searchOperation(request.query, request.filter, policy)
                 guard revision == pending.revision, self.request == request else { continue }
                 results = candidates

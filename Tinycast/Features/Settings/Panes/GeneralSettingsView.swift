@@ -49,6 +49,10 @@ struct GeneralSettingsView: View {
                     SettingsRowTitle(.generalGeneral, "Show in menu bar")
                     Text("Shortcuts still work when hidden.")
                 }
+                Toggle(isOn: $settings.notchBarEnabled) {  // FORK: notch-bar
+                    SettingsRowTitle(.generalGeneral, "Show notch bar")
+                    Text("Shows the selected Ghostty tab at the top of the screen.")
+                }
                 Toggle(isOn: $settings.automaticallyCheckForUpdates) {
                     SettingsRowTitle(.generalGeneral, "Automatically check for updates")
                     Text("Check for Updates remains available when off.")

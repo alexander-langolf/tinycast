@@ -31,6 +31,7 @@ enum SettingsFileSchema {
         case .launcherShortcut:
             return shortcuts.binding(for: key, action: .togglePalette, name: "App Launcher")
         case .showInMenuBar: return bind(settings, \.showInMenuBar)
+        case .notchBarEnabled: return bind(settings, \.notchBarEnabled)  // FORK: notch-bar
         case .automaticallyCheckForUpdates: return bind(settings, \.automaticallyCheckForUpdates)
         case .popToRootTimeout: return bind(settings, \.popToRootTimeout)
         case .escapeKeyBehavior: return bind(settings, \.escapeKeyBehavior)
@@ -91,7 +92,7 @@ enum SettingsFileSchema {
         case .quickActionCommands: return launcher.commandsBinding(for: key, owner: .quickActions)
         // FORK: file-navigator
         case .fileNavigatorEditor: return bind(settings, \.fileNavigatorEditor)
-        case .fileSearchEngine: return bind(settings, \.fileSearchEngine)  // FORK: search
+        case .fileNavigatorEditorKind: return bind(settings, \.fileNavigatorEditorKind)  // FORK: monaco-editor
         case .fileSearchHidden: return bind(settings, \.fileSearchHidden)  // FORK: search
         case .fileNavigatorCommands: return launcher.commandsBinding(for: key, owner: .fileNavigator)
         case .fileSearchEnabled: return bind(settings, \.fileSearchEnabled)
@@ -179,6 +180,7 @@ extension InterfaceSize: SettingsFileRawValue {}
 extension HyperKeyPhysicalKey: SettingsFileRawValue {}
 extension HyperKeyQuickPress: SettingsFileRawValue {}
 extension CalcNumberStyle: SettingsFileRawValue {}
+extension FileNavigatorEditorKind: SettingsFileRawValue {}  // FORK: monaco-editor
 extension SearchSensitivity: SettingsFileRawValue {}
 extension QuicklinkSelectionFallback: SettingsFileRawValue {}
 extension WindowCycle: SettingsFileRawValue {}

@@ -86,12 +86,7 @@ Run against Tinycast Dev with Window mode set to Compact, then repeat with Reduc
 - Type one letter, then delete it: the results expand and collapse the same way.
 - With Reduce Motion: every resize is instant and the blocks only cross-fade.
 
-## Persistent field travel
+## Notch bar motion
 
-The fork presentation coordinator uses `PaletteMotion.handoffDuration` (0.34 seconds) and the
-non-bouncing window spring for uniform header scale and screen-space translation. A display link
-exists only during travel; reversal retargets current geometry and invalidates the old identity.
-The real editor stays at its active destination, unscaled and mounted. Body/footer reveal there
-through their existing slots. Reduce Motion completes geometry immediately, with no travel or
-completion-time focus reset. Dismissal ends the session before returning neutral presentation.
-See [persistent-launcher-field.md](persistent-launcher-field.md) for snapshot lifetime and focus.
+The notch bar owns its own slide (a path animation on the notch shape); the palette window has no
+travel animation. See [notch-bar.md](notch-bar.md).

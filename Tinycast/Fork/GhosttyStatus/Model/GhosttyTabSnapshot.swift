@@ -33,6 +33,19 @@ struct GhosttyTabSnapshot: Identifiable, Hashable, Sendable {
     let title: String?
     let terminals: [GhosttyTerminalSnapshot]
     let focusedTerminalID: String?
+    var isSelected = false
+
+    var titleText: String? {
+        let text = title?.trimmingCharacters(in: .whitespacesAndNewlines)
+        return text?.isEmpty == false ? text : nil
+    }
+
+    var directoryName: String? {
+        let directory = terminals.first(where: { $0.id == focusedTerminalID })?.workingDirectory
+        guard let directory, !directory.isEmpty else { return nil }
+        let name = URL(filePath: directory).lastPathComponent
+        return name.isEmpty ? nil : name
+    }
 
     var description: String {
         if let title = title?.trimmingCharacters(in: .whitespacesAndNewlines), !title.isEmpty {
@@ -106,24 +119,5 @@ enum GhosttyStatusReconciliation {
         currentApplication: GhosttyApplicationIdentity?
     ) -> Bool {
         requestGeneration == currentGeneration && requestedApplication == currentApplication
-    }
-}
-
-struct GhosttyStatusLayout: Sendable {
-    let visibleCount: Int
-    let overflowCount: Int
-
-    static func fit(
-        tabCount: Int, width: Double, launcherWidth: Double, cardWidth: Double,
-        overflowWidth: Double, gap: Double
-    ) -> Self {
-        let count = max(0, tabCount)
-        let available = max(0, width - launcherWidth - gap)
-        guard count > 0, cardWidth > 0 else { return Self(visibleCount: 0, overflowCount: count) }
-        let all = Int((available + gap) / (cardWidth + gap))
-        if all >= count { return Self(visibleCount: count, overflowCount: 0) }
-        let withOverflow = max(0, Int(max(0, available - overflowWidth) / (cardWidth + gap)))
-        let visible = min(count, withOverflow)
-        return Self(visibleCount: visible, overflowCount: count - visible)
     }
 }

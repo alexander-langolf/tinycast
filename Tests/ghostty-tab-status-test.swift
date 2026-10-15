@@ -33,14 +33,6 @@ struct GhosttyTabStatusTest {
         precondition(otherTab.agentKind(associations: [agent: .codex]) == nil)
         let inventory = GhosttyTabInventory(application: application, tabs: [tab, tab], readAt: .now)
         precondition(inventory.tabs.count == 1)
-        let fit = GhosttyStatusLayout.fit(
-            tabCount: 5, width: 300, launcherWidth: 30,
-            cardWidth: 100, overflowWidth: 30, gap: 5)
-        precondition(fit.visibleCount == 2 && fit.overflowCount == 3)
-        let narrow = GhosttyStatusLayout.fit(
-            tabCount: 1, width: 40, launcherWidth: 30,
-            cardWidth: 100, overflowWidth: 30, gap: 5)
-        precondition(narrow.visibleCount == 0 && narrow.overflowCount == 1)
         precondition(
             GhosttyStatusReconciliation.accepts(
                 requestGeneration: 2, currentGeneration: 2,

@@ -4,14 +4,10 @@ import AppKit
 struct GhosttyStatusDependencies {
     var currentTarget: () -> GhosttyApplicationTarget?
     var read: (GhosttyApplicationTarget) async -> GhosttyStatusState
-    var select: (GhosttyTabIdentity, GhosttyApplicationTarget) async -> Bool
-    var requestPermission: (GhosttyApplicationTarget) async -> Bool
 
     static var live: Self {
         .init(
-            currentTarget: GhosttyStatusService.currentTarget, read: GhosttyStatusService.read,
-            select: { await GhosttyStatusService.select($0, target: $1) },
-            requestPermission: GhosttyStatusService.requestPermission)
+            currentTarget: GhosttyStatusService.currentTarget, read: GhosttyStatusService.read)
     }
 }
 
@@ -24,11 +20,8 @@ final class GhosttyStatusCoordinator {
     @ObservationIgnored private let dependencies: GhosttyStatusDependencies
     @ObservationIgnored private var polling: Task<Void, Never>?
     @ObservationIgnored private var reading: Task<Void, Never>?
-    @ObservationIgnored private var selection: Task<Void, Never>?
-    @ObservationIgnored private var permission: Task<Void, Never>?
     @ObservationIgnored private var observers: [NotificationToken] = []
     @ObservationIgnored private var generation: UInt64 = 0
-    @ObservationIgnored private var selectionID: UInt64 = 0
     @ObservationIgnored private var pendingRefresh = false
     @ObservationIgnored private var started = false
     @ObservationIgnored private var resting = true
@@ -90,8 +83,6 @@ final class GhosttyStatusCoordinator {
     private func invalidate() {
         generation &+= 1
         reading?.cancel()
-        selection?.cancel()
-        permission?.cancel()
         pendingRefresh = canRefresh
     }
 
@@ -144,39 +135,6 @@ final class GhosttyStatusCoordinator {
         requestRefresh()
     }
 
-    func select(_ tab: GhosttyTabSnapshot) {
-        guard canRefresh, tabs.contains(where: { $0.id == tab.id }),
-            let target = dependencies.currentTarget(), target.identity == tab.id.application
-        else { return }
-        selection?.cancel()
-        selectionID &+= 1
-        let operation = selectionID
-        let request = generation
-        selection = Task { [weak self] in
-            guard let self, !Task.isCancelled, canRefresh, request == generation else { return }
-            let selected = await dependencies.select(tab.id, target)
-            guard !Task.isCancelled, operation == selectionID, request == generation else { return }
-            selection = nil
-            if !selected { requestRefresh() }
-        }
-    }
-
-    func requestPermission() {
-        guard canRefresh, permission == nil, case .permissionRequired = state,
-            let target = dependencies.currentTarget()
-        else { return }
-        let request = generation
-        permission = Task { [weak self] in
-            guard let self else { return }
-            let allowed = await dependencies.requestPermission(target)
-            permission = nil
-            guard !Task.isCancelled, canRefresh, request == generation,
-                dependencies.currentTarget()?.identity == target.identity
-            else { return }
-            if allowed { requestRefresh() }
-        }
-    }
-
     private func publish(_ state: GhosttyStatusState) {
         self.state = state
         onChange?()
@@ -210,7 +168,5 @@ final class GhosttyStatusCoordinator {
     isolated deinit {
         polling?.cancel()
         reading?.cancel()
-        selection?.cancel()
-        permission?.cancel()
     }
 }

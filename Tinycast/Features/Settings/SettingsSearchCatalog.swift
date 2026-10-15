@@ -130,6 +130,9 @@ enum SettingsSearchCatalog {
             .generalGeneral, "Show in menu bar",
             keywords: ["menubar", "status item", "icon", "hide"]),
         .init(
+            .generalGeneral, "Show notch bar",
+            keywords: ["notch", "top bar", "ghostty", "status", "hide"]),  // FORK: notch-bar
+        .init(
             .generalGeneral, "Automatically check for updates",
             keywords: ["software", "update", "automatic", "disable", "popup"]),
         .init(

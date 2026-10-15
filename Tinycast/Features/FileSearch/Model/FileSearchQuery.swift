@@ -10,23 +10,6 @@ enum FileSearchQuery {
         query.split(whereSeparator: \Character.isWhitespace).map(String.init)
     }
 
-    static func expression(
-        for query: String, excluding exclusions: [String] = [], filter: FileSearchFilter = .all,
-        forkFuzzy: Bool = false  // FORK: search
-    ) -> String? {
-        let terms = terms(in: query)
-        guard !terms.isEmpty else { return nil }
-        let matches = terms.map {  // FORK: search
-            ForkSearch.isEnabled
-                ? ForkSearch.spotlightNameClause($0, fuzzy: forkFuzzy)
-                : "kMDItemFSName == \"*\(escape($0))*\"cd"
-        }
-        // Excluding in the predicate keeps ignored files from consuming the candidate cap.
-        let excludes = exclusions.map { "kMDItemFSName != \"\(escapeGlob($0))\"cd" }
-        let types = filter.spotlightClause.map { [$0] } ?? []
-        return (matches + types + excludes).joined(separator: " && ")
-    }
-
     /// Both, because macOS stamps `kMDItemLastUsedDate` on few opens now, and Spotlight sorts on one.
     enum RecentStamp: String, CaseIterable, Sendable {
         case changed = "kMDItemFSContentChangeDate"
@@ -50,66 +33,17 @@ enum FileSearchQuery {
         return ([touched] + types + excludes).joined(separator: " && ")
     }
 
-    static func rank(
-        _ results: [FileSearchResult], for query: String, ignoring ignore: FileSearchIgnoreList
-    ) -> [FileSearchResult] {
-        let terms = terms(in: query)
-        guard !terms.isEmpty else { return [] }
-        if ForkSearch.isEnabled && !ForkSearch.isShort(query) {  // FORK: search
-            return ForkSearch.rankFiles(
-                results, query: query, limit: resultLimit, name: { $0.name }, folder: { $0.parentPath },
-                excluded: { isExcludedPath($0.id, ignoring: ignore) })
-        }
-        // Folded once each: a thousand candidates would otherwise re-fold every term per result.
-        let whole = FuzzyMatch.Query(query)
-        let folded = terms.map(FuzzyMatch.Query.init)
-        return results.filter { !isExcludedPath($0.id, ignoring: ignore) }.map { result in
-            let full = FuzzyMatch.score(whole, candidate: result.name)
-            let termScore = folded.compactMap { FuzzyMatch.score($0, candidate: result.name) }
-                .reduce(0, +)
-            return (result, full, termScore)
-        }
-        .sorted { left, right in
-            switch (left.1, right.1) {
-            case let (leftScore?, rightScore?) where leftScore != rightScore:
-                return leftScore > rightScore
-            case (_?, nil):
-                return true
-            case (nil, _?):
-                return false
-            default:
-                if left.2 != right.2 { return left.2 > right.2 }
-                let nameOrder = left.0.name.localizedCaseInsensitiveCompare(right.0.name)
-                if nameOrder != .orderedSame { return nameOrder == .orderedAscending }
-                return left.0.id.localizedCaseInsensitiveCompare(right.0.id) == .orderedAscending
-            }
-        }
-        .prefix(resultLimit)
-        .map(\.0)
-    }
-
-    static func matches(filename: String, query: String) -> Bool {
-        if ForkSearch.isEnabled {  // FORK: search
-            return ForkSearch.score(query, filename, profile: .fuzzy) != nil
-        }
-        return terms(in: query).allSatisfy { term in
-            filename.range(
-                of: term, options: [.caseInsensitive, .diacriticInsensitive]) != nil
-        }
-    }
-
     /// Hidden paths and bundle contents are what keep File Search permission-free.
-    static func isExcludedPath(_ path: String, ignoring ignore: FileSearchIgnoreList) -> Bool {
+    static func isExcludedPath(
+        _ path: String, ignoring ignore: FileSearchIgnoreList, showsHidden: Bool = false
+    ) -> Bool {
         let structural = path.split(separator: "/").contains { component in
-            (component.hasPrefix(".") && component != "." && component != "..")
+            let hidden = component.hasPrefix(".") && component != "." && component != ".."
+            let alwaysExcluded = component == ".git" || component == ".Trash"
+            return (hidden && (!showsHidden || alwaysExcluded))
                 || component.lowercased().hasSuffix(".app")
         }
         return structural || ignore.excludes(path: path)
-    }
-
-    /// A typed term is literal, so its wildcards are neutralized along with the string delimiters.
-    private static func escape(_ term: String) -> String {
-        quoting(term, escaping: ["\\", "\"", "*", "?"])
     }
 
     /// A user pattern keeps its `*`, since that is the one wildcard Spotlight evaluates.

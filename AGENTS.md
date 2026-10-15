@@ -106,8 +106,9 @@ feature's doc, under its own `## Invariants`.
 - **Generated files are never hand-edited.** `EmojiData.generated.swift` and
   `Resources/EmojiKeywords/` come from `node Scripts/gen-emoji.js`, `CurrencyData.generated.swift` from `node Scripts/gen-currencies.js`,
   `CountryZoneData.generated.swift` from `node Scripts/gen-countries.js`, and
-  `Resources/RaycastRuntime.generated.js` from `Scripts/raycast-runtime/build.mjs` — the runtime is
-  committed so building the app never needs Node.
+  `Resources/RaycastRuntime.generated.js` from `Scripts/raycast-runtime/build.mjs` and
+  `Resources/MonacoEditor/` from `Scripts/monaco-bundle/build.mjs` — both are committed so building the
+  app never needs Node.
 - **`DesignSystem/Scrolling/EdgeDissolve.swift` and `ThinScrollbar.swift` are off-limits.** Both are
   tuned by eye against the palette's floating bars, so any edit is a visual regression. Needing to touch
   one to fix a scroll bug means the real fix belongs elsewhere.

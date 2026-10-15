@@ -1,0 +1,82 @@
+## appcore
+  ~/github/tinycast/Tinycast/App/AppCore.swift
+  ~/github/aster/Vendor/SwiftTerm/Sources/SwiftTerm/Apple/Metal/CoreTextGlyphRasterizer.swift
+  ~/github/script-kit-next/src/app_launcher/core_types.rs
+  ~/work/mv_data_ops_api/src/app/cortex
+  ~/work/mv_data_ops_api/tests/app/cortex
+## palette window controller
+  ~/github/tinycast/Tinycast/Palette/PaletteWindowController.swift
+  ~/work/platform/lib/onboarding/onboarding_web/controllers/edit_member_details_controller.ex
+  ~/work/platform/lib/onboarding/onboarding_web/controllers/home_page_controller.ex
+  ~/work/platform/lib/platform_web/controllers/candidate/right_to_work_declaration_controller.ex
+  ~/work/_patterns_census/src/platform/lib/platform_web/controllers/candidate/right_to_work_declaration_controller.ex
+## config
+  ~/work/atlas/config
+  ~/work/platform/config
+  ~/work/hello_app/config
+  ~/work/ariel/js/config.js
+  ~/github/fx/src/core/config
+## readme.md
+  ~/work/dns/README.md
+  ~/github/fx/README.md
+  ~/work/ariel/README.md
+  ~/work/infra/README.md
+  ~/work/atlas/README.md
+## tinycast
+  ~/github/tinycast
+  ~/github/tinycast/Tinycast
+  ~/github/tinycast/TinycastCLI
+  ~/github/tinycast/Tinycast.xcodeproj
+  ~/github/tinycast/Tinycast/tinycast.icon
+## package.json stardust
+  ~/work/stardust-design-system/package.json
+  ~/work/stardust-design-system/apps/mcp/package.json
+  ~/work/stardust-design-system/packages/nova/package.json
+  ~/work/stardust-design-system/packages/core/package.json
+  ~/work/stardust-design-system/packages/react/package.json
+## swift fork search
+  ~/github/tinycast/Tinycast/Fork/Search/ForkFzf.swift
+  ~/github/tinycast/Tinycast/Fork/Search/ForkSearch.swift
+  ~/github/tinycast/Tinycast/Fork/Search/ForkRipgrepIndex.swift
+  ~/github/tinycast/Tinycast/Fork/Search/ForkRipgrepQuery.swift
+  ~/github/tinycast/Tinycast/Fork/Search/ForkRipgrepPolicy.swift
+## ^notes
+## button.tsx
+  ~/work/ariel/js/components/Button/Button.tsx
+  ~/github/tinycast/website/src/components/ui/button.tsx
+  ~/github/paseo/packages/app/src/components/ui/button.tsx
+  ~/Downloads/vcad-main/packages/app/src/components/ui/button.tsx
+  ~/work/_patterns_census/src/ariel/js/components/Button/Button.tsx
+## downloads pdf
+  ~/Downloads/INV-26.pdf
+  ~/Downloads/Harness.pdf
+  ~/Downloads/delivery_plan.pdf
+  ~/Downloads/VRT Initiative.pdf
+  ~/Downloads/unified frontend.pdf
+## zshrc
+  ~/github/paseo/fastlane/metadata/android/zh-CN/short_description.txt
+  ~/work/platform/lib/zoom/scheduled_jobs/update_recently_ended_zoom_meetings.ex
+  ~/work/platform/test/zoom/scheduled_jobs/update_recently_ended_zoom_meetings_test.exs
+  ~/work/_patterns_census/src/platform/lib/zoom/scheduled_jobs/update_recently_ended_zoom_meetings.ex
+  ~/work/_patterns_census/src/platform/test/zoom/scheduled_jobs/update_recently_ended_zoom_meetings_test.exs
+## run-tests
+  ~/github/tinycast/Scripts/run-tests.sh
+  ~/github/gstack/test/fixtures/arm-benchmark/bugfix-decoys/run-tests.js
+  ~/github/gstack/test/fixtures/arm-benchmark/crud-endpoint/run-tests.js
+  ~/github/screenpipe/apps/screenpipe-app-tauri/scripts/run-bun-tests.ts
+  ~/github/script-kit-next/tests/smoke/run-chat-tests.ts
+## Info.plist tinycast
+  ~/github/tinycast/Tinycast/Info.plist
+  ~/github/tinycast/Tinycast/Features/Dictation/Helper/Info.plist
+## claude.md
+  ~/work/atlas/CLAUDE.md
+  ~/work/curate/CLAUDE.md
+  ~/github/paseo/CLAUDE.md
+  ~/github/aster/CLAUDE.md
+  ~/github/kyotee/CLAUDE.md
+## ghostty
+  ~/github/aster/Vendor/Ghostty
+  ~/github/enso/macos/Enso/Ghostty
+  ~/github/aster/Sources/Aster/Ghostty
+  ~/github/aster/Prototypes/GhosttyPane
+  ~/github/enso/macos/Enso/Resources/ghostty

@@ -198,6 +198,8 @@ final class LauncherCoordinator {
             Task { await core.cameraCoordinator.show() }
         case .define:
             core.dictionaryCoordinator.show()
+        case .searchGoogle:
+            core.chromeSearchCoordinator.show()  // FORK: chrome-search
         case .openInBrowser, .runShellCommand:
             break  // Query-driven: each runs where the typed text is, never through this funnel.
         case .joinNextMeeting:

@@ -19,7 +19,6 @@ enum PaletteMotion {
     }
 
     /// The window's resize: no bounce, so the bottom edge settles without overshooting.
-    static let handoffDuration: TimeInterval = 0.34
     static let windowSpring = Spring(duration: 0.34, bounce: 0)
     /// A shrink waits this long, so the body and footer have faded before the edge passes them.
     static let collapseDelay: TimeInterval = 0.08

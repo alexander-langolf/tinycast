@@ -23,6 +23,7 @@ enum CommandID: String, CaseIterable, Sendable {
     case createCustomCommand = "command:create-custom-command"
     case searchCustomCommands = "command:search-custom-commands"
     case define = "command:define"
+    case searchGoogle = "command:search-google"  // FORK: chrome-search
     case joinNextMeeting = "command:join-next-meeting"
     case mySchedule = "command:my-schedule"
     case createEvent = "command:create-event"
@@ -72,6 +73,7 @@ enum CommandID: String, CaseIterable, Sendable {
         case .createCustomCommand: return "Create Custom Command"
         case .searchCustomCommands: return "Search Custom Commands"
         case .define: return "Define Word"
+        case .searchGoogle: return "Search Google"  // FORK: chrome-search
         case .joinNextMeeting: return "Join Next Meeting"
         case .mySchedule: return "My Schedule"
         case .createEvent: return "Create Event"
@@ -123,6 +125,7 @@ enum CommandID: String, CaseIterable, Sendable {
         case .createCustomCommand: return "terminal"
         case .searchCustomCommands: return "terminal"
         case .define: return "book.closed"
+        case .searchGoogle: return "globe"  // FORK: chrome-search
         case .joinNextMeeting: return "video.fill"
         case .mySchedule: return "calendar"
         case .createEvent: return "calendar.badge.plus"

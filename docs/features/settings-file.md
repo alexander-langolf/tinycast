@@ -37,9 +37,8 @@ optional arguments; it is mirrored through AppSettings but excluded from setting
 Navigator bookmarks/recent paths are bundle-local content, outside this mirror.
 
 <!-- // FORK: search -->
-`fileNavigator.searchHidden` (default `false`) adds or drops `rg --hidden` for the ripgrep index; `.git` is skipped either way.
-`fileNavigator.searchEngine` selects `spotlight` or `ripgrep`; the pane uses the same AppSettings
-property. An unset preference chooses ripgrep if found, otherwise Spotlight. See [ripgrep search](ripgrep-search.md).
+`fileNavigator.searchHidden` (default `false`) lists dotfiles and dot-folders in Search Files; `.git` and
+`.Trash` are skipped either way. It is mirrored through AppSettings and kept out of backups.
 
 ## Layout
 
@@ -100,6 +99,7 @@ because the app rewrites the file.
 {
   "general": {
     "showInMenuBar": true,
+    "showNotchBar": false,
     "automaticallyCheckForUpdates": true,
     "popToRootSeconds": 0,
     "escapeKeyBehavior": "navigateBackOrClose",

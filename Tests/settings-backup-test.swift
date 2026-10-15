@@ -47,6 +47,12 @@ struct SettingsBackupTest {
             "fileSearchEnabled rides the settings backup",
             mirrored["fileSearchEnabled"] == .fileSearchEnabled)
         check(
+            "the notch bar preference rides the settings backup",
+            mirrored["notchBarEnabled"] == .notchBarEnabled)
+        check(
+            "the editor kind rides the settings backup",
+            mirrored["fileNavigatorEditorKind"] == .fileNavigatorEditorKind)
+        check(
             "file search scopes ride the settings backup",
             mirrored["fileSearchScopes"] == .fileSearchScopes)
         check(

@@ -23,7 +23,7 @@ enum ForkSearch {
     static var isEnabled: Bool { enabled.withLock { $0 } }
     static func setEnabled(_ value: Bool) { enabled.withLock { $0 = value } }
 
-    /// Short clipboard queries keep recency; file queries use upstream ranking.
+    /// Short clipboard queries keep recency.
     static func isShort(_ query: String) -> Bool { query.filter { !$0.isWhitespace }.count <= 2 }
 
     static func terms(_ query: String, profile: Profile) -> [Term] {
@@ -228,74 +228,6 @@ enum ForkSearch {
                 let left = createdAt($0.element), right = createdAt($1.element)
                 return left != right ? left > right : $0.offset < $1.offset
             }.map(\.element)
-    }
-
-    static func mergePaths<T, ID: Hashable>(_ first: [T], _ additional: [T], id: (T) -> ID) -> [T] {
-        var seen = Set<ID>()
-        return (first + additional).filter { seen.insert(id($0)).inserted }
-    }
-
-    static func fileNeedsGlob(_ query: String) -> Bool {
-        terms(query, profile: .fuzzy).filter { !$0.negated }.reduce(0) { $0 + $1.text.count } >= 3
-    }
-
-    static func spotlightNameClause(_ token: String, fuzzy: Bool = true) -> String {
-        let term = terms(token, profile: .fuzzy)[0]
-        let escaped = term.text.map { "*?\\\"".contains($0) ? "\\" + String($0) : String($0) }
-        let body = escaped.joined(separator: term.exact || !fuzzy ? "" : "*")
-        let pattern = (term.prefix ? "" : "*") + body + (term.suffix ? "" : "*")
-        return "kMDItemFSName \(term.negated ? "!=" : "==") \"\(pattern)\"cd"
-    }
-
-    static func rankFiles<T>(
-        _ results: [T], query: String, limit: Int, name: (T) -> String, folder: (T) -> String,
-        excluded: (T) -> Bool
-    ) -> [T] {
-        let kept = results.filter { !excluded($0) }
-        return rankPaths(kept.map { (name($0), folder($0)) }, query: query)
-            .prefix(limit).map { kept[$0] }
-    }
-
-    static func rankPaths(_ items: [(name: String, folder: String)], query: String) -> [Int] {
-        let words = terms(query, profile: .fuzzy)
-        let scored = items.enumerated().compactMap { index, item -> (score: Int, length: Int, index: Int)? in
-            let path = item.folder + (item.folder.hasSuffix("/") ? "" : "/") + item.name
-            guard let score = fileScore(words, name: item.name, folder: item.folder, path: path)
-            else { return nil }
-            return (score, item.name.count, index)
-        }
-        return scored.sorted {
-            if $0.score != $1.score { return $0.score > $1.score }
-            if $0.length != $1.length { return $0.length < $1.length }
-            return $0.index < $1.index
-        }.map(\.index)
-    }
-
-    static func fileScore(
-        _ words: [Term], name: String, folder: String, path: String,
-        scheme: ForkFzf.Scheme = .standard
-    ) -> Int? {
-        guard words.contains(where: { !$0.negated }) else { return nil }
-        var total = 0
-        for word in words {
-            if word.negated {
-                if hit(word, in: name, scheme: scheme) != nil { return nil }
-            } else if word.text.contains("/") {
-                guard let result = hit(word, in: path, scheme: .path) else { return nil }
-                total += result.score
-            } else {
-                let filename = hit(word, in: name, scheme: scheme)
-                let dotless =
-                    name.hasPrefix(".") && !word.prefix
-                    ? hit(word, in: String(name.dropFirst()), scheme: scheme) : nil
-                let directory = hit(word, in: folder, scheme: scheme)
-                guard filename != nil || directory != nil else { return nil }
-                total += max(
-                    max(filename?.score ?? Int.min, dotless?.score ?? Int.min),
-                    directory.map { Int(Double($0.score) * 0.6) } ?? Int.min)
-            }
-        }
-        return total
     }
 
     /// Clipboard order: input arrives newest first; ties keep it. Off: unchanged.

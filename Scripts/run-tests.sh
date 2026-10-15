@@ -128,12 +128,6 @@ run() {
             case " $* " in *"/SearchRelevance.swift "*) ;; *) set -- "$@" Tinycast/Features/Launcher/Model/SearchRelevance.swift ;; esac
             ;;
     esac
-    # // FORK: harness-sources includes the two-query runner and the ripgrep index only for file-search sessions.
-    case " $* " in
-        *"/FileSearchSession.swift "*) set -- "$@" Tinycast/Fork/Search/ForkFileSearchService.swift \
-            Tinycast/Fork/Search/ForkFileSearchEngine.swift Tinycast/Fork/Search/ForkRipgrep*.swift \
-            Tinycast/Platform/ProcessExit.swift ;;
-    esac
     # // FORK: harness-sources adds shared fork files from several cases, so each is compiled once.
     local fork_unique=() fork_seen=" " fork_arg
     for fork_arg in "$@"; do
@@ -177,11 +171,9 @@ run fork-search-test Tinycast/Features/Launcher/Model/SearchRelevance.swift \
     Tinycast/Fork/Search/ForkFzf.swift Tinycast/Fork/Search/ForkSearch.swift \
     Tinycast/Features/FileSearch/Model/*.swift
 
-# // FORK: ripgrep-ranking pins that fuzzy queries spanning folder and filename still list the file.
-run ripgrep-ranking-test Tinycast/Features/Launcher/Model/SearchRelevance.swift \
-    Tinycast/Fork/Search/ForkFzf.swift Tinycast/Fork/Search/ForkSearch.swift \
-    Tinycast/Fork/Search/ForkRipgrepQuery.swift Tinycast/Fork/Search/ForkRipgrepPolicy.swift \
-    Tinycast/Features/FileSearch/Model/*.swift
+# // FORK: monaco-editor
+run monaco-editor-test Tinycast/Features/MonacoEditor/Model/*.swift \
+    Tinycast/Features/FileNavigator/Model/FileNavigatorEditorKind.swift
 
 # // FORK: file-navigator
 run file-navigator-test Tinycast/Features/FileNavigator/Model/*.swift \
@@ -196,6 +188,8 @@ run slow -O fuzz-test      $L/SearchRelevance.swift $L/ScriptRomanization.swift 
                            $L/LauncherRankingStore.swift $L/LauncherSuggestions.swift
 run file-search-test       $L/SearchRelevance.swift \
                            Tinycast/Features/FileSearch/Model/*.swift
+run fsearch-client-test    Tinycast/Features/FileSearch/Model/*.swift \
+                           Tinycast/Features/FileSearch/Service/FSearchClient.swift
 run file-search-session-test Tinycast/Platform/Signposts.swift \
                              $L/SearchRelevance.swift \
                              Tinycast/Features/FileSearch/Model/*.swift \
@@ -208,7 +202,8 @@ run window-switch-test     $L/SearchRelevance.swift \
 run index file-search-performance Tinycast/Platform/Signposts.swift \
                            $L/SearchRelevance.swift \
                            Tinycast/Features/FileSearch/Model/*.swift \
-                           Tinycast/Features/FileSearch/Service/FileSearchService.swift
+                           Tinycast/Features/FileSearch/Service/FileSearchService.swift \
+                           Tinycast/Features/FileSearch/Service/FSearchClient.swift
 run ranking-test           $L/SearchRelevance.swift $L/ScriptRomanization.swift \
                            $L/LauncherMatch.swift $L/LauncherRankingStore.swift
 run scopes-test            $L/SearchScopes.swift
@@ -315,8 +310,10 @@ run interface-size-test    Tinycast/Platform/Appearance.swift \
                            Tinycast/DesignSystem/InterfaceMetrics.swift \
                            Tinycast/Features/Settings/InterfaceSize.swift \
                            Tinycast/Features/Extensions/Model/ExtensionFormMetrics.swift
-# // FORK: persistent-launcher guards passive geometry and exactly-once active sessions.
-run persistent-launcher-test Tinycast/Fork/Palette/PersistentLauncherPolicy.swift Tinycast/Fork/Palette/PersistentLauncherGeometry.swift
+# // FORK: notch-bar guards notch geometry, transition identity and the status entry.
+run notch-test Tinycast/Fork/Notch/NotchGeometry.swift Tinycast/Fork/Notch/NotchPolicy.swift \
+                           Tinycast/Fork/Notch/NotchEntry.swift Tinycast/Fork/Notch/NotchBackdrop.swift \
+                           Tinycast/Fork/GhosttyStatus/Model/GhosttyTabSnapshot.swift
 run ghostty-tab-status-test Tinycast/Fork/GhosttyStatus/Model/GhosttyTabSnapshot.swift \
                            Tinycast/Fork/GhosttyStatus/Model/GhosttyAgentDetection.swift \
                            Tinycast/Fork/GhosttyStatus/Model/GhosttyScriptingCapabilities.swift
@@ -325,15 +322,6 @@ run ghostty-status-lifecycle-test Tinycast/Fork/GhosttyStatus/Model/*.swift \
                            Tinycast/Fork/GhosttyStatus/UI/GhosttyStatusCoordinator.swift \
                            Tinycast/Features/TerminalInstances/Service/TerminalGhosttyLauncher.swift \
                            Tinycast/Platform/NotificationToken.swift
-run persistent-launcher-input-test Tinycast/Platform/WindowLevel.swift \
-                           Tinycast/Fork/GhosttyStatus/Model/GhosttyTabSnapshot.swift \
-                           Tinycast/Platform/NotificationToken.swift \
-                           Tinycast/DesignSystem/Interaction/KeyboardFocus.swift \
-                           Tinycast/Palette/PalettePanel.swift \
-                           Tinycast/Fork/Palette/PersistentLauncherCoordinator.swift \
-                           Tinycast/Fork/Palette/PersistentLauncherPanel.swift \
-                           Tinycast/Fork/Palette/PersistentLauncherPolicy.swift \
-                           Tinycast/Fork/Palette/PersistentLauncherGeometry.swift
 run palette-placement-test Tinycast/Platform/Appearance.swift \
                            Tinycast/DesignSystem/Theme.swift \
                            Tinycast/DesignSystem/InterfaceMetrics.swift \
@@ -374,22 +362,6 @@ run palette-navigation-test Tinycast/Palette/PaletteState.swift \
                            Tinycast/Features/Quicklinks/Model/Quicklink.swift \
                            Tinycast/Features/Quicklinks/Model/QuicklinkDestination.swift \
                            Tinycast/Features/CustomCommands/Model/CustomCommand.swift
-run persistent-launcher-lifecycle-test Tinycast/Palette/PaletteCoordinator.swift \
-                           Tinycast/Fork/Palette/PersistentLauncherPolicy.swift \
-                           Tinycast/Palette/PaletteState.swift \
-                           Tinycast/Palette/PaletteMode.swift \
-                           Tinycast/Palette/HoverArming.swift \
-                           Tinycast/Features/Emoji/Model/EmojiCatalog.swift \
-                           Tinycast/Features/Clipboard/Model/ClipboardStore.swift \
-                           Tinycast/Features/Clipboard/Model/ClipboardFilter.swift \
-                           Tinycast/Features/Clipboard/Model/ClipboardFileKind.swift \
-                           Tinycast/Features/FileSearch/Model/FileSearchFilter.swift \
-                           Tinycast/Features/Clipboard/Model/ColorValue.swift \
-                           Tinycast/Features/Clipboard/Model/ColorFormat.swift \
-                           Tinycast/Features/Clipboard/Model/ColorSpaces.swift \
-                           Tinycast/Features/Quicklinks/Model/Quicklink.swift \
-                           Tinycast/Features/Quicklinks/Model/QuicklinkDestination.swift \
-                           Tinycast/Features/CustomCommands/Model/CustomCommand.swift
 run palette-filter-test    Tinycast/Palette/PaletteMode.swift \
                            Tinycast/Palette/PaletteFilterAction.swift \
                            Tinycast/Features/Quicklinks/Model/Quicklink.swift \
@@ -417,6 +389,13 @@ run fallback-test          Tinycast/Features/Launcher/Model/Fallback.swift \
                            Tinycast/Features/Snippets/Model/Snippet.swift
 run dictionary-test        Tinycast/Features/Dictionary/Model/DictionaryEntry.swift \
                            Tinycast/Features/Dictionary/Model/DictionaryMarkup.swift
+// FORK: chrome-search
+run chrome-google-search-test Tinycast/Fork/ChromeSearch/Model/*.swift \
+                           Tinycast/Fork/ChromeSearch/Service/ChromeHistoryReader.swift \
+                           Tinycast/Fork/ChromeSearch/Service/ChromeSearchSession.swift \
+                           Tinycast/Fork/ChromeSearch/Service/GoogleSearchHistoryStore.swift
+run chrome-history-test    Tinycast/Fork/ChromeSearch/Model/*.swift \
+                           Tinycast/Fork/ChromeSearch/Service/ChromeHistoryReader.swift
 run dictation-test         Tinycast/Features/Dictation/Model/DictationModel.swift Tinycast/Features/Dictation/Model/DictationIdleRelease.swift Tinycast/Features/Dictation/Model/DictationTextFormatter.swift
 run dictation-field-test   Tinycast/Features/Dictation/Model/DictationModel.swift \
                            Tinycast/Features/Dictation/Model/DictationMode.swift \

@@ -1,0 +1,90 @@
+## appcore
+  ~/github/tinycast/Tinycast/App/AppCore.swift
+  ~/github/tinycast/build/PersistentLauncher/Build/Intermediates.noindex/Tinycast.build/Debug/Tinycast.build/Objects-normal/arm64/AppCore.d
+  ~/github/tinycast/build/PersistentLauncher/Build/Intermediates.noindex/Tinycast.build/Debug/Tinycast.build/Objects-normal/arm64/AppCore.dia
+  ~/github/tinycast/build/PersistentLauncher/Build/Intermediates.noindex/Tinycast.build/Debug/Tinycast.build/Objects-normal/arm64/AppCore.o
+  ~/github/tinycast/build/PersistentLauncher/Build/Intermediates.noindex/Tinycast.build/Debug/Tinycast.build/Objects-normal/arm64/AppCore.swiftconstvalues
+## palette window controller
+  ~/github/tinycast/Tinycast/Palette/PaletteWindowController.swift
+  ~/github/tinycast/build/PersistentLauncher/Build/Intermediates.noindex/Tinycast.build/Debug/Tinycast.build/Objects-normal/arm64/PaletteWindowController.d
+  ~/github/tinycast/build/PersistentLauncher/Build/Intermediates.noindex/Tinycast.build/Debug/Tinycast.build/Objects-normal/arm64/PaletteWindowController.o
+  ~/github/tinycast/build/PersistentLauncherDerivedData/Build/Intermediates.noindex/Tinycast.build/Debug/Tinycast.build/Objects-normal/arm64/PaletteWindowController.d
+  ~/github/tinycast/build/PersistentLauncherDerivedData/Build/Intermediates.noindex/Tinycast.build/Debug/Tinycast.build/Objects-normal/arm64/PaletteWindowController.o
+## config
+  ~/.config
+  ~/github/script-kit-next/.config
+  ~/github/fx/src/core/agent/runtime/config.zig
+  ~/github/paseo/packages/cli/src/commands/daemon/config.ts
+  ~/github/paseo/packages/server/src/server/config.ts
+## readme.md
+  ~/LangolfVault/1 - Projects/FDE/evidence/process-catalog/README.md
+  ~/LangolfVault/1 - Projects/FDE/ontology/README.md
+  ~/LangolfVault/4 - Archives/FDE/ontology-experiments/README.md
+  ~/LangolfVault/4 - Archives/FDE/ontology-experiments/ontology-catalog-trial/README.md
+  ~/LangolfVault/4 - Archives/FDE/ontology-experiments/ontology-test-2/ontology/meta/awe/README.md
+## tinycast
+  ~/github/tinycast
+  ~/github/tinycast/Tinycast.xcodeproj
+  ~/LangolfVault/1 - Projects/Agent Infrastructure/Tinycast/Tinycast.md
+  ~/github/tinycast/Tinycast/Tinycast.entitlements
+  ~/LangolfVault/1 - Projects/Agent Infrastructure/Tinycast
+## package.json stardust
+  ~/work/_patterns_census/stardust/packages/metrics/src/__tests__/fixtures/test-project/package.json
+  ~/work/_patterns_census/stardust/packages/phoenix/package.json
+  ~/work/_patterns_census/stardust/packages/react/package.json
+  ~/work/_patterns_census/stardust/packages/react/vrt/package.json
+  ~/work/_mcp_probe/astra/node_modules/@multiverse-io/stardust/package.json
+## swift fork search
+  ~/github/tinycast/Tinycast/Fork/Search/ForkFzf.swift
+  ~/github/tinycast/Tinycast/Fork/Search/ForkRipgrepIndex.swift
+  ~/github/tinycast/Tinycast/Fork/Search/ForkRipgrepPolicy.swift
+  ~/github/tinycast/Tinycast/Fork/Search/ForkRipgrepQuery.swift
+  ~/github/tinycast/Tinycast/Fork/Search/ForkRipgrepProcess.swift
+## ^notes
+  ~/github/script-kit-next/notes
+  ~/github/script-kit-next/design/mockups/screens/notes
+  ~/github/script-kit-next/kit-init/scriptlets/notes
+  ~/github/script-kit-next/src/notes
+  ~/work/guidance_hub/src/server/actions/notes
+## button.tsx
+  ~/github/paseo/packages/app/src/components/ui/button.tsx
+  ~/github/paseo/packages/app/src/workspace/open-in-editor/button.tsx
+  ~/work/ariel/js/components/Button/Button.tsx
+  ~/work/hello_app/src/components/common/searchable-select/Button.tsx
+  ~/work/stardust-design-system/packages/react/src/components/button/button.tsx
+## downloads pdf
+  /Applications/Dash.app/Contents/Resources/Downloads_Template.pdf
+  ~/.cache/process-catalog/skill-scan/src/app/(shell)/dashboard/[scanId]/components/pdf-download-button.tsx
+  ~/work/_patterns_census/src/platform/test/platform/signatures/panda_doc_signed_pdf_download_test.exs
+  ~/work/platform/test/platform/signatures/panda_doc_signed_pdf_download_test.exs
+  ~/.cache/process-catalog/platform/test/platform/signatures/panda_doc_signed_pdf_download_test.exs
+## zshrc
+  ~/.zshrc
+  ~/.zshrc.bak-2026-07-31-1159
+  ~/.zshrc.bak-20261003
+  ~/.zshrc.bak-kittytitle
+  ~/.zshrc.pre-oh-my-zsh
+## run-tests
+  ~/github/tinycast/Scripts/run-tests.sh
+  ~/github/gstack/test/fixtures/arm-benchmark/bugfix-decoys/run-tests.js
+  ~/github/gstack/test/fixtures/arm-benchmark/crud-endpoint/run-tests.js
+  ~/.cargo/git/checkouts/proptest-1f80a76f161d5085/3dca198/proptest/test-persistence-location/run-tests.bat
+  ~/.cargo/git/checkouts/proptest-1f80a76f161d5085/3dca198/proptest/test-persistence-location/run-tests.sh
+## Info.plist tinycast
+  ~/github/tinycast/Tinycast/Info.plist
+  ~/github/tinycast/Tinycast/Features/Dictation/Helper/Info.plist
+  ~/github/tinycast/build/PersistentLauncher/info.plist
+  ~/github/tinycast/build/PersistentLauncherDerivedData/info.plist
+  ~/github/tinycast/build/PersistentLauncherInputDerivedData/info.plist
+## claude.md
+  ~/github/aster/CLAUDE.md
+  ~/github/paseo/CLAUDE.md
+  ~/github/paseo/packages/server/CLAUDE.md
+  ~/github/paseo-product-description/CLAUDE.md
+  ~/github/script-kit-next/CLAUDE.md
+## ghostty
+  /Applications/Ghostty.app
+  ~/github/enso/macos/Enso/Resources/ghostty/shell-integration/bash/ghostty.bash
+  ~/github/enso/macos/Enso/Resources/terminfo/67/ghostty
+  ~/github/aster/Sources/Aster/Ghostty
+  ~/github/aster/Vendor/Ghostty

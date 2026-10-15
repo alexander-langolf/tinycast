@@ -143,33 +143,25 @@ agentkit MCP ([Agentkit MCP](../../agentkit/README.md#agentkit-mcp)).
 
 ## Search
 
-The [ripgrep candidate experiment](features/ripgrep-search.md) supplies Search Files and navigator
-global words from one AppCore-owned home index, and navigator ⌘F from a streamed rg subtree listing.
-Settings → File Navigator selects Spotlight or ripgrep; discovery defaults to ripgrep when installed.
-No executable is bundled. Search includes dot entries, retains ignore patterns and `.gitignore`, and
-excludes `.git/`, home `Library/` and `.Trash/`; ⌘⇧. still controls direct folder listings only. These
-rules live in fork-owned search/navigator code with no additional upstream hook. The Spotlight
-retrieval bullets below apply to the fallback/Spotlight path.
-
-Ripgrep ranks the whole home-relative path using fzf v2's path scheme: slash/word/camel boundaries,
-consecutive runs and gap penalties determine score. Only equal scores use filename-position,
-whole-path length and input-order tie breakers; there is no filename tier or folder discount.
-Extended terms, including `/`, anchors and exclusions, apply to the relative path. One leading
-filename dot stays neutral for undotted, unanchored terms, preserving `.config` first for `config`.
-There is no fixed quality cutoff. A 200-candidate heap expands to the original 1,000 cap when metadata
-or type filtering leaves the page short. A ready home index bypasses both Spotlight passes; cold or
-failed indexing, external scopes and blank recents retain the documented Spotlight fallbacks.
+Search Files and navigator global words get their candidates from the local `fsearch` daemon through
+one long-lived `fsearch stdio` child that `FileSearchSession` owns (see
+[file-search.md](features/file-search.md)). This is the one external-tool dependency, in the same
+category as the `rg` the navigator's ⌘F scan still uses: nothing is bundled or linked, and a missing
+`fsearch` shows "File search is unavailable" with no fallback engine. fsearch's order is the ranking;
+the fork's fzf scorer below serves the launcher, clipboard, snippets, quicklinks and the navigator's
+in-folder filter. The blank-screen recents stay on Spotlight, since fsearch has no `mtime` sort.
+Settings → File Navigator shows the discovered `fsearch` path and whether it has Full Disk Access.
 
 Every list input matches with one fzf v2 scorer, fork-owned in `Tinycast/Fork/Search/`
 (`ForkFzf` scores, `ForkSearch` parses syntax and adapts it to upstream callers). `ForkSearch.setEnabled`
 is the switch, turned on in `ForkAppearance.start()`; off, every hook falls through to upstream behaviour.
-The scorer and syntax were settled in `prototype/fuzzy-search`; clipboard and file retrieval now
-follow the owner's revised fuzzy-search decision:
+The scorer and syntax were settled in `prototype/fuzzy-search`; clipboard retrieval follows the owner's
+revised fuzzy-search decision:
 
 - Words are ANDed in any order; fzf extended syntax: `'exact`, `^prefix`, `suffix$`, `!exclude`. No typo tolerance.
 - Every search surface uses the **fuzzy** profile (letters may be skipped); `'word` keeps an exact
   contiguous word. Clipboard positives must each clear the launcher's medium score bar, based on
-  that word's folded length. File root matching uses the same per-word `ForkSearch.score` bar.
+  that word's folded length.
   The item filter and OCR in-loop filter use `clipboardScore`; the clipboard union carries each
   item's score through pin handling and ranking, without scoring duplicates again.
 - Clipboard retrieval unions the full-history trigram FTS hits for positive words of 3+ letters
@@ -187,27 +179,9 @@ follow the owner's revised fuzzy-search decision:
   upstream's retrieval and insertion order. The scorer lowercases ASCII bytes directly and rejects
   absent subsequences before computing bonuses or alignment; non-ASCII characters keep the shared fold.
 - A query of only `!words` matches nothing. Lone syntax tokens (`!`, `'`, `^`, `$`) match literally.
-- File search keeps upstream's substring Spotlight query as the fast batch. Both batches apply
-  negated words to filenames only, through `!=` clauses; folder names never exclude a result.
-  Queries with 3+ positive letters start a separate subsequence-glob task after publishing the fast
-  batch, then merge the supplemental results by path and rerank the full union. Each query retains the
-  1,000-candidate cap; the final list retains the 200-row cap. fzf scores filename and folder separately
-  (folder weight 0.6), then breaks ties by shorter filename and incoming index. Short queries use
-  upstream ranking before the display cap, so an exact short filename survives unsorted candidates.
-  `'`, `^`, `$` and `!` produce exact, anchored or negated glob clauses.
-  Retrieval still queries filenames, so folder-only terms cannot discover extra paths on their own.
-  Positive terms containing `/` score against the joined path; the ready ripgrep index retrieves
-  them across parent/filename boundaries. Other terms keep filename/folder weights and exclusions.
-- Each file session owns a `ForkFileSearchService`, which awaits only the substring batch and owns
-  a separate task for the supplemental glob and merge. New requests and session cancellation cancel
-  that task immediately; the session worker can then process the next request without waiting for
-  the old glob. A fork revision also prevents a superseded substring batch from starting a glob.
-  Both publications stay behind the session's existing revision/request guards. Injected harness
-  operations, blank-screen recents and switch-off behaviour stay upstream. A supplemental failure
-  retains the fast results. Synchronous Spotlight calls cannot be interrupted mid-execution; their
-  detached work may finish after cancellation, but the obsolete merge never publishes or blocks the
-  next request. The spike in `docs/fork-search-spike.md` remains historical evidence that glob
-  retrieval is slower; it is a supplement to the fast query.
+- File search sends the typed words to fsearch untouched, pushing only the type filter, and enforces
+  scopes, ignore patterns, hidden paths and `~/Library` locally on the returned paths before the 200-row
+  cap; a full page that filtering leaves short is re-queried once with a larger limit.
 - Plain substring filters in Uninstall, calculator history, AI chat lists, window layouts and settings
   lists are unchanged.
 
@@ -255,15 +229,11 @@ rows, capped at the standard height) and a footer policy (`.shown`, or `.hidden`
 acting). `PalettePresentationResolver` maps the active mode and query to one; the `$` terminal
 command declares `.bar` with a hidden footer. See [palette-presentation.md](features/palette-presentation.md).
 
-## Persistent launcher field
+## Notch bar
 
-`AppCore.persistentLauncher` owns the fork passive panel and presentation state. The inactive field
-is a compact Ghostty tab status bar in the former half-scale footprint, top-centred below
-menu/notch-safe space. Invocation gives
-key status to the existing mounted palette editor at its normal destination and hands off one
-travelling header; dismissal ends the session immediately and returns the status bar to rest.
-See [persistent-launcher-field.md](features/persistent-launcher-field.md) for lifecycle boundaries,
-geometry and the automated/runtime evidence split.
+`AppCore.notchBar` owns a passive panel at the top of the primary display that slides out of the
+notch and retracts while the launcher is active. The palette shows and hides directly. See
+[notch-bar.md](features/notch-bar.md).
 
 `AppCore.ghosttyStatus` owns the external Ghostty inventory and bounded polling. Its pure tab model
 keeps Ghostty tab IDs distinct from agent runs. The [status feature note](features/ghostty-tab-status.md)
@@ -324,6 +294,14 @@ Hand to an agent v1 only copies an absolute-path context block; it dispatches no
 The path reducer and harness port only Nav's `parseInput` / `reducePath` / `actionsFor` behavior
 from `proto/file-navigator`; no prototype UI, fake filesystem or alternate navigation model is copied.
 See [file-navigator.md](features/file-navigator.md) for ownership, keys, bounds and runtime gaps.
+
+### Monaco editor
+
+`Tinycast/Features/MonacoEditor/` and `Windows/MonacoEditor/` are fork-owned: an opt-in Edit target for the
+File Navigator, hosted in an offline WKWebView. Hooks, each marked `// FORK: monaco-editor`: the editor-kind
+setting (`AppSettings`, `AppSettingsKey`, `SettingsFileKey`/`SettingsFileSchema`, backup coverage), the Edit
+branch in `FileNavigatorCoordinator.run`, and the two lazy owners on `AppCore`. The page bundle is
+generated by `Scripts/monaco-bundle`. See [monaco-editor.md](features/monaco-editor.md).
 The harness is registered but implementation-session execution is prohibited.
 
 `Tinycast.xcodeproj/project.pbxproj` is an explicit **generated exception** to inline hook markers:
@@ -422,6 +400,14 @@ The next show retries warming, including when the current chat has a transcript.
 chats remain excluded. Prewarm cancellation and operation identity reject stale results; connection
 and any tool-list relaunch finish before warming starts. Termination cancels owned prewarming.
 
+## Search Google
+
+`Tinycast/Fork/ChromeSearch/` is fork-owned. The Search Google command opens a palette screen
+(`.googleSearch`) that suggests as you type, with local history and matching pages from Chrome's
+history, read from a private copy. ↵ and ⌘↵ open Google's results
+page in Chrome as a new tab, and the fallback does the same for the typed launcher query. Tinycast
+never scripts Chrome. See [chrome-google-search.md](features/chrome-google-search.md).
+
 ## Merge playbook
 
 1. Work from `main` and run `git merge upstream/main`. Never rebase.
@@ -460,7 +446,7 @@ launcher changes live there without upstream hooks. The generated pbxproj except
 | `Tinycast/App/AppCore.swift` | `// FORK: search` | Own/wire the home index; refresh on palette opening, invalidate on preference changes, stop at quit and rerun visible searches. |
 | `Tinycast/Features/Settings/AppSettings.swift` | `// FORK: search` | Load/persist the engine preference and choose its discovery-dependent default. |
 | `Tinycast/Features/Settings/AppSettingsKey.swift` | `// FORK: search` | Name the bundle-local experimental engine preference. |
-| `Tinycast/Features/Settings/Model/SettingsFileKey.swift` | `// FORK: search` | Declare fileNavigator.searchEngine and fileNavigator.searchHidden. |
+| `Tinycast/Features/Settings/Model/SettingsFileKey.swift` | `// FORK: search` | Declare fileNavigator.searchHidden. |
 | `Tinycast/Features/Settings/SettingsFileSchema.swift` | `// FORK: search` | Bind the engine mirror. |
 | `Tinycast/Features/Settings/SettingsAnchor.swift` | `// FORK: search` | Search/scroll anchor for the fork-owned engine picker. |
 | `Tinycast/Features/Backup/Model/SettingsBackupCoverage.swift` | `// FORK: search` | Exclude the machine-dependent experiment from backups. |
@@ -504,10 +490,10 @@ launcher changes live there without upstream hooks. The generated pbxproj except
 | `Tinycast/Features/TerminalInstances/Service/TerminalProcess.swift` | `// FORK: claude-session-chat` | Spawn an executable directly with supplied arguments and environment; capture its raw output without shell marks while preserving shell instances. |
 | `Scripts/run-tests.sh` | `// FORK: agent-runs` | Register the AgentRuns decoding harness. |
 | `Tinycast/App/AppDelegate.swift` | `// FORK: previews` | Skip AppCore start and termination work when Xcode's canvas hosts the app. |
-| `Tinycast/App/AppCore.swift` | `// FORK: agent-runs` | Own the monitor, coordinator and presenter; stop work at termination. |
+| `Tinycast/App/AppCore.swift` | `// FORK: agent-runs` | Own the monitor and coordinator; stop work at termination. |
 | `Tinycast/Features/CustomCommands/Service/ShellCommandRunner.swift` | `// FORK: agent-runs` | Allow a per-call stdout limit for complete status JSON, preserving the default. |
 | `Tinycast/Palette/PaletteEnvironment.swift` | `// FORK: agent-runs` | Inject the AgentRuns coordinator into the hosted stack. |
-| `Tinycast/Palette/PaletteWindowController.swift` | `// FORK: agent-runs` | Forward palette visibility and geometry events to the feature. |
+| `Tinycast/Palette/PaletteWindowController.swift` | `// FORK: agent-runs` | Forward palette visibility events to the feature. |
 | `Scripts/run-tests.sh` | `// FORK: fork-search` | Register the fork search harness with the real file-query models. |
 | `Tinycast/Features/Launcher/Model/SearchRelevance.swift` | `// FORK: search` | `FuzzyMatch.match` answers via fzf, tiers kept. |
 | `Tinycast/Features/Launcher/Model/LauncherMatch.swift` | `// FORK: search` | Launcher alignment and sensitivity via fzf. |
@@ -517,14 +503,9 @@ launcher changes live there without upstream hooks. The generated pbxproj except
 | `Tinycast/Features/FileSearch/Model/FileSearchQuery.swift` | `// FORK: search` | Optional supplemental glob, fuzzy root matching and filename/folder ranking. |
 | `Tinycast/Features/FileSearch/Service/FileSearchService.swift` | `// FORK: search` | Run either predicate and return batches before the display cap for the merge. |
 | `Tinycast/Features/FileSearch/Service/FileSearchSession.swift` | `// FORK: search` | Attach the shared index and route production nonblank queries to the fork service; injected operations and recents remain upstream. |
-| `Tinycast/App/AppCore.swift` | `// FORK: persistent-launcher` | Own, start, reconcile and stop the passive presentation coordinator. |
-| `Tinycast/App/AppCore.swift` | `// FORK: notch-status-bar` | Own, start and stop Ghostty status observation. |
-| `Tinycast/Palette/PalettePanel.swift` | `// FORK: persistent-launcher` | Establish native search focus synchronously before immediate typing. |
-| `Tinycast/Palette/PaletteWindowController.swift` | `// FORK: persistent-launcher` | Logical sessions, mounted-editor handoff, guarded focus, reverse dismissal and teardown. |
-| `Tinycast/Palette/PaletteCoordinator.swift` | `// FORK: persistent-launcher` | Ignore duplicate inactive hides before cancelling searches. |
-| `Tinycast/Palette/RootPaletteView.swift` | `// FORK: persistent-launcher` | Reveal body/footer only after header travel; retain the real editor. |
-| `Tinycast/Windows/AgentRuns/AgentRunsPanelPresenter.swift` | `// FORK: persistent-launcher` | Gate observed child-window updates on settled active presentation. |
-| `Scripts/run-tests.sh` | `// FORK: persistent-launcher` | Compile the shipped pure presentation slices and coordinator lifecycle harness. |
+| `Tinycast/App/AppCore.swift` | `// FORK: notch-bar` | Own the notch bar and Ghostty status; the `notchBarEnabled` switch starts and stops both. |
+| `Tinycast/Palette/PaletteWindowController.swift` | `// FORK: notch-bar` | Report session start and end to the notch bar. |
+| `Scripts/run-tests.sh` | `// FORK: notch-bar` | Compile the notch geometry, policy and status-entry harness. |
 | `Scripts/run-tests.sh` | `// FORK: ripgrep-ranking` | Register the existing whole-path file ranking regression harness. |
 | `Tinycast/Features/FileSearch/UI/FileSearchCoordinator.swift` | `// FORK: file-navigator` | Route folder activation to the existing File Navigator. |
 | `docs/features/file-search.md` | `// FORK: file-navigator` | Document existing folder activation and File Navigator actions. |
@@ -665,6 +646,15 @@ launcher changes live there without upstream hooks. The generated pbxproj except
 | `Tinycast/Features/Settings/SettingsAnchor.swift` | `// FORK: appearance-pane` | Point `generalAppearance` at the Appearance pane, titled General. |
 | `Tinycast/Features/Settings/SettingsSearchCatalog.swift` | `// FORK: appearance-pane` | List the pane, its sections and every token row. |
 | `Tinycast/Features/Settings/Panes/GeneralSettingsView.swift` | `// FORK: appearance-pane` | Drop the Appearance section; make `WindowModeRow` and `InterfaceSizeRow` internal for the fork pane. |
+| `Tinycast/App/AppCore.swift` | `// FORK: chrome-search` | Own the Search Google session (with its Chrome history reader), history and its lazy coordinator. |
+| `Tinycast/Palette/PaletteMode.swift` | `// FORK: chrome-search` | Add the `googleSearch` mode with its symbol and placeholder. |
+| `Tinycast/Palette/PaletteEnvironment.swift` | `// FORK: chrome-search` | Inject the Search Google session into the palette. |
+| `Tinycast/Palette/RootPaletteView.swift` | `// FORK: chrome-search` | Route the screen; feed the query to the session, and reset it on leaving the mode or hiding. |
+| `Tinycast/Features/Launcher/Model/CommandID.swift` | `// FORK: chrome-search` | Register Search Google with its title and symbol. |
+| `Tinycast/Features/Launcher/Model/Fallback.swift` | `// FORK: chrome-search` | Add the Search Google fallback, its command and open verb. |
+| `Tinycast/Features/Launcher/UI/LauncherCoordinator.swift` | `// FORK: chrome-search` | Dispatch the Search Google command. |
+| `Tinycast/Features/Launcher/UI/FallbackCoordinator.swift` | `// FORK: chrome-search` | Open the typed query on Google in Chrome; gate it on the command's visibility. |
+| `Scripts/run-tests.sh` | `// FORK: chrome-search` | Register the Search Google harness. |
 
 ## Refactor inventory
 

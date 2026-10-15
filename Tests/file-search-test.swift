@@ -34,35 +34,23 @@ struct FileSearchTests {
     }
 
     static func queryGrammar() {
+        let policy = FileSearchPolicy(
+            scopes: ["~"], ignorePatterns: [], homeDirectory: home)
         expect(
             FileSearchQuery.terms(in: "  annual\treport  ") == ["annual", "report"],
             "terms split on whitespace")
-        expect(FileSearchQuery.expression(for: " \n ") == nil, "empty input creates no query")
         expect(
-            FileSearchQuery.expression(for: "annual report")
-                == "kMDItemFSName == \"*annual*\"cd && kMDItemFSName == \"*report*\"cd",
-            "every term must occur in the filename")
-        let escaped = FileSearchQuery.expression(for: #"a\b\"c*d?e"#)
-        let expected =
-            "kMDItemFSName == \"*a" + String(repeating: "\\", count: 2) + "b"
-            + String(repeating: "\\", count: 3) + "\"c\\*d\\?e*\"cd"
+            FSearchQuery.text(words: " \n ", filter: .all, policy: policy) == nil,
+            "empty input creates no query")
         expect(
-            escaped == expected,
-            "query metacharacters are escaped: \(String(reflecting: escaped)) != \(String(reflecting: expected))"
-        )
+            FSearchQuery.text(words: "annual report", filter: .all, policy: policy)
+                == "annual report",
+            "typed words pass through untouched; scopes are enforced locally")
+        let cleared = FileSearchPolicy(scopes: [], ignorePatterns: [], homeDirectory: home)
         expect(
-            FileSearchQuery.expression(for: "report", excluding: ["*.tmp", "*.log"])
-                == "kMDItemFSName == \"*report*\"cd && kMDItemFSName != \"*.tmp\"cd"
-                + " && kMDItemFSName != \"*.log\"cd",
-            "ignored name globs keep their wildcards and join the expression as exclusions")
-        expect(FileSearchQuery.candidateLimit == 1_000, "the Spotlight candidate cap is fixed")
+            FSearchQuery.text(words: "report", filter: .all, policy: cleared) == nil,
+            "a cleared scope list searches nothing")
         expect(FileSearchQuery.resultLimit == 200, "the displayed result cap is fixed")
-        expect(
-            FileSearchQuery.matches(filename: "Résumé Final.pdf", query: "resume final"),
-            "home-root matching mirrors case- and diacritic-insensitive Spotlight terms")
-        expect(
-            !FileSearchQuery.matches(filename: "Annual Notes.pdf", query: "annual report"),
-            "every term is required for a home-root match")
     }
 
     static func recents() {
@@ -87,19 +75,21 @@ struct FileSearchTests {
     }
 
     static func typeFilter() {
+        let policy = FileSearchPolicy(
+            scopes: ["~", "/Volumes/Data"], ignorePatterns: [], homeDirectory: home)
         expect(
-            FileSearchQuery.expression(for: "report", filter: .all)
-                == FileSearchQuery.expression(for: "report"),
-            "an unfiltered search asks Spotlight exactly what it always has")
+            FSearchQuery.text(words: "report", filter: .images, policy: policy) == "report type:image",
+            "a typed filter becomes fsearch's type word")
         expect(
-            FileSearchQuery.expression(for: "report", filter: .images)
-                == "kMDItemFSName == \"*report*\"cd && kMDItemContentTypeTree == \"public.image\"",
-            "a single-type filter joins the expression as one clause")
+            FSearchQuery.text(words: "report", filter: .folders, policy: policy) == "report",
+            "Folders has no fsearch type, so it is answered from the hit's kind")
         expect(
-            FileSearchQuery.expression(for: "report", excluding: ["*.tmp"], filter: .folders)
-                == "kMDItemFSName == \"*report*\"cd && kMDItemContentTypeTree == \"public.folder\""
-                + " && kMDItemFSName != \"*.tmp\"cd",
-            "the type clause sits between the name terms and the ignored names")
+            FileSearchFilter.folders.admits(isDirectory: true)
+                && !FileSearchFilter.folders.admits(isDirectory: false)
+                && FileSearchFilter.documents.admits(isDirectory: false)
+                && !FileSearchFilter.documents.admits(isDirectory: true)
+                && FileSearchFilter.all.admits(isDirectory: true),
+            "folders keep directories; typed filters keep files")
         expect(
             FileSearchFilter.documents.spotlightClause?.hasPrefix("(") == true,
             "a filter naming several types parenthesizes them, so the OR cannot leak")
@@ -267,40 +257,58 @@ struct FileSearchTests {
     }
 
     static func ranking() {
-        let shipped = FileSearchIgnoreList(patterns: FileSearchIgnoreList.defaults)
-        let candidates = [
-            result("Archive/Report Annual.txt"),
-            result("Archive/My Annual Report.txt"),
-            result("Archive/Annual Report", folder: true),
-            result("Archive/Annual Reporting Notes.txt")
+        let policy = FileSearchPolicy(scopes: ["~"], ignorePatterns: ["*.tmp"], homeDirectory: home)
+        let root = home.standardizedFileURL.path
+        func hit(_ path: String, dir: Bool = false) -> FSearchHit {
+            FSearchHit(path: root + "/" + path, isDirectory: dir)
+        }
+        let hits = [
+            hit("Archive/b.txt"), hit(".config/x.txt"), hit("Apps/Tool.app"), hit("Apps/Tool.app/readme.txt"),
+            hit("proj/node_modules/a.txt"), hit("Archive/skip.tmp"), hit("Library/Caches/c.txt"),
+            hit("Library/CloudStorage/Drive/d.txt"), hit(".git/config"), hit("Archive/a.txt"),
+            FSearchHit(path: "/opt/outside.txt", isDirectory: false), hit("Archive/Folder", dir: true)
         ]
-        let ranked = FileSearchQuery.rank(candidates, for: "annual report", ignoring: shipped)
-            .map(\.name)
-        expect(ranked.first == "Annual Report", "an exact filename ranks first")
+        let rows = FSearchQuery.rows(from: hits, requested: 400, policy: policy, filter: .all)
         expect(
-            ranked.firstIndex(of: "Annual Reporting Notes.txt")!
-                < ranked.firstIndex(of: "My Annual Report.txt")!,
-            "a prefix beats a later word-start match")
-        expect(ranked.last == "Report Annual.txt", "reversed terms remain present but rank last")
+            rows.results.map(\.name) == ["b.txt", "d.txt", "a.txt", "Folder"],
+            "fsearch order is kept; hidden, bundles, ignored, Library and out-of-scope rows drop: \(rows.results.map(\.name))"
+        )
+        let hidden = FileSearchPolicy(
+            scopes: ["~"], ignorePatterns: [], homeDirectory: home, showsHidden: true)
+        let shown = FSearchQuery.rows(
+            from: [hit(".config/x.txt"), hit(".git/config"), hit(".Trash/t.txt")], requested: 400,
+            policy: hidden, filter: .all)
+        expect(
+            shown.results.map(\.name) == ["x.txt"], "hidden search keeps dotfiles but never .git or .Trash")
+        let folders = FSearchQuery.rows(from: hits, requested: 400, policy: policy, filter: .folders)
+        expect(folders.results.map(\.name) == ["Folder"], "the Folders filter keeps only directories")
 
-        let ties = FileSearchQuery.rank(
-            [result("zeta/report.txt"), result("alpha/Report.txt")], for: "report",
-            ignoring: shipped)
-        expect(
-            ties.map(\.parentPath) == ["~/alpha", "~/zeta"],
-            "equal names have a deterministic path tie-break")
+        let capped = (0..<205).map { hit("Archive/Report \($0).txt") }
+        let full = FSearchQuery.rows(from: capped, requested: 400, policy: policy, filter: .all)
+        expect(full.results.count == 200 && !full.mayHaveMore, "rows are capped at 200")
+        let short = FSearchQuery.rows(
+            from: Array(repeating: hit("proj/node_modules/z.txt"), count: 10), requested: 10,
+            policy: policy, filter: .all)
+        expect(short.results.isEmpty && short.mayHaveMore, "a full page filtered short asks for more")
+        let exhausted = FSearchQuery.rows(
+            from: [hit("proj/node_modules/z.txt")], requested: 400, policy: policy, filter: .all)
+        expect(!exhausted.mayHaveMore, "a partial page has nothing more to ask for")
 
-        let capped = (0..<205).map { result("Archive/Report \($0).txt") }
+        let direct = FileSearchPolicy(
+            scopes: ["~/Library/Foo"], ignorePatterns: [], homeDirectory: home)
         expect(
-            FileSearchQuery.rank(capped, for: "report", ignoring: shipped).count == 200,
-            "ranking publishes no more than the display cap")
-
+            direct.admits(path: root + "/Library/Foo/a.txt")
+                && !direct.admits(path: root + "/Documents/a.txt"),
+            "a Library folder the user named is admitted")
+        let found = FSearchLocator.locate(
+            home: home, path: "/nope:/usr/local/bin", isExecutable: { $0 == "/usr/local/bin/fsearch" })
+        expect(found?.path == "/usr/local/bin/fsearch", "PATH is searched when the install dir is empty")
+        let installed = FSearchLocator.locate(
+            home: home, path: "/usr/local/bin", isExecutable: { _ in true })
+        expect(installed?.path == home.appending(path: ".local/bin/fsearch").path, "the install dir wins")
         expect(
-            FileSearchQuery.rank(
-                [result("Archive/report.txt")], for: "report",
-                ignoring: FileSearchIgnoreList(patterns: ["Archive"])
-            ).isEmpty,
-            "ranking drops what the user's own patterns exclude")
+            FSearchLocator.locate(home: home, path: "", isExecutable: { _ in false }) == nil,
+            "none found is nil")
     }
 
     static func previewKind() {

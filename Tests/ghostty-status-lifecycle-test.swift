@@ -9,7 +9,6 @@ struct GhosttyStatusLifecycleTests {
             preconditionFailure("Apple Event descriptor construction failed: \(error)")
         }
         await lifecycle()
-        await permission()
         await cancelledQueue()
         print("Ghostty status lifecycle, coalescing and queued cancellation passed")
     }
@@ -86,30 +85,6 @@ struct GhosttyStatusLifecycleTests {
         precondition(coordinator.tabs.isEmpty && reader.maxReads == 1)
     }
 
-    static func permission() async {
-        let reader = Reader()
-        let coordinator = GhosttyStatusCoordinator(dependencies: reader.dependencies)
-        coordinator.start(observeLifecycle: false)
-        await until { reader.readCount == 1 }
-        reader.complete(.permissionRequired)
-        await until { !coordinator.isReading }
-        coordinator.requestPermission()
-        coordinator.requestPermission()
-        await until { reader.permissionCount == 1 }
-        coordinator.requestRefresh()
-        await until { reader.readCount == 2 }
-        reader.permissionContinuation?.resume(returning: true)
-        reader.permissionContinuation = nil
-        await Task.yield()
-        precondition(reader.activeReads == 1)
-        reader.complete(.empty)
-        await until { reader.readCount == 3 }
-        reader.complete(.empty)
-        await until { !coordinator.isReading }
-        precondition(reader.maxReads == 1)
-        coordinator.stop()
-    }
-
     static func cancelledQueue() async {
         let queue = DispatchQueue(label: "ghostty-test-queue")
         let gate = DispatchSemaphore(value: 0)
@@ -152,9 +127,7 @@ private final class Reader {
     var readCount = 0
     var activeReads = 0
     var maxReads = 0
-    var permissionCount = 0
     var continuation: CheckedContinuation<GhosttyStatusState, Never>?
-    var permissionContinuation: CheckedContinuation<Bool, Never>?
 
     var dependencies: GhosttyStatusDependencies {
         .init(
@@ -166,10 +139,6 @@ private final class Reader {
                 let result = await withCheckedContinuation { self.continuation = $0 }
                 self.activeReads -= 1
                 return result
-            }, select: { _, _ in false },
-            requestPermission: { _ in
-                self.permissionCount += 1
-                return await withCheckedContinuation { self.permissionContinuation = $0 }
             })
     }
 

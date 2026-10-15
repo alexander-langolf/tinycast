@@ -24,7 +24,7 @@ open with an `## Invariants` section; read it before changing anything in that a
 
 [palette](features/palette.md) ·
 <!-- // FORK: file-navigator --> [File Navigator](features/file-navigator.md) ·
-<!-- // FORK: search --> [ripgrep search](features/ripgrep-search.md) ·
+<!-- // FORK: monaco-editor --> [Monaco editor](features/monaco-editor.md) ·
 [launcher](features/launcher.md) ·
 [AI providers and chat](features/ai.md) ·
 [quick actions](features/quick-actions.md) ·
@@ -34,6 +34,7 @@ open with an `## Invariants` section; read it before changing anything in that a
 [camera](features/camera.md) ·
 [emoji](features/emoji.md) ·
 [dictionary](features/dictionary.md) ·
+[search google](features/chrome-google-search.md) ·
 [file search](features/file-search.md) ·
 [menu search](features/menu-search.md) ·
 [notes](features/notes.md) ·

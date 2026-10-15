@@ -15,6 +15,7 @@ struct RootPaletteView: View {
     @Environment(FileNavigatorCoordinator.self) private var fileNavigator  // FORK: file-navigator
     @Environment(FileSearchSession.self) private var fileSearch
     @Environment(DictionarySession.self) private var dictionary
+    @Environment(ChromeSearchSession.self) private var chromeSearch  // FORK: chrome-search
     @Environment(MenuSearchSession.self) private var menuSearch
     @Environment(WindowSwitchSession.self) private var windowSwitch
     @Environment(CalendarStore.self) private var calendarStore
@@ -52,9 +53,6 @@ struct RootPaletteView: View {
     private var presentation: PalettePresentation {
         PalettePresentationResolver.current(mode: vm.mode, query: vm.query)
     }
-
-    // FORK: persistent-launcher
-    private var showsActiveContent: Bool { core.persistentLauncher.policy.phase == .active }
 
     /// The current mode's screen: its rows are the visible order the flat selection indexes.
     private var screen: any PaletteScreen {
@@ -144,6 +142,8 @@ struct RootPaletteView: View {
                 vm: vm, openActions: openActions, metrics: metrics)
         case .dictionary:
             return DictionaryScreen(session: dictionary, core: core, vm: vm)
+        case .googleSearch:  // FORK: chrome-search
+            return ChromeSearchScreen(session: chromeSearch, core: core, vm: vm)
         case .calculatorHistory:
             return CalculatorHistoryScreen(
                 history: calcHistory, currencyRates: currencyRates, core: core, vm: vm,
@@ -334,33 +334,22 @@ struct RootPaletteView: View {
                 Group {
                     // FORK: palette-presentation
                     PaletteRevealSlot(  // FORK: palette-motion
-                        .body, isPresented: !isCollapsed && presentation.showsRows,
-                        key: vm.mode,
+                        .body, isPresented: !isCollapsed && presentation.showsRows, key: vm.mode,
                         fills: true
                     ) {
                         screen.body(selection: sel, scroll: scroll)
                     }
-                    .opacity(showsActiveContent ? 1 : 0)
-                    .allowsHitTesting(showsActiveContent)
-                    .accessibilityHidden(!showsActiveContent)
-                    .paletteReveal(.body, on: showsActiveContent)
                 }
                 .safeAreaInset(edge: .top, spacing: 0) { header }
                 .safeAreaInset(edge: .bottom, spacing: 0) {
                     // FORK: palette-presentation
-                    PaletteRevealSlot(
-                        .footer, isPresented: !isCollapsed && presentation.showsFooter
-                    ) {  // FORK: palette-motion
+                    PaletteRevealSlot(.footer, isPresented: !isCollapsed && presentation.showsFooter) {  // FORK: palette-motion
                         bottomBar(
                             pillLabel: screen.primaryActionTitle, showActionGroup: showActionGroup,
                             formPrimaryShortcut: screen.hidesSearchField && screen.actsWithoutRows,
                             primaryActionEnabled: screen.isPrimaryActionEnabled(at: sel),
                             showActions: screen.hasActions(at: sel))
                     }
-                    .opacity(showsActiveContent ? 1 : 0)
-                    .allowsHitTesting(showsActiveContent)
-                    .accessibilityHidden(!showsActiveContent)
-                    .paletteReveal(.footer, on: showsActiveContent)
                 }
                 // The panel has no title bar, so this thin top margin is the only place left to grab it.
                 .overlay(alignment: .top) { topDragStrip }
@@ -465,13 +454,19 @@ struct RootPaletteView: View {
                 searchFocused = !screen.hidesSearchField
             }
             // A preserved screen re-summons as it was left, so a menu must end with the palette.
-            .modifier(PaletteHideObserver { if menuOpen { closeMenus() } })
+            .modifier(
+                PaletteHideObserver {
+                    if menuOpen { closeMenus() }
+                    chromeSearch.reset()  // FORK: chrome-search
+                }
+            )
             .onChange(of: vm.query) {
                 if vm.collapseQueryLineBreaks() { return }
                 if fileNavigatorTookQuery() { return }  // FORK: file-navigator
                 land(restoringNavigation: true)
                 if vm.mode == .fileSearch { fileSearch.search(vm.query, filter: vm.fileSearchFilter) }
                 if vm.mode == .dictionary { dictionary.lookUp(vm.query) }
+                if vm.mode == .googleSearch { chromeSearch.queryChanged(vm.query) }  // FORK: chrome-search
                 if vm.mode == .menuSearch { menuSearch.filter(vm.query) }
                 if vm.mode == .switchWindows { windowSwitch.filter(vm.query) }
                 // A command that took over the search text filters its own list.
@@ -514,6 +509,12 @@ struct RootPaletteView: View {
                     dictionary.lookUp(vm.query)
                 } else {
                     dictionary.reset()
+                }
+                // FORK: chrome-search
+                if vm.mode == .googleSearch {
+                    chromeSearch.queryChanged(vm.query)
+                } else {
+                    chromeSearch.reset()
                 }
                 if vm.mode != .menuSearch { menuSearch.reset() }
                 if vm.mode != .switchWindows { windowSwitch.reset() }
@@ -1237,8 +1238,6 @@ struct RootPaletteView: View {
 
     /// Drives the menu's window from the two pieces of state that decide what it shows.
     private func syncMenuPanel(presenting: Bool) {
-        guard vm.isVisible else { menuPanel.hide(); return }
-        core.persistentLauncher.finishOpening()
         guard let content = menuContent, let corner = menuCorner else {
             menuPanel.hide()
             return

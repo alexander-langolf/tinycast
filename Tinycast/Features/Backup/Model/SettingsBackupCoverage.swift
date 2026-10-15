@@ -67,7 +67,9 @@ enum SettingsBackupCoverage {
         "appearanceTokens": .forkTheme,  // FORK: appearance-theme
         "quickAIWarmRoot": .quickAIWarmRoot,  // FORK: quick-ai-root
         "quickAIStartWorkEngine": .quickAIStartWorkEngine,  // FORK: quick-ai-root
-        "quickAIRootRetention": .quickAIRootRetention  // FORK: quick-ai-root
+        "quickAIRootRetention": .quickAIRootRetention,  // FORK: quick-ai-root
+        "notchBarEnabled": .notchBarEnabled,  // FORK: notch-bar
+        "fileNavigatorEditorKind": .fileNavigatorEditorKind  // FORK: monaco-editor
     ]
 
     /// The `SettingsData` fields no `AppSettings` key stands behind, and what they read instead.
@@ -77,10 +79,8 @@ enum SettingsBackupCoverage {
 
     /// Keys kept out of a backup on purpose, each with the reason it has to stay out.
     static let deliberatelyExcluded: [String: String] = [
-        AppSettingsKey.fileSearchEngine.rawValue:  // FORK: search
-            "The experimental engine choice depends on ripgrep being installed on this Mac.",
         AppSettingsKey.fileSearchHidden.rawValue:  // FORK: search
-            "Only changes what the ripgrep engine lists, so it travels with the engine choice, which stays out.",
+            "What fsearch can reach differs per Mac, so this stays a local choice.",
         AppSettingsKey.fileNavigatorEditor.rawValue:  // FORK: file-navigator
             "Names a local editor command; the destination Mac may not have it.",
         AppSettingsKey.dictationEnabled.rawValue:

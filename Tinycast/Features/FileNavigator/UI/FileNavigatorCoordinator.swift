@@ -16,7 +16,7 @@ final class FileNavigatorCoordinator {
     @ObservationIgnored private unowned let core: AppCore
     @ObservationIgnored private let home: String
     @ObservationIgnored private let watcher = FolderWatcher()
-    @ObservationIgnored private let globalSearch = FileSearchSession()
+    @ObservationIgnored private let globalSearch: FileSearchSession
     @ObservationIgnored private var folders: Set<String>
     @ObservationIgnored private var lastVerifiedFolder: String?
     @ObservationIgnored private var candidates: [FileSearchResult] = []
@@ -41,7 +41,7 @@ final class FileNavigatorCoordinator {
 
     init(core: AppCore) {
         self.core = core
-        globalSearch.useForkIndex(core.forkRipgrepIndex)
+        globalSearch = FileSearchSession(client: core.fileSearch.client)
         home = FileManager.default.homeDirectoryForCurrentUser.path
         state = FileNavigatorState(home: home)
         folders = ["/", home]
@@ -74,6 +74,42 @@ final class FileNavigatorCoordinator {
     /// Search Files' default action for a folder result: browse it here instead of handing it to Finder.
     func openFolder(_ path: String) {
         show(input: FileNavigatorPath.directoryInput(path, home: home))
+    }
+
+    /// Edit for the files among `targets`, in the configured editor kind; Search Files shares it.
+    func edit(_ targets: [FileSearchResult]) async throws {
+        let files = targets.filter { !$0.isDirectory }
+        guard let first = files.first else { return }
+        if core.settings.fileNavigatorEditorKind == .monaco {  // FORK: monaco-editor
+            await core.monacoEditor.open(path: first.id)
+            return
+        }
+        let directory = FileNavigatorPath.parent(first.id)
+        let command = FileNavigatorActionsAdapter.editorCommand(
+            files, folder: directory, override: core.settings.fileNavigatorEditor)
+        if GhosttyRenderer.isEnabled {
+            core.terminalInstances.open(command: command, directory: directory, isEditor: true)
+        } else {
+            try await TerminalGhosttyLauncher.openShell(in: directory, command: command)
+            core.paletteCoordinator.hidePalette(restoreFocus: false)
+        }
+    }
+
+    var editorKind: FileNavigatorEditorKind { core.settings.fileNavigatorEditorKind }  // FORK: monaco-editor
+
+    /// Search Files' Edit row: nil for a folder, otherwise the same destination File Navigator uses.
+    func editAction(for result: FileSearchResult) -> PopoverMenuItem? {  // FORK: monaco-editor
+        guard !result.isDirectory else { return nil }
+        let action = FileNavigatorAction.edit
+        return PopoverMenuItem(title: action.title(editor: editorKind), systemImage: action.symbol) {
+            [weak self] in
+            guard let self else { return }
+            Task {
+                do { try await self.edit([result]) } catch {
+                    self.core.showMessage(error.localizedDescription, tone: .danger)
+                }
+            }
+        }
     }
 
     func showInNavigatorAction(for result: FileSearchResult) -> PopoverMenuItem {
@@ -212,7 +248,9 @@ final class FileNavigatorCoordinator {
             watcher.stop()
             watchedFolder = nil
             globalSearch.apply(
-                scopes: core.settings.fileSearchScopes, ignorePatterns: core.settings.fileSearchIgnorePatterns
+                scopes: core.settings.fileSearchScopes,
+                ignorePatterns: core.settings.fileSearchIgnorePatterns,
+                showsHidden: core.settings.fileSearchHidden
             )
             globalSearch.search(query)
             observeGlobal(revision: revision)
@@ -239,7 +277,7 @@ final class FileNavigatorCoordinator {
                         batch, request: request, input: input, revision: revision, focus: focus)
                 }
                 if subtree {
-                    if let executable = self?.core.forkRipgrepIndex.executable,
+                    if let executable = ForkRipgrepPolicy.executable(),
                         let patterns = self?.core.settings.fileSearchIgnorePatterns
                     {
                         do {
@@ -471,18 +509,7 @@ final class FileNavigatorCoordinator {
     private func run(_ action: FileNavigatorAction, targets: [FileSearchResult], folder: String) async throws
     {
         switch action {
-        case .edit:
-            let files = targets.filter { !$0.isDirectory }
-            guard let first = files.first else { return }
-            let directory = FileNavigatorPath.parent(first.id)
-            let command = FileNavigatorActionsAdapter.editorCommand(
-                files, folder: directory, override: core.settings.fileNavigatorEditor)
-            if GhosttyRenderer.isEnabled {
-                core.terminalInstances.open(command: command, directory: directory, isEditor: true)
-            } else {
-                try await TerminalGhosttyLauncher.openShell(in: directory, command: command)
-                core.paletteCoordinator.hidePalette(restoreFocus: false)
-            }
+        case .edit: try await edit(targets)
         case .openDefault: try await FileNavigatorActionsAdapter.open(targets, core: core)
         case .ghostty: core.terminalInstances.open(command: ":", directory: folder)
         case .ghosttyApp:

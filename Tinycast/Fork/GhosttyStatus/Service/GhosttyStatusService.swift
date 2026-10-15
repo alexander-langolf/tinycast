@@ -58,29 +58,6 @@ enum GhosttyStatusService {
         }
     }
 
-    static func select(_ identity: GhosttyTabIdentity, target: GhosttyApplicationTarget) async -> Bool {
-        guard target.identity == identity.application else { return false }
-        return await perform(target, fallback: false) { session in
-            do {
-                guard try session.capabilities().inventory, session.hasPermission(ask: false) else {
-                    return false
-                }
-                let window = try session.object("Gwnd", id: identity.windowID, container: .null())
-                let tab = try session.object("Gtab", id: identity.tabID, container: window)
-                guard try session.string("ID  ", of: window) == identity.windowID,
-                    try session.string("ID  ", of: tab) == identity.tabID
-                else { return false }
-                _ = try session.send(eventClass: "Ghst", eventID: "SlTb", direct: tab)
-                _ = try session.send(eventClass: "Ghst", eventID: "AcWn", direct: window)
-                return true
-            } catch { return false }
-        }
-    }
-
-    static func requestPermission(_ target: GhosttyApplicationTarget) async -> Bool {
-        await perform(target, fallback: false) { $0.hasPermission(ask: true) }
-    }
-
     private static func perform<Value: Sendable>(
         _ target: GhosttyApplicationTarget, fallback: Value,
         operation: @escaping @Sendable (GhosttyEventSession) -> Value
@@ -165,7 +142,8 @@ final class GhosttyEventSession {
                     .init(
                         id: .init(application: target.identity, windowID: windowID, tabID: tabID),
                         title: try? string("pnam", of: tab), terminals: terminals,
-                        focusedTerminalID: focused.flatMap { try? string("ID  ", of: $0) }))
+                        focusedTerminalID: focused.flatMap { try? string("ID  ", of: $0) },
+                        isSelected: (try? value("GTsl", of: tab).booleanValue) ?? false))
             }
         }
         return tabs

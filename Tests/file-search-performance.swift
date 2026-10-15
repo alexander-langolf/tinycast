@@ -2,7 +2,8 @@ import Foundation
 
 @main
 struct FileSearchPerformance {
-    static func main() throws {
+    @MainActor static func main() async throws {
+        let client = FSearchClient()
         let homeDirectory = FileManager.default.homeDirectoryForCurrentUser
         let arguments = Array(CommandLine.arguments.dropFirst())
         let queries = arguments.isEmpty ? ["a", "e", "swift", "pdf", "project"] : arguments
@@ -23,25 +24,30 @@ struct FileSearchPerformance {
             )
         ]
 
-        print("File search service latency; the palette adds a 120 ms debounce")
+        print(
+            "File search latency (recents: Spotlight, typed queries: fsearch); the palette adds a 120 ms debounce"
+        )
         print("Home: \(homeDirectory.path)")
         for (label, policy) in policies {
             // The empty query is the blank screen's own list, and its latency is the one felt most.
             for query in [""] + queries {
-                try measure(query: query, policy: policy, label: label)
+                try await measure(query: query, policy: policy, label: label, client: client)
             }
         }
     }
 
-    private static func measure(
-        query: String, policy: FileSearchPolicy, label: String
-    ) throws {
+    @MainActor private static func measure(
+        query: String, policy: FileSearchPolicy, label: String, client: FSearchClient
+    ) async throws {
         var samples: [Double] = []
         var first = 0.0
         var resultCount = 0
         for run in 0..<6 {
             let start = ContinuousClock.now
-            let results = try FileSearchService.search(query: query, policy: policy)
+            let results =
+                query.isEmpty
+                ? try FileSearchService.recents(policy: policy)
+                : try await client.search(query: query, filter: .all, policy: policy)
             let elapsed = milliseconds(start.duration(to: .now))
             if run == 0 {
                 first = elapsed

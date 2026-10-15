@@ -268,13 +268,12 @@ Applications, System Settings, System Actions, Commands — are thin wrappers ov
 `List` flattens section and row IDs into one namespace, so overlapping `Int` IDs make SwiftUI drop
 whole sidebar groups; `Tests/settings-history-test.swift` pins the two namespaces apart.
 
-## Fork persistent launcher ownership
+## Fork notch bar ownership
 
-`AppCore.persistentLauncher` owns one passive non-key panel, its header renderer, display/Space
-observations and bounded transition resources. `PaletteWindowController` keeps the real panel/editor
-and active session effects. Logical activity is opening/active; physical passive visibility never
-starts features or captures a target app. The pure policy/geometry and real coordinator are guarded
-by standalone harnesses. See [persistent-launcher-field.md](features/persistent-launcher-field.md).
+`AppCore.notchBar` owns one passive, mouse-transparent panel at the top of the primary display and
+its display/sleep observations. `PaletteWindowController` only reports session start and end. The
+pure geometry, policy and status entry are guarded by `notch-test`. See
+[notch-bar.md](features/notch-bar.md).
 
 `AppCore.ghosttyStatus` owns observation of the external Ghostty application while the passive bar
 rests. The model keys tabs by application launch, window and tab; the service shares the existing

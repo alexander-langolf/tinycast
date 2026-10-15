@@ -86,7 +86,6 @@ final class PaletteCoordinator {
     func showPalette(
         mode: PaletteMode, restoreAnyMode: Bool = false, seeding query: String? = nil
     ) {
-        guard windowController.canShow else { return }  // FORK: persistent-launcher
         let preserved = windowController.consumePreservedState()
         let restoring = preserved && (restoreAnyMode || palette.mode == mode)
         // Resetting a screen the pop to root already reset would only re-render the whole palette.
@@ -121,7 +120,6 @@ final class PaletteCoordinator {
     }
 
     func hidePalette(restoreFocus: Bool = true) {
-        guard isVisible else { return }  // FORK: persistent-launcher
         fileSearch.cancel()
         menuSearch.reset()
         windowSwitch.reset()

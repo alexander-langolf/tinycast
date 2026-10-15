@@ -94,6 +94,8 @@ struct SettingsBackup: Codable {
         var quickAIWarmRoot: Bool?  // FORK: quick-ai-root
         var quickAIStartWorkEngine: String?  // FORK: quick-ai-root
         var quickAIRootRetention: String?  // FORK: quick-ai-root
+        var notchBarEnabled: Bool?  // FORK: notch-bar
+        var fileNavigatorEditorKind: String?  // FORK: monaco-editor
     }
 
     /// One entry per bindable action. docs/features/hotkeys.md#persistence
@@ -199,6 +201,8 @@ extension SettingsBackup {
             supportReminders: s.supportRemindersEnabled)
         backup.settings?.appearanceTokens = ForkThemeStore.current?.backup  // FORK: appearance-theme
         backup.settings?.gatherQuickAIRoot(from: core.forkQuickAIRootSettings)  // FORK: quick-ai-root
+        backup.settings?.notchBarEnabled = s.notchBarEnabled  // FORK: notch-bar
+        backup.settings?.fileNavigatorEditorKind = s.fileNavigatorEditorKind.rawValue  // FORK: monaco-editor
 
         let hk = core.hotKeys
         var hotkeys = HotkeyBackup()
@@ -404,6 +408,14 @@ extension SettingsBackup {
             count += 1
         }
         // Writing through AppSettings is enough; AppCore's sinks re-project the rest.
+        if let flag = s.notchBarEnabled {  // FORK: notch-bar
+            settings.notchBarEnabled = flag
+            count += 1
+        }
+        if let raw = s.fileNavigatorEditorKind, let kind = FileNavigatorEditorKind(rawValue: raw) {  // FORK: monaco-editor
+            settings.fileNavigatorEditorKind = kind
+            count += 1
+        }
         if let flag = s.fileSearchEnabled {
             settings.fileSearchEnabled = flag
             count += 1

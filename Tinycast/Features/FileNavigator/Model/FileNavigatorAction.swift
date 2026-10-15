@@ -21,6 +21,11 @@ enum FileNavigatorAction: String, CaseIterable, Sendable {
         }
     }
 
+    /// The Edit row names the editor it will open; every other row reads the same.
+    func title(editor: FileNavigatorEditorKind) -> String {
+        self == .edit && editor == .monaco ? "Edit in Monaco" : title
+    }
+
     var symbol: String {
         switch self {
         case .edit: "pencil"

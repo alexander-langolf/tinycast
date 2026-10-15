@@ -33,8 +33,9 @@ enum AppSettingsKey: String, CaseIterable {
     case paletteDraggable = "paletteDraggable"
     case palettePosition = "palettePosition"
     case paletteExpandedCenterDisplays = "paletteExpandedCenterDisplays"
+    case notchBarEnabled = "forkNotchBarEnabled"  // FORK: notch-bar
     case fileNavigatorEditor = "forkFileNavigatorEditor"  // FORK: file-navigator
-    case fileSearchEngine = "forkFileSearchEngine"  // FORK: search
+    case fileNavigatorEditorKind = "forkFileNavigatorEditorKind"  // FORK: monaco-editor
     case fileSearchHidden = "forkFileSearchHidden"  // FORK: search
     case fileSearchEnabled = "fileSearchEnabled"
     case fileSearchScopes = "fileSearchScopes"

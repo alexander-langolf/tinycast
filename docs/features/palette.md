@@ -103,6 +103,7 @@ every screen but two: the clipboard lands past its pins
 | `.snippets`          | `SnippetsScreen`          | `SnippetsList` + preview (see [snippets.md](snippets.md#search-snippets))        |
 | `.snippetEditor`     | `SnippetEditorScreen`     | `SnippetEditorView` (see [snippets.md](snippets.md#launcher-editor)) |
 | `.dictionary`        | `DictionaryScreen`        | `DictionaryEntryView` (see [dictionary.md](dictionary.md))                       |
+| `.googleSearch`      | `ChromeSearchScreen`      | `ChromeSearchList` (see [chrome-google-search.md](chrome-google-search.md))      |
 | `.extensionCommand`  | `ExtensionCommandScreen`  | `ExtensionCommandView` (see [extensions.md](extensions.md))                      |
 
 **Tab rings the three surfaces a reader opens directly — launcher → AI chat → clipboard → launcher**
@@ -637,11 +638,8 @@ name + bundle path), so Clipboard and Emoji can name it — the footer pill read
 the ⌘K paste rows carry the app's icon. Resolved once per summon, never per render, and deliberately
 not cleared by `prepare` (pop-to-root resets the screen, not the target).
 
-## Persistent resting presentation
+## Notch bar
 
-The fork keeps a passive half-scale launcher header at the safe top of one display while the
-interactive session is closed. Palette visibility means logical activity, including opening;
-the passive host never counts as a visible palette. The existing mounted editor receives input
-at invocation, while only its header presentation travels. Dismissal ends feature sessions and
-restores requested focus immediately, then returns a neutral field to rest. See
-[persistent-launcher-field.md](persistent-launcher-field.md) for ownership, geometry and verification.
+`PaletteWindowController` tells the notch bar when a session starts and ends (`FORK: notch-bar`).
+The bar retracts while the palette is up. Palette visibility is the real panel's visibility again.
+See [notch-bar.md](notch-bar.md).

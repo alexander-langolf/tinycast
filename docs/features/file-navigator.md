@@ -1,8 +1,8 @@
 # File Navigator
 
-The [ripgrep search experiment](ripgrep-search.md) now selects the candidate source for global words
-and ⌘F. The original Swift/Spotlight decisions below remain historical where that document supersedes
-them. Direct folder listings and their reveal toggle are unchanged.
+Global words are searched through `fsearch` ([file-search.md](file-search.md)); ⌘F scans the current folder
+recursively with `rg` when it is installed and the Swift walker otherwise. Direct folder listings and their
+reveal toggle are unchanged.
 
 A fork-owned keyboard folder browser in `Tinycast/Features/FileNavigator/`. Implementation is on
 `al/file-navigator`; the settled 2026-10-11 decisions are preserved below. Compilation, harness execution
@@ -148,8 +148,8 @@ blank restores Fresh, independent of the shell's editor environment. The setting
 `fileNavigator.editor` and `fileNavigator.commands`. Install the default with `brew install fresh-editor`;
 if absent, the login shell's own command-not-found error appears in the terminal output.
 
-**File search engine** shares this pane. `fileNavigator.searchEngine` mirrors `spotlight` / `ripgrep`;
-the latter defaults on when found. A missing binary is explained in the pane and uses Spotlight.
+**fsearch** shares this pane: it shows the discovered executable and warns when the binary has no Full Disk
+Access. A missing binary is explained there and in Search Files, which has no fallback engine.
 
 `TerminalInstancesCoordinator.open(command:directory:isEditor:)` marks the instance before starting
 its shell. Editor instances use the existing palette width and request up to 680 scaled points of
@@ -182,6 +182,12 @@ With `forkTerminalGhostty = NO`, Edit in Fresh sends the same quoted command to 
 The [Ghostty AppleScript docs](https://ghostty.org/docs/features/applescript) and installed
 `Ghostty.sdef` declare that surface field. The launched surface waits after command exit to keep
 missing-editor errors visible. No editor is run in the old log renderer.
+
+## Edit in Monaco
+
+With **Settings → File Navigator → Editor kind** set to Monaco, Edit opens the first file in the embedded
+Monaco editor instead of a terminal; see [monaco-editor.md](monaco-editor.md). The editor command is ignored
+then, and Search Files' actions menu offers the same Edit. The kind is mirrored as `fileNavigator.editorKind` and carried by backups.
 
 ## Reuse from Search Files
 

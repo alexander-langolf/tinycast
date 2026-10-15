@@ -131,6 +131,7 @@ If a change touches anything in the right column, the harness on the left is man
 | `dictation-worker-test` | Dictation's framed channel, worker reuse/switching, removal, cancellation and broken pipes with a fixture helper |
 | `fallback-test` | `Launcher/Model/Fallback.swift`, plus the `CommandID` and `Quicklink` ids it is built from |
 | `dictionary-test` | `Dictionary/Model/DictionaryEntry.swift`, `DictionaryMarkup.swift` — a real XHTML record and the plain-text fallback, read into page blocks |
+| `chrome-google-search-test` | `Fork/ChromeSearch/Model/*`, `ChromeSearchSession.swift` — suggestion and result parsing, URL building, CAPTCHA and error classification, and the session's stale-result rules through fake services |
 | `callout-test` | `DesignSystem/Theme.swift`, `HotKeys/UI/CalloutPlacement.swift` |
 | `system-action-test` | `SystemActions/Model/SystemAction.swift` |
 | `microphone-mute-test` | Native input mute, delayed confirmation, device switches and failures; injected CoreAudio calls only |
@@ -813,13 +814,9 @@ tccutil reset Accessibility com.tinycast.app.dev 2>/dev/null || true
 - Nothing was written outside `com.tinycast.app.dev/`. Channel isolation is not negotiable — a Dev build
   writing into the stable app's directory is a defect even though the data is disposable
 
-## Persistent launcher field verification
+## Notch bar verification
 
-Focused checks: `./Scripts/run-tests.sh persistent-launcher-test`,
-`./Scripts/run-tests.sh persistent-launcher-lifecycle-test` and
-`./Scripts/run-tests.sh persistent-launcher-input-test`. They exercise shipped geometry/policy,
-the real summon coordinator with injected effects, and the native panel/editor handoff.
-The Dev acceptance matrix in `openspec/changes/persistent-launcher-field/tasks.md` is separate:
-visual handoff, IME/candidate placement, Spaces/fullscreen/display removal and focus/feature workflows
-must distinguish native observations from injected tests. See
-[persistent-launcher-verification.md](persistent-launcher-verification.md) for the delivered evidence.
+`./Scripts/run-tests.sh notch-test` covers geometry (notched, notchless, external, small displays),
+path interpolation, transition identity and the status entry. Rendering, the menu-material match,
+the window level over the menu bar, reversal on invoke, Spaces and Reduce Motion need a native
+check on the Dev build; record what was observed and what was not.

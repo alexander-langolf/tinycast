@@ -16,7 +16,6 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
     private(set) var isPoppedToRoot = false
     /// Resolved once per show; the top edge is the one that must not drift.
     private var anchor: CGPoint?
-    private var sessionDisplayKey: String?
     /// Live only between mouse-down and mouse-up on a drag handle; nil means a move was ours.
     private var drag: DragSession?
     private let dropGuides = PaletteDropGuideController()
@@ -47,15 +46,13 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
         self.core = core
     }
 
-    // FORK: persistent-launcher
-    var isVisible: Bool { core.persistentLauncher.isActive }
-    var canShow: Bool { core.persistentLauncher.canShow }
+    var isVisible: Bool { panel?.isVisible ?? false }
 
     /// Where the panel sits in screen coordinates, so an overlay drawn under it can avoid it.
-    var visibleFrame: CGRect? { isVisible ? panel?.frame : nil }
+    var visibleFrame: CGRect? { panel.flatMap { $0.isVisible ? $0.frame : nil } }
 
     /// The palette's own view, for AppKit UI that must be anchored to it rather than drawn.
-    var anchorView: NSView? { isVisible ? panel?.contentView : nil }
+    var anchorView: NSView? { panel?.isVisible == true ? panel?.contentView : nil }
 
     /// What the palette covered when it was summoned, for anything it expands into on dismissal.
     var previousTarget: InjectionTarget? {
@@ -64,69 +61,48 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
 
     func show() {
         Signposts.interval("PaletteWindowController.show") {
-            let starting = core.persistentLauncher.summon()  // FORK: persistent-launcher
-            guard isVisible else { return }
             isPoppedToRoot = false
             core.palette.focusToken = UUID()
-            if starting {
-                let frontmost = NSWorkspace.shared.frontmostApplication
-                let ownPID = NSRunningApplication.current.processIdentifier
-                previousApp = frontmost?.processIdentifier == ownPID ? nil : frontmost
-                let key = NSApp.keyWindow
-                if key !== panel { previousOwnWindow = key }
-                core.palette.pasteTarget = PasteTarget(app: previousApp)
-                anchor = nil
-                sessionDisplayKey = nil
-                sessionDisplayKey = targetScreen()?.displayKey
-            }
+            // Summoned over one of our own windows: there is no external paste or focus target.
+            let frontmost = NSWorkspace.shared.frontmostApplication
+            let ownPID = NSRunningApplication.current.processIdentifier
+            previousApp = frontmost?.processIdentifier == ownPID ? nil : frontmost
+            // Recorded even when another app is frontmost: our panels take key without activating.
+            let key = NSApp.keyWindow
+            // A mode switch re-shows the palette while it holds key; keep what it recorded then.
+            if key !== panel { previousOwnWindow = key }
+            // Once per summon, and from `previousApp`, so the label names the paste target.
+            core.palette.pasteTarget = PasteTarget(app: previousApp)
             let panel = ensurePanel()
+            // Undo a sink a modal left behind, unless one is still up.
             if NSApp.modalWindow == nil { panel.level = .palette }
+            // Open disarmed: a pointer already over a row must not highlight it.
             core.palette.disarmHoverHighlight(pointerAt: NSEvent.mouseLocation)
+            // Re-resolve the anchor now, then hold it so resizes never move the window.
+            anchor = nil
+            // Size and place before ordering front, so a compact summon never flashes.
             positionPanel(panel, collapsed: core.paletteCoordinator.paletteIsCollapsed)
+            // Flush first-mount layout off-screen, so the safe-area settle isn't visible.
             panel.contentView?.layoutSubtreeIfNeeded()
-            if starting {
-                core.inputSourceSwitcher.beginSession(
-                    preferredInputSourceID: core.settings.autoSwitchInputSourceID)
-                core.calendarCoordinator.paletteDidShow()
-                core.agentRunsCoordinator.paletteDidShow()  // FORK: agent-runs
-                core.palette.noteVisible(true)
-                core.clipboardStore.setTextSearchActive(true)
-                commandEscapeTap.enable()
-            }
-            if starting { core.persistentLauncher.open(panel) }
+            core.inputSourceSwitcher.beginSession(
+                preferredInputSourceID: core.settings.autoSwitchInputSourceID)
+            // Events go stale while the palette is closed, and the countdown only ticks while up.
+            core.calendarCoordinator.paletteDidShow()
+            core.agentRunsCoordinator.paletteDidShow()  // FORK: agent-runs
+            core.notchBar.sessionDidStart()  // FORK: notch-bar
+            core.palette.noteVisible(true)
+            core.clipboardStore.setTextSearchActive(true)
+            // Only while we are on screen: a system-wide tap has no business outliving the window.
+            commandEscapeTap.enable()
+            // Non-activating, so summoning never raises our own aux windows behind it.
             panel.makeKeyAndOrderFront(nil)
-            let searchFocused = panel.focusSearchField()
-            let selectPreservedQuery = queryWasPreserved
-            queryWasPreserved = false
-            if searchFocused, selectPreservedQuery {
-                panel.selectAllFieldEditorText()
-            }
             panel.orderFrontRegardless()
-            presentationDidSettle()
-            let identity = core.persistentLauncher.policy.sessionIdentity
-            DispatchQueue.main.async { [weak self, weak panel] in
-                guard let self, let panel, self.isVisible,
-                    self.core.persistentLauncher.policy.sessionIdentity == identity, !panel.isKeyWindow
-                else { return }
+            // A never-activated login item can drop the first key request, so re-assert.
+            DispatchQueue.main.async { [weak panel] in
+                guard let panel, panel.isVisible, !panel.isKeyWindow else { return }
                 panel.makeKeyAndOrderFront(nil)
             }
         }
-    }
-
-    func presentationDidSettle() {
-        guard isVisible, !core.persistentLauncher.isTravelling else { return }
-        core.agentRunsPresenter.update(panel, metrics: metrics)  // FORK: agent-runs
-    }
-
-    func stop() {
-        if isVisible { core.paletteCoordinator.hidePalette(restoreFocus: false) }
-        popToRootTimer?.invalidate()
-        popToRootTimer = nil
-        frameAnimator.cancel()
-        panel?.orderOut(nil)
-        commandEscapeTap.disable()
-        if let pasteMonitor { NSEvent.removeMonitor(pasteMonitor) }
-        pasteMonitor = nil
     }
 
     // Isolated so teardown may touch the main-actor monitor; the block is already weak.
@@ -178,23 +154,18 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
     }
 
     func hide(restoreFocus: Bool) {
-        guard core.persistentLauncher.dismiss() else { return }  // FORK: persistent-launcher
-        core.persistentLauncher.close(from: panel)
-        panel?.onDismissMenu?()
-        frameAnimator.cancel()
         core.fileNavigator.stop()  // FORK: file-navigator
-        core.agentRunsPresenter.hide()  // FORK: agent-runs
         panel?.orderOut(nil)
         commandEscapeTap.disable()
         core.inputSourceSwitcher.endSession()
         core.calendarCoordinator.paletteDidHide()
         core.roomCoordinator.paletteDidHide()
         core.agentRunsCoordinator.paletteDidHide()  // FORK: agent-runs
+        core.notchBar.sessionDidEnd()  // FORK: notch-bar
         core.palette.noteVisible(false)
         core.clipboardStore.setTextSearchActive(false)
         // Drop the anchor, so the next summon re-resolves for the screen in use then.
         anchor = nil
-        sessionDisplayKey = nil
         // The guides must never outlive the panel they point at.
         drag = nil
         dropGuides.hide()
@@ -278,42 +249,32 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
     }
 
     func windowDidBecomeKey(_ notification: Notification) {
-        guard isVisible else { return }
         panel?.level = .palette
-        let identity = core.persistentLauncher.policy.sessionIdentity
         DispatchQueue.main.async { [weak self] in
-            guard let self, isVisible, core.persistentLauncher.policy.sessionIdentity == identity else {
-                return
-            }
+            guard let self else { return }
             // A re-summon leaves first responder where it was, so neither of these gets an event.
             panel?.trackComposition()
             if let context = panel?.fieldEditorContext {
                 core.inputSourceSwitcher.applySession(to: context)
+            }
+            if queryWasPreserved {
+                queryWasPreserved = false
+                panel?.selectAllFieldEditorText()
             }
         }
     }
 
     /// A drag re-anchors the session, so the next resize grows from where the user left it.
     func windowDidMove(_ notification: Notification) {
-        guard isVisible, !core.persistentLauncher.isTravelling, let panel else { return }
+        guard let panel else { return }
         let moved = CGPoint(x: panel.frame.minX, y: panel.frame.maxY)
         guard moved != anchor else { return }
-        defer { presentationDidSettle() }  // FORK: agent-runs
         guard drag != nil else { anchor = moved; return }
         let snapped = trackDrag(to: moved)
         anchor = snapped
         if snapped != moved {
             panel.setFrameOrigin(CGPoint(x: snapped.x, y: snapped.y - panel.frame.height))
         }
-    }
-
-    func windowDidResize(_ notification: Notification) {
-        presentationDidSettle()
-    }
-
-    func windowDidChangeScreen(_ notification: Notification) {
-        if isVisible, !core.persistentLauncher.isTravelling { sessionDisplayKey = panel?.screen?.displayKey }
-        presentationDidSettle()  // FORK: agent-runs
     }
 
     // MARK: - Dragging
@@ -516,7 +477,6 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
             }
         }
         self.panel = panel
-        core.agentRunsPresenter.observe(panel)  // FORK: agent-runs
         return panel
     }
 
@@ -526,23 +486,11 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
         positionPanel(panel, collapsed: collapsed)
     }
 
-    func reconcileDisplay() {
-        guard isVisible, let panel, let screen = panel.screen ?? targetScreen() else { return }
-        sessionDisplayKey = screen.displayKey
-        let header = CGRect(
-            x: panel.frame.minX, y: panel.frame.maxY - metrics.size.compactHeight,
-            width: metrics.size.panelWidth, height: metrics.size.compactHeight)
-        if !screen.visibleFrame.contains(header) {
-            anchor = restoredAnchor(on: screen) ?? defaultAnchor(on: screen)
-            positionPanel(panel, collapsed: core.paletteCoordinator.paletteIsCollapsed)
-        }
-    }
-
+    /// A new width invalidates the placement the cached anchor encoded, so re-resolve it.
     func applyInterfaceSize() {
-        guard let panel else { core.persistentLauncher.reconcile(); return }
+        guard let panel else { return }
         anchor = nil
         positionPanel(panel, collapsed: core.paletteCoordinator.paletteIsCollapsed)
-        core.persistentLauncher.reconcile()
     }
 
     /// Size to height and place against the session anchor, so the list grows downward.
@@ -569,17 +517,12 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
         // FORK: palette-motion
         frameAnimator.move(
             panel, to: frame,
-            radius: core.paletteChips.paletteRadius(collapsed: collapsed, metrics: metrics),
-            animated: !core.persistentLauncher.isTravelling)
-        presentationDidSettle()
-        if core.persistentLauncher.policy.phase == .opening { core.persistentLauncher.reconcile() }
+            radius: core.paletteChips.paletteRadius(collapsed: collapsed, metrics: metrics))
     }
 
     /// The display to anchor to; never `NSScreen.main`, which follows the focused window.
     private func targetScreen() -> NSScreen? {
-        core.persistentLauncher.invocationScreen
-            ?? NSScreen.screens.first { $0.displayKey == sessionDisplayKey }
-            ?? (core.settings.openOnCursorScreen ? NSScreen.underCursor : NSScreen.primary)
+        core.settings.openOnCursorScreen ? NSScreen.underCursor : NSScreen.primary
     }
 
     /// Cached until hide, so both placements read one `visibleFrame`; a drag outranks the setting.
@@ -620,7 +563,7 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
 
 extension NSScreen {
     /// Survives a replug; the display ID is a session-only fallback.
-    var displayKey: String {
+    fileprivate var displayKey: String {
         let number = deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber
         guard let id = number?.uint32Value else { return "primary" }
         guard let uuid = CGDisplayCreateUUIDFromDisplayID(id)?.takeRetainedValue(),

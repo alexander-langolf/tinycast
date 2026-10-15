@@ -14,8 +14,7 @@ struct GhosttyScriptingCapabilities: Equatable, Sendable {
             "application:capp:window", "window:Gwnd:tab", "tab:Gtab:terminal",
             "window:Gwnd:id:ID  ", "tab:Gtab:id:ID  ", "tab:Gtab:name:pnam",
             "tab:Gtab:focused terminal:GTfT", "terminal:Gtrm:id:ID  ",
-            "terminal:Gtrm:working directory:Gwdr", "select tab:GhstSlTb",
-            "activate window:GhstAcWn"
+            "terminal:Gtrm:working directory:Gwdr"
         ]
         let inventory = required.isSubset(of: reader.entries)
         return Self(

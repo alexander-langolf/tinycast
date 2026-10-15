@@ -62,6 +62,26 @@ enum FileSearchFilter: CaseIterable, Sendable {
         }
     }
 
+    /// fsearch's own `type:` word; it has none for folders, which `admits` answers from the hit.
+    var fsearchType: String? {
+        switch self {
+        case .all, .folders: return nil
+        case .documents: return "doc"
+        case .images: return "image"
+        case .audio: return "audio"
+        case .video: return "video"
+        case .archives: return "archive"
+        }
+    }
+
+    func admits(isDirectory: Bool) -> Bool {
+        switch self {
+        case .all: return true
+        case .folders: return isDirectory
+        default: return !isDirectory
+        }
+    }
+
     /// Filtering in the predicate keeps the rejected types from consuming the candidate cap.
     var spotlightClause: String? {
         let clauses = contentTypes.map { "kMDItemContentTypeTree == \"\($0.identifier)\"" }
