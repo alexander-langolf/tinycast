@@ -1228,7 +1228,6 @@ struct NotesTests {
         NoteMarkdownParser.parse(source).lines.map(\.level)
     }
 
-    /// The first line's spans, each as its kind and the text of its content.
     private static func spans(_ source: String) -> [Span] {
         let markdown = NoteMarkdownParser.parse(source)
         let inlines = markdown.lines.first.map(markdown.inlines(of:)) ?? []

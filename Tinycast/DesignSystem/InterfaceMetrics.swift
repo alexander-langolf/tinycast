@@ -56,6 +56,7 @@ struct InterfaceMetrics: Equatable, Sendable {
         var glyph: CGFloat { scaledPoints(Theme.Radius.glyph, scale) }
         var attachmentChip: CGFloat { scaledPoints(Theme.Radius.attachmentChip, scale) }
         var card: CGFloat { scaledPoints(Theme.Radius.card, scale) }
+        var codeBlock: CGFloat { scaledPoints(Theme.Radius.codeBlock, scale) }
         var keyCap: CGFloat { scaledPoints(Theme.Radius.keyCap, scale) }
         var tooltip: CGFloat { scaledPoints(Theme.Radius.tooltip, scale) }
     }
@@ -113,6 +114,8 @@ struct InterfaceMetrics: Equatable, Sendable {
         var markdownListMarker: CGFloat { scaledPoints(Theme.Size.markdownListMarker, scale) }
         var markdownQuoteBar: CGFloat { scaledPoints(Theme.Size.markdownQuoteBar, scale) }
         var chatMessageAction: CGFloat { scaledPoints(Theme.Size.chatMessageAction, scale) }
+        var chatSourceBadge: CGFloat { scaledPoints(Theme.Size.chatSourceBadge, scale) }
+        var chatJumpToLatest: CGFloat { scaledPoints(Theme.Size.chatJumpToLatest, scale) }
         var chatImageThumb: CGFloat { scaledPoints(Theme.Size.chatImageThumb, scale) }
         var chatAttachmentGlyph: CGFloat { scaledPoints(Theme.Size.chatAttachmentGlyph, scale) }
         var chatAttachmentThumb: CGFloat { scaledPoints(Theme.Size.chatAttachmentThumb, scale) }
@@ -237,7 +240,7 @@ struct InterfaceMetrics: Equatable, Sendable {
             return ForkTypography.resolve(.systemFont(ofSize: base.pointSize, weight: weight))
         }
 
-        /// Composed like `Theme`'s own: the style carries the face, an explicit weight overrides it.
+        /// Like `Theme`'s own: the style carries the face, an explicit weight overrides it.
         private func font(
             // FORK: symbol-font
             _ base: Font, _ style: NSFont.TextStyle, _ weight: Font.Weight? = nil, symbol: Bool = false
@@ -252,7 +255,7 @@ struct InterfaceMetrics: Equatable, Sendable {
             return symbol ? weighted : ForkTypography.prose(weighted, matching: system, weight: weight)
         }
 
-        /// Its own descriptor, so `.headline` stays Bold and `.caption2` Medium rather than lightening.
+        /// Its own descriptor, so `.headline` stays Bold and `.caption2` Medium, not lighter.
         private func nsFont(_ style: NSFont.TextStyle) -> NSFont {
             let base = NSFont.preferredFont(forTextStyle: style)
             guard scale != 1 else { return base }

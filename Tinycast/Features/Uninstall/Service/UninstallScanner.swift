@@ -15,7 +15,7 @@ enum UninstallScanner {
         var errorDescription: String? {
             switch self {
             case .refused:
-                return "Tinycast can’t uninstall this app."
+                return String(localized: "Tinycast can’t uninstall this app.")
             }
         }
     }
@@ -28,7 +28,7 @@ enum UninstallScanner {
         try await Signposts.interval("UninstallScanner.discover") {
             let home = NSHomeDirectory()
             let environment = UninstallEnvironment(
-                home: home, hasFullDiskAccess: detectFullDiskAccess(home: home))
+                home: home, hasFullDiskAccess: Permissions.hasFullDiskAccess())
             guard
                 let identity = UninstallIdentity.make(
                     target: target, otherAppNames: otherAppNames, otherBundleIDs: otherBundleIDs,
@@ -216,7 +216,7 @@ enum UninstallScanner {
     /// Logical bytes, like Finder; an unreadable subtree is skipped, not abandoned.
     private static func directorySize(of path: String, budget: SizeBudget) throws -> MeasuredSize {
         let url = URL(fileURLWithPath: path)
-        // Not the allocated keys: Xcode ships decmpfs-compressed, and blocks read 4.19 GB of 9.45.
+        // Not the allocated keys: blocks badly undercount a decmpfs-compressed bundle.
         let keys: [URLResourceKey] = [.totalFileSizeKey, .fileSizeKey]
         guard
             let enumerator = FileManager.default.enumerator(
@@ -224,7 +224,7 @@ enum UninstallScanner {
                 errorHandler: { _, _ in true })
         else { return .zero }
 
-        // Hoisted: the loop runs up to `maxEntries` times, and this allocated a `Set` on each one.
+        // Hoisted: the loop runs up to `maxEntries` times.
         let keySet = Set(keys)
         var size = MeasuredSize()
         var entries = 0
@@ -240,13 +240,5 @@ enum UninstallScanner {
             size.bytes += Int64(values?.totalFileSize ?? values?.fileSize ?? 0)
         }
         return size
-    }
-
-    /// Detected, never requested: TCC denies silently, and under-reporting only locks a row.
-    private static func detectFullDiskAccess(home: String) -> Bool {
-        let descriptor = open(home + "/Library/Application Support/com.apple.TCC/TCC.db", O_RDONLY)
-        guard descriptor >= 0 else { return false }
-        close(descriptor)
-        return true
     }
 }

@@ -71,7 +71,6 @@ struct ExtensionCommandScreen: PaletteScreen {
         }
     }
 
-    /// The primary action is the panel's first `Action`.
     private func primaryAction(at selection: Int) -> ExtensionAction? {
         ExtensionScreen.actions(in: screen.actionPanel(forItemAt: selection)).first
     }
@@ -79,7 +78,7 @@ struct ExtensionCommandScreen: PaletteScreen {
     /// A submenu reached first is a grouping device, so its title stands in for the leaf's.
     var primaryActionTitle: String {
         let primary = primaryAction(at: vm.selection)
-        return primary?.enclosingSubmenuTitle ?? primary?.title ?? "Run"
+        return primary?.enclosingSubmenuTitle ?? primary?.title ?? String(localized: "Run")
     }
 
     func hasPrimaryAction(at selection: Int) -> Bool { primaryAction(at: selection) != nil }
@@ -206,7 +205,7 @@ struct ExtensionCommandScreen: PaletteScreen {
                         items: items, selection: menuSelection.wrappedValue,
                         chosen: chosen, assetsPath: assetsPath,
                         width: ExtensionSearchAccessoryButton.listWidth,
-                        searchPlaceholder: "Search…", onSelect: onActivate,
+                        searchPlaceholder: String(localized: "Search…"), onSelect: onActivate,
                         onHighlight: { menuSelection.wrappedValue = $0 }))
             },
             activate: { index in

@@ -96,7 +96,8 @@ final class ChatGPTSubscriptionManager {
         try await client.start(toolServers: toolServers)
         guard access == nil else { return }
         guard try await verifyAccess() else {
-            throw AIProviderError.unavailable("Sign in with `codex login`, then check Codex again.")
+            throw AIProviderError.unavailable(
+                String(localized: "Sign in with `codex login`, then check Codex again."))
         }
     }
 
@@ -261,7 +262,7 @@ final class ChatGPTSubscriptionManager {
         if error is AIProviderError { return error }
         let message =
             (error as? LocalizedError)?.errorDescription
-            ?? "The Codex connection failed."
+            ?? String(localized: "The Codex connection failed.")
         return AIProviderError.responseFailed(message)
     }
 }

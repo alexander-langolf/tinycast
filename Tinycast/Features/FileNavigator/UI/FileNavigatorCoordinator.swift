@@ -41,7 +41,7 @@ final class FileNavigatorCoordinator {
 
     init(core: AppCore) {
         self.core = core
-        globalSearch = FileSearchSession(client: core.fileSearch.client)
+        globalSearch = FileSearchSession(index: core.fileIndexer.index)
         home = FileManager.default.homeDirectoryForCurrentUser.path
         state = FileNavigatorState(home: home)
         folders = ["/", home]
@@ -247,11 +247,6 @@ final class FileNavigatorCoordinator {
         if case .global(let query) = state.path {
             watcher.stop()
             watchedFolder = nil
-            globalSearch.apply(
-                scopes: core.settings.fileSearchScopes,
-                ignorePatterns: core.settings.fileSearchIgnorePatterns,
-                showsHidden: core.settings.fileSearchHidden
-            )
             globalSearch.search(query)
             observeGlobal(revision: revision)
             return
@@ -363,7 +358,7 @@ final class FileNavigatorCoordinator {
         withObservationTracking {
             rows = globalSearch.results
             isLoading = globalSearch.state == .searching
-            status = globalSearch.state == .failed ? "File search is unavailable" : ""
+            status = ""
         } onChange: { [weak self] in
             Task { @MainActor in
                 guard let self, self.active, self.revision == revision else { return }

@@ -11,6 +11,7 @@ enum AppSettingsKey: String, CaseIterable {
     case hyperKey = "hyperKeyPhysicalKey"
     case hyperKeyIncludesShift = "hyperKeyIncludesShift"
     case hyperKeyQuickPress = "hyperKeyQuickPress"
+    case hyperKeySecureInputCompatibility = "hyperKeySecureInputCompatibility"
     case emojiSkinTone = "emojiSkinTone"
     case emojiGridColumns = "emojiGridColumns"
     case showInMenuBar = "showInMenuBar"
@@ -18,6 +19,7 @@ enum AppSettingsKey: String, CaseIterable {
     case popToRootTimeout = "popToRootTimeout"
     case escapeKeyBehavior = "escapeKeyBehavior"
     case appearance = "appearance"
+    case language = "AppleLanguages"
     case calcNumberStyle = "calculatorNumberStyle"
     case interfaceSize = "interfaceSize"
     case interfaceFont = "interfaceFont"  // FORK: font-persistence
@@ -36,10 +38,11 @@ enum AppSettingsKey: String, CaseIterable {
     case notchBarEnabled = "forkNotchBarEnabled"  // FORK: notch-bar
     case fileNavigatorEditor = "forkFileNavigatorEditor"  // FORK: file-navigator
     case fileNavigatorEditorKind = "forkFileNavigatorEditorKind"  // FORK: monaco-editor
-    case fileSearchHidden = "forkFileSearchHidden"  // FORK: search
     case fileSearchEnabled = "fileSearchEnabled"
     case fileSearchScopes = "fileSearchScopes"
     case fileSearchIgnorePatterns = "fileSearchIgnorePatterns"
+    case fileSearchRemovedDefaultPatterns = "fileSearchRemovedDefaultPatterns"
+    case fileSearchShowInLauncher = "fileSearchShowInLauncher"
     case notesEnabled = "notesEnabled"
     case notesRendersMarkdown = "notesRendersMarkdown"
     case notesShowsFormattingBar = "notesShowsFormattingBar"
@@ -61,7 +64,7 @@ enum AppSettingsKey: String, CaseIterable {
     case quicklinksEnabled = "quicklinksEnabled"
     case quicklinksShowInLauncher = "quicklinksShowInLauncher"
     case quicklinkOpensNewWindow = "quicklinkOpensNewWindow"
-    case quicklinkSelectionFallback = "quicklinkSelectionFallback"
+    case quicklinkPassesSelectedText = "quicklinkPassesSelectedText"
     case quicklinkConfirmsBeforeDelete = "quicklinkConfirmsBeforeDelete"
     case appleShortcutsEnabled = "appleShortcutsEnabled"
     case extensionsEnabled = "extensionsEnabled"
@@ -88,6 +91,7 @@ enum AppSettingsKey: String, CaseIterable {
     case aiConnections = "aiConnections"
     case aiDefaultModel = "aiDefaultModel"
     case aiWebSearch = "aiWebSearch"
+    case aiChoices = "aiChoices"
     case aiSystemPrompt = "aiSystemPrompt"
     case aiSystemPromptEnabled = "aiSystemPromptEnabled"
     case aiRetention = "aiRetentionDays"
@@ -115,6 +119,7 @@ enum AppSettingsKey: String, CaseIterable {
     case dictationMicrophone = "dictationMicrophone"
     case dictationDestination = "dictationDestination"
     case dictationAdaptsCapitalization = "dictationAdaptsCapitalization"
+    case dictationLiveInsertion = "dictationLiveInsertion"
     case dictationIdleRelease = "dictationIdleReleaseMinutes"
     case dictationLanguage = "dictationLanguage"
     case supportReminders = "supportReminders"

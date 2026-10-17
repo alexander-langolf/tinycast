@@ -1,7 +1,6 @@
 import QuartzCore
 import SwiftUI
 
-/// Which arrow pair a move came from: ↑/↓ or ←/→.
 enum PaletteAxis {
     case vertical
     case horizontal
@@ -36,7 +35,6 @@ typealias MenuPanelClipPath =
         _ bounds: CGRect, _ metrics: InterfaceMetrics, _ corner: MenuPanelCorner
     ) -> CGPath
 
-/// A menu supplied by a palette screen, including its rendering and row activation.
 @MainActor struct PaletteMenuContent {
     let rowCount: Int
     let preferredSelection: Int?
@@ -173,7 +171,7 @@ extension PaletteScreen {
         return PaletteMenuContent(
             popover: filtered.content, selection: menuSelection,
             search: PopoverMenu.Search(
-                placeholder: "Search for actions…", placement: .bottom),
+                placeholder: String(localized: "Search for actions…"), placement: .bottom),
             onActivate: onActivate, preferredSelection: filtered.bestMatch)
     }
     func tertiary(at selection: Int) -> Bool { false }

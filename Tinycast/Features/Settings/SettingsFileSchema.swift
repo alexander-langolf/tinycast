@@ -29,7 +29,8 @@ enum SettingsFileSchema {
 
         switch key {
         case .launcherShortcut:
-            return shortcuts.binding(for: key, action: .togglePalette, name: "App Launcher")
+            return shortcuts.binding(
+                for: key, action: .togglePalette, name: String(localized: "App Launcher"))
         case .showInMenuBar: return bind(settings, \.showInMenuBar)
         case .notchBarEnabled: return bind(settings, \.notchBarEnabled)  // FORK: notch-bar
         case .automaticallyCheckForUpdates: return bind(settings, \.automaticallyCheckForUpdates)
@@ -37,6 +38,7 @@ enum SettingsFileSchema {
         case .escapeKeyBehavior: return bind(settings, \.escapeKeyBehavior)
         case .autoSwitchInputSource: return bind(settings, \.autoSwitchInputSourceID)
         case .supportReminders: return bind(settings, \.supportRemindersEnabled)
+        case .language: return bind(settings, \.language)
         case .appearance: return bind(settings, \.appearance)
         case .interfaceSize: return bind(settings, \.interfaceSize)
         // FORK: font-mirror
@@ -50,6 +52,8 @@ enum SettingsFileSchema {
         case .hyperKey: return bind(settings, \.hyperKey)
         case .hyperKeyIncludesShift: return bind(settings, \.hyperKeyIncludesShift)
         case .hyperKeyQuickPress: return bind(settings, \.hyperKeyQuickPress)
+        case .hyperKeySecureInputCompatibility:
+            return bind(settings, \.hyperKeySecureInputCompatibility)
         case .calcNumberStyle: return bind(settings, \.calcNumberStyle)
         case .launcherShowsSuggestions: return bind(settings, \.launcherShowsSuggestions)
         case .rootSearchSensitivity: return bind(settings, \.rootSearchSensitivity)
@@ -67,12 +71,13 @@ enum SettingsFileSchema {
         case .quicklinksEnabled: return bind(settings, \.quicklinksEnabled)
         case .quicklinksShowInLauncher: return bind(settings, \.quicklinksShowInLauncher)
         case .quicklinkOpensNewWindow: return bind(settings, \.quicklinkOpensNewWindow)
-        case .quicklinkSelectionFallback: return bind(settings, \.quicklinkSelectionFallback)
+        case .quicklinkPassesSelectedText: return bind(settings, \.quicklinkPassesSelectedText)
         case .quicklinkConfirmsBeforeDelete: return bind(settings, \.quicklinkConfirmsBeforeDelete)
         case .quicklinkCommands: return launcher.commandsBinding(for: key, owner: .quicklinks)
         case .appleShortcutsEnabled: return bind(settings, \.appleShortcutsEnabled)
         case .aiEnabled: return bind(settings, \.aiEnabled)
         case .aiWebSearch: return bind(ai, \.webSearchEnabled)
+        case .aiChoices: return bind(ai, \.choicesEnabled)
         case .aiSystemPrompt: return bind(ai, \.systemPrompt)
         case .aiSystemPromptEnabled: return bind(ai, \.systemPromptEnabled)
         case .aiRetention: return bind(ai, \.retention)
@@ -93,11 +98,13 @@ enum SettingsFileSchema {
         // FORK: file-navigator
         case .fileNavigatorEditor: return bind(settings, \.fileNavigatorEditor)
         case .fileNavigatorEditorKind: return bind(settings, \.fileNavigatorEditorKind)  // FORK: monaco-editor
-        case .fileSearchHidden: return bind(settings, \.fileSearchHidden)  // FORK: search
         case .fileNavigatorCommands: return launcher.commandsBinding(for: key, owner: .fileNavigator)
         case .fileSearchEnabled: return bind(settings, \.fileSearchEnabled)
         case .fileSearchScopes: return bind(settings, \.fileSearchScopes)
         case .fileSearchIgnorePatterns: return bind(settings, \.fileSearchIgnorePatterns)
+        case .fileSearchRemovedDefaultPatterns:
+            return bind(settings, \.fileSearchRemovedDefaultPatterns)
+        case .fileSearchShowInLauncher: return bind(settings, \.fileSearchShowInLauncher)
         case .fileSearchCommands: return launcher.commandsBinding(for: key, owner: .fileSearch)
         case .notesEnabled: return bind(settings, \.notesEnabled)
         case .notesRendersMarkdown: return bind(settings, \.notesRendersMarkdown)
@@ -106,11 +113,12 @@ enum SettingsFileSchema {
         case .notesCommands: return launcher.commandsBinding(for: key, owner: .notes)
         case .dictationMode: return bind(settings, \.dictationMode)
         case .dictationShortcut:
-            return shortcuts.binding(for: key, action: .dictation, name: "Dictation")
+            return shortcuts.binding(for: key, action: .dictation, name: String(localized: "Dictation"))
         case .dictationModel: return bind(settings, \.dictationModel)
         case .dictationMicrophone: return bind(settings, \.dictationMicrophone)
         case .dictationDestination: return bind(settings, \.dictationDestination)
         case .dictationAdaptsCapitalization: return bind(settings, \.dictationAdaptsCapitalization)
+        case .dictationLiveInsertion: return bind(settings, \.dictationLiveInsertion)
         case .dictationIdleRelease: return bind(settings, \.dictationIdleRelease)
         case .dictationLanguage:
             return bind(settings, \.dictationLanguage) { language in
@@ -176,13 +184,13 @@ enum SettingsFileSchema {
 extension PopToRootTimeout: SettingsFileRawValue {}
 extension EscapeKeyBehavior: SettingsFileRawValue {}
 extension AppAppearance: SettingsFileRawValue {}
+extension AppLanguage: SettingsFileRawValue {}
 extension InterfaceSize: SettingsFileRawValue {}
 extension HyperKeyPhysicalKey: SettingsFileRawValue {}
 extension HyperKeyQuickPress: SettingsFileRawValue {}
 extension CalcNumberStyle: SettingsFileRawValue {}
 extension FileNavigatorEditorKind: SettingsFileRawValue {}  // FORK: monaco-editor
 extension SearchSensitivity: SettingsFileRawValue {}
-extension QuicklinkSelectionFallback: SettingsFileRawValue {}
 extension WindowCycle: SettingsFileRawValue {}
 extension ClipboardDefaultAction: SettingsFileRawValue {}
 extension EmojiSkinTone: SettingsFileRawValue {}

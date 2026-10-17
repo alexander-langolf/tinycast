@@ -9,7 +9,6 @@ struct ShortcutRecorderAnchorKey: PreferenceKey {
     }
 }
 
-/// The callout above the field: what to press, what is held, or what is in the way.
 struct ShortcutRecorderPopover: View {
     let placement: CalloutPlacement
 
@@ -60,7 +59,7 @@ struct ShortcutRecorderPopover: View {
             width: Theme.Size.shortcutPopover.width, height: Theme.Size.shortcutPopover.height
         )
         .overlay(alignment: .topLeading) {
-            KeyCapChip(text: "esc", scale: .compact)
+            KeyCapChip(text: String(localized: "esc"), scale: .compact)
                 .opacity(0.7)
                 .padding(.leading, Theme.Spacing.md)
                 .padding(
@@ -68,7 +67,6 @@ struct ShortcutRecorderPopover: View {
                     Theme.Spacing.sm
                         + (placement.caretEdge == .top ? Theme.Size.calloutCaretHeight : 0))
         }
-        // Stock glass owns its elevation, as in `PopoverMenu` — no hand-tuned shadow.
         .glassEffect(
             .regular, in: CalloutShape(caretEdge: placement.caretEdge, caretX: placement.caretX))
     }
@@ -81,19 +79,21 @@ struct ShortcutRecorderPopover: View {
             let secondPress = capture.heldModifier == key
             return .binding(
                 secondPress ? key.doubleBinding : key.singleBinding,
-                label: secondPress ? "Release to record" : "Tap again for double")
+                label: secondPress
+                    ? String(localized: "Release to record") : String(localized: "Tap again for double"))
         }
         if let key = capture.heldModifier {
-            return .binding(key.singleBinding, label: "Release or add a key")
+            return .binding(key.singleBinding, label: String(localized: "Release or add a key"))
         }
         let flags =
             capture.heldGlobe
             ? capture.heldModifiers.union(.function) : capture.heldModifiers
         let held = KeyShortcut.collapsedModifierSymbols(
             from: flags, hyperChord: KeyShortcut.displayedHyperChord())
-        guard held.isEmpty else { return State(caps: held, label: "Add a key") }
+        guard held.isEmpty else { return State(caps: held, label: String(localized: "Add a key")) }
         return State(
-            caps: [DoubleTapModifier.option.glyph, "A"], label: "Type a shortcut", isExample: true)
+            caps: [DoubleTapModifier.option.glyph, "A"], label: String(localized: "Type a shortcut"),
+            isExample: true)
     }
 }
 
@@ -188,7 +188,6 @@ private struct ShortcutRecorderPopoverLayer: View {
 }
 
 extension View {
-    /// Hosts the shortcut recorder's callout for every recorder inside this view.
     func shortcutRecorderPopoverHost() -> some View {
         modifier(ShortcutRecorderPopoverHost())
     }

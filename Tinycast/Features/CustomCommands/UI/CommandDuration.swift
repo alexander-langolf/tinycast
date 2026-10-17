@@ -4,9 +4,15 @@ import Foundation
 enum CommandDuration {
     static func text(from start: Date, to end: Date) -> String {
         let seconds = max(0, end.timeIntervalSince(start))
-        if seconds < 10 { return String(format: "%.1fs", seconds) }
-        if seconds < 60 { return "\(Int(seconds))s" }
-        let whole = Int(seconds)
-        return "\(whole / 60)m \(whole % 60)s"
+        let duration = Duration.seconds(seconds)
+        if seconds < 10 {
+            return duration.formatted(
+                .units(allowed: [.seconds], width: .narrow, fractionalPart: .show(length: 1)))
+        }
+        let units: Set<Duration.UnitsFormatStyle.Unit> = seconds < 60 ? [.seconds] : [.minutes, .seconds]
+        return duration.formatted(
+            .units(
+                allowed: units, width: .narrow, zeroValueUnits: .show(length: 1),
+                fractionalPart: .hide(rounded: .down)))
     }
 }
