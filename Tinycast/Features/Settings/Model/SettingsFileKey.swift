@@ -13,11 +13,12 @@ enum SettingsFileKey: String, CaseIterable, Sendable {
     case supportReminders = "general.supportReminders"
     case language = "general.language"
     case appearance = "appearance.theme"
+    case animationsEnabled = "appearance.animations"
     case interfaceSize = "appearance.interfaceSize"
     case interfaceFont = "appearance.interfaceFont"  // FORK: font-persistence
     case monoFont = "appearance.monoFont"  // FORK: font-persistence
     case compactMode = "appearance.compactMode"
-    case showFavoritesInCompactMode = "appearance.showFavoritesInCompactMode"
+    case compactBarCommands = "appearance.compactBarCommands"
     case openOnCursorScreen = "appearance.followCursorAcrossDisplays"
     case paletteDraggable = "appearance.dragToReposition"
     case appearanceTokens = "appearance.tokens"  // FORK: appearance-theme
@@ -64,6 +65,7 @@ enum SettingsFileKey: String, CaseIterable, Sendable {
     case quickActionCommands = "quickActions.commands"
     case dictationMode = "dictation.mode"
     case dictationShortcut = "dictation.shortcut"
+    case dictationPlaysSounds = "dictation.playsSounds"
     case dictationModel = "dictation.model"
     case dictationMicrophone = "dictation.microphone"
     case dictationDestination = "dictation.destination"

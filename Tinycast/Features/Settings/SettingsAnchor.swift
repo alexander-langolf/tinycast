@@ -9,7 +9,7 @@ struct SettingsAnchor: Hashable, Sendable {
 
     init(tab: SettingsTab, title: LocalizedStringResource) {
         self.tab = tab
-        self.title = String(localized: title)
+        self.title = title.resolved()
     }
 }
 
@@ -19,6 +19,7 @@ extension SettingsAnchor {
     static let generalSearch = Self(tab: .general, title: "Search")
     static let generalHyperKey = Self(tab: .general, title: "Hyper Key")
     static let generalAppearance = Self(tab: .appearance, title: "General")  // FORK: appearance-pane
+    static let generalCompactShortcuts = Self(tab: .appearance, title: "Compact Shortcuts")  // FORK: appearance-pane
     static let generalCalculator = Self(tab: .general, title: "Calculator")
     static let generalGeneral = Self(tab: .general, title: "General")
 
@@ -100,7 +101,7 @@ extension SettingsAnchor {
     static let clipboardCommands = Self(tab: .clipboard, title: "Commands")
     static let clipboardHistory = Self(tab: .clipboard, title: "History")
     static let clipboardDisabledApplications = Self(
-        tab: .clipboard, title: "Disabled Applications")
+        tab: .clipboard, title: "Excluded Applications")
 
     static let emojiCommands = Self(tab: .emoji, title: "Commands")
     static let emojiAppearance = Self(tab: .emoji, title: "Appearance")
@@ -113,8 +114,12 @@ extension SettingsAnchor {
 
     static let extensionsExtensions = Self(tab: .extensions, title: "Extensions")
     static let extensionsCompatibility = Self(tab: .extensions, title: "Compatibility")
-    static let extensionsInstalled = Self(tab: .extensions, title: "Installed")
-    static let extensionsInstall = Self(tab: .extensions, title: "Install")
+    static let extensionsInstalled = Self(
+        tab: .extensions,
+        title: LocalizedStringResource("extensions-installed-section", defaultValue: "Installed"))
+    static let extensionsInstall = Self(
+        tab: .extensions,
+        title: LocalizedStringResource("extensions-install-section", defaultValue: "Install"))
     static let extensionsStorage = Self(tab: .extensions, title: "Storage")
 
     static let permissionsAccessibility = Self(tab: .permissions, title: "Accessibility")

@@ -145,7 +145,7 @@ struct LauncherScreen: PaletteScreen {
         case .meeting(let meeting):
             return meeting.link == nil
                 ? String(localized: "Open in Calendar") : String(localized: "Join Meeting")
-        case .entry(let app): return String(localized: app.kind.descriptor.openVerb)
+        case .entry(let app): return app.kind.descriptor.openVerb.resolved()
         case .file(let result):
             return result.isDirectory ? String(localized: "Open Folder") : String(localized: "Open File")
         case .fallback(let fallback, _): return fallback.openVerb
@@ -484,11 +484,6 @@ struct LauncherScreen: PaletteScreen {
         guard let app = entry(at: selection) else { return false }
         return core.runningApps.isRunning(app)
     }
-
-    /// The compact bar's icons: the first five favorites. The "…" that follows them is not one.
-    var compactFavorites: [AppEntry] { Array(pinnedFavorites.prefix(5)) }
-
-    var hasUnshownFavorites: Bool { favoriteCount > compactFavorites.count }
 
     func body(selection: Int, scroll: ScrollIntent) -> AnyView {
         AnyView(content(selection: selection, scroll: scroll))

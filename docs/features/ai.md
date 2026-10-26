@@ -44,20 +44,26 @@ bottom with the model picker. ⌘J hands a Quick AI conversation to the window.
   `NO_COLOR` and the `TC_MCP_` names that carry MCP secrets to Codex. Names are stored in
   `aiInstalledOverrides` and values in the login Keychain (`KeychainSecretStore.installedAIEnvironment`),
   read only for a tool that has variables.
-- **Every request carries Tinycast's own preamble, and the user's text goes after it.**
+- **Every off-device request carries Tinycast's own preamble, and the user's text goes after it.**
   `AIInstructions.compose` builds `AIRequest.instructions`: a fixed preamble that tells the model
   where it is running and what the app can do, then whatever Settings → AI holds. The preamble
   keeps the model a general-purpose assistant — the app facts are reference for when the user asks,
   never a scope limit — and asks for honest comparisons; it does not instruct the model to favour
   Tinycast over anything else. It is not shown in the pane, and `AIPreamble.swift` holds the only
   copy of it — edit the prompt there, not here. `compose` returns `nil` when the user has turned
-  the system prompt off, and every transport drops a nil instruction, so a turn then carries none.
+  the system prompt off or the chat is on Apple Intelligence, and every transport drops a nil
+  instruction, so a turn then carries none. The on-device model is small enough that any standing
+  instruction — the preamble, the choices request or the user's own text — steers every answer
+  toward it, so that route always gets the conversation alone.
 - **API keys live only in the login Keychain.** `AIConnection` persists the provider, endpoint and
   model identifiers in `UserDefaults`; it never contains a key. Keys are addressed by connection UUID
   through `KeychainSecretStore.aiAPIKeys`, and never enter logs, errors or settings backups. A key is issued for one
   endpoint and never follows a connection retargeted at another — change the provider or base URL and
   both model discovery and Save ask for a new key, rather than introduce the saved one to a host it
-  was never meant to reach (`AIEndpointPolicy.sameDestination`).
+  was never meant to reach (`AIEndpointPolicy.sameDestination`). A connection's custom request
+  headers are one JSON item per connection in `KeychainSecretStore.aiRequestHeaders`. They are visible
+  rows in the editor rather than a hidden saved value, so they are saved with whatever endpoint the
+  connection is saved with, and removing a connection deletes them with its key.
 - **Remote endpoints require HTTPS.** Plain HTTP is accepted only for `localhost`, `127.0.0.1` and
   `::1`, where a key is optional, and any other scheme is rejected outright — a loopback host does
   not excuse `ftp://`. `AIEndpointPolicy` is the one place that decides this.
@@ -116,8 +122,8 @@ bottom with the model picker. ⌘J hands a Quick AI conversation to the window.
   cannot call tools shows the menu disabled and says why.
 - **A reply can end on choices, and a choice is only ever a message.** The preamble lets the model
   close a reply with a fenced `choices` block, one option per line. `ChatChoices.split` lifts the
-  fence out of the prose (an unclosed one mid-stream too, so it never flashes as code). Apple's
-  on-device model tends to drop the fence and write a bare `choices` line over a list, so a
+  fence out of the prose (an unclosed one mid-stream too, so it never flashes as code). A small
+  model tends to drop the fence and write a bare `choices` line over a list, so a
   label on its own line with nothing but list items after it, to the reply's end, counts too. It
   sometimes wraps that label in a bare fence of its own and adds a stray one after the list, so the
   bare fence right on the label and any fence closing or trailing the list go with them, and no
@@ -126,8 +132,8 @@ bottom with the model picker. ⌘J hands a Quick AI conversation to the window.
   leading-aligned `ChatFlowLayout`: in the window they rise out of the composer, sitting on its top edge until the reader starts typing; in Quick AI they close the
   transcript. A click sends the option as the reader's next message, through the same `send` a
   typed one takes. Older replies lose their chips, since only the last question is still open. It is text in, text out, so it
-  works on every route — and not at all with the system prompt switched off, which drops the
-  preamble that describes it. Settings → AI → Suggested replies (`aiChoices`, on by default) turns
+  works on every route but Apple Intelligence — and not at all with the system prompt switched off,
+  which drops the preamble that describes it. Settings → AI → Suggested replies (`aiChoices`, on by default) turns
   them off on purpose: `AIInstructions.compose` leaves `AIPreamble.choices` out, so no turn asks for
   them, and neither surface draws chips. A fence a model writes anyway is still lifted out of the
   prose.
@@ -139,7 +145,7 @@ bottom with the model picker. ⌘J hands a Quick AI conversation to the window.
 - **The on-device route is configured by having a Mac.** `.appleIntelligence` takes no key, opens no
   socket and names no endpoint, so the Keychain, HTTPS and ephemeral-session rules below have nothing
   to bind to — the Settings pane must never grow a credential field for it. It is text-only and
-  offers no web search, the preamble still rides ahead of every turn, and history is bounded to
+  offers no web search, no instructions ride ahead of its turns, and history is bounded to
   `AppleIntelligence.contextBudget` rather than the cloud routes' ~100 KB because the on-device window
   holds a prompt and its reply together. Availability is asked for each time, never cached at launch:
   the model finishes downloading mid-session, and reading it inside a view body leaves SwiftUI
@@ -182,8 +188,9 @@ bottom with the model picker. ⌘J hands a Quick AI conversation to the window.
   only a message that is still whole. The connection's key, bearer tokens and key-shaped strings are
   replaced with `[redacted]`, and then the message is cut at `messageLimit` (600 characters). A key
   under eight characters is redacted only as a whole word, so it cannot eat into a longer one; a
-  local server's placeholder key is redacted like any other. A mid-stream error is
-  treated the same way: the decoder is handed the key, an Anthropic `error` event shows its message
+  local server's placeholder key is redacted like any other. Custom header values are redacted the
+  same way. A mid-stream error is
+  treated the same way: the decoder is handed the key and header values, an Anthropic `error` event shows its message
   under its line, and an OpenAI-compatible one reads through `metadata.raw` too, or says the provider
   stopped the response when there is no sentence to show.
 - **`Model/` stays Foundation-only.** `ai-provider-test` compiles the shipped provider models and pins
@@ -332,6 +339,12 @@ The base URL stays editable for every preset because gateways and organization p
 destinations. `AIHTTPConfiguration.endpointURL` accepts a complete endpoint or appends the transport's
 completion path. Gemini requests identify Tinycast through `x-goog-api-client`; OpenRouter requests
 carry the app title.
+
+A connection can also carry custom request headers for gateways that route or authenticate by header.
+They go to model discovery and every chat request after the route's own headers, so a custom name
+replaces a default regardless of case. With headers set, the API key is optional and an empty key
+sends no credential header. `AIRequestHeaders.validated` drops blank rows and refuses a name outside
+the HTTP token set, a name repeated in any case, and a value with a line break or control character.
 
 Each connection has an ordered, deduplicated list of exact model identifiers. While its editor is open,
 Tinycast asks the configured provider for the models available to the entered key and uses the result
@@ -935,7 +948,7 @@ control (`AIProviderTab`), and the chosen page is kept from one provider to the 
 - **Overview** reports an installed tool as checking, ready, sign-in required, missing or failed,
   with the account, Codex's usage windows and the command that ran. It never contains a credential
   field: installation and sign-in happen in each command's own flow. For a connection it shows the
-  provider, base URL and whether a key is stored; **Edit…** in the header opens the connection
+  provider, base URL, whether a key is stored and whether request headers are; **Edit…** in the header opens the connection
   editor, which remains the explicit Keychain-backed path.
 - **Models** is the checklist behind the second invariant above, with Show All, Hide All and a
   filter once a route offers more than eight. The rows are an `NSTableView` in one `Form` row

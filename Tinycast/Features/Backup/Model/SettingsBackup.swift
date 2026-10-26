@@ -40,13 +40,14 @@ struct SettingsBackup: Codable {
         var calcNumberStyle: String?
         var interfaceSize: String?
         var compactMode: Bool?
-        var showFavoritesInCompactMode: Bool?
+        var compactBarCommands: [String]?
         var searchScopes: [String]?
         var launcherShowsSuggestions: Bool?
         var rootSearchSensitivity: String?
         var openOnCursorScreen: Bool?
         // Safe to carry: it grants no permission class, just repositions the window.
         var paletteDraggable: Bool?
+        var animationsEnabled: Bool?
         var fileSearchEnabled: Bool?
         var fileSearchScopes: [String]?
         var fileSearchIgnorePatterns: [String]?
@@ -160,12 +161,13 @@ extension SettingsBackup {
             calcNumberStyle: s.calcNumberStyle.rawValue,
             interfaceSize: s.interfaceSize.rawValue,
             compactMode: s.compactMode,
-            showFavoritesInCompactMode: s.showFavoritesInCompactMode,
+            compactBarCommands: s.compactBarCommands.map(\.rawValue),
             searchScopes: s.searchScopes,
             launcherShowsSuggestions: s.launcherShowsSuggestions,
             rootSearchSensitivity: s.rootSearchSensitivity.rawValue,
             openOnCursorScreen: s.openOnCursorScreen,
             paletteDraggable: s.paletteDraggable,
+            animationsEnabled: s.animationsEnabled,
             fileSearchEnabled: s.fileSearchEnabled,
             fileSearchScopes: s.fileSearchScopes,
             fileSearchIgnorePatterns: s.fileSearchIgnorePatterns,
@@ -397,8 +399,10 @@ extension SettingsBackup {
             settings.compactMode = flag
             count += 1
         }
-        if let flag = s.showFavoritesInCompactMode {
-            settings.showFavoritesInCompactMode = flag
+        if let identifiers = s.compactBarCommands,
+            let commands = CommandID.compactBarCommands(from: identifiers)
+        {
+            settings.compactBarCommands = commands
             count += 1
         }
         if let scopes = s.searchScopes {
@@ -419,6 +423,10 @@ extension SettingsBackup {
         }
         if let flag = s.paletteDraggable {
             settings.paletteDraggable = flag
+            count += 1
+        }
+        if let flag = s.animationsEnabled {
+            settings.animationsEnabled = flag
             count += 1
         }
         // Writing through AppSettings is enough; AppCore's sinks re-project the rest.

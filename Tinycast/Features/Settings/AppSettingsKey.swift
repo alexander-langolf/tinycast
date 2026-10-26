@@ -26,13 +26,14 @@ enum AppSettingsKey: String, CaseIterable {
     case monoFont = "monoFont"  // FORK: font-persistence
     case forkTheme = "forkTheme"  // FORK: appearance-theme
     case compactMode = "compactMode"
-    case showFavoritesInCompactMode = "showFavoritesInCompactMode"
+    case compactBarCommands = "compactBarCommands"
     case searchScopes = "launcherSearchScopes"
     case launcherShowsSuggestions = "launcherShowsSuggestions"
     case rootSearchSensitivity = "rootSearchSensitivity"
     case openOnCursorScreen = "openOnCursorScreen"
     case autoSwitchInputSource = "autoSwitchInputSource"
     case paletteDraggable = "paletteDraggable"
+    case animationsEnabled = "animationsEnabled"
     case palettePosition = "palettePosition"
     case paletteExpandedCenterDisplays = "paletteExpandedCenterDisplays"
     case notchBarEnabled = "forkNotchBarEnabled"  // FORK: notch-bar
@@ -120,6 +121,7 @@ enum AppSettingsKey: String, CaseIterable {
     case dictationDestination = "dictationDestination"
     case dictationAdaptsCapitalization = "dictationAdaptsCapitalization"
     case dictationLiveInsertion = "dictationLiveInsertion"
+    case dictationPlaysSounds = "dictationPlaysSounds"
     case dictationIdleRelease = "dictationIdleReleaseMinutes"
     case dictationLanguage = "dictationLanguage"
     case supportReminders = "supportReminders"

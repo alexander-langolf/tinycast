@@ -10,14 +10,14 @@ final class AIChatSplitViewController: NSSplitViewController {
 
         let sidebarItem = NSSplitViewItem(
             // FORK: accent-scope
-            sidebarWithViewController: NSHostingController(rootView: sidebar.forkAppearance()))
+            sidebarWithViewController: NSHostingController(rootView: sidebar.motionScope().forkAppearance()))
         sidebarItem.minimumThickness = Theme.Size.aiChatSidebarMinimum
         sidebarItem.maximumThickness = Theme.Size.aiChatSidebarMaximum
         sidebarItem.canCollapse = true
 
         let detailItem = NSSplitViewItem(
             // FORK: accent-scope
-            viewController: NSHostingController(rootView: detail.forkAppearance()))
+            viewController: NSHostingController(rootView: detail.motionScope().forkAppearance()))
         detailItem.minimumThickness = Theme.Size.aiChatDetailMinimum
 
         addSplitViewItem(sidebarItem)

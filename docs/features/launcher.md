@@ -201,12 +201,14 @@ which turns into Tinycast's interface language once one is picked, and would ren
 `InfoPlist.strings`, and every app under `/System/Applications` translates in the loctable alone — so
 all 65 of them read English on every Mac, whatever language it is set to.
 
-A tag carrying a script is read under two more codes, because no one folder name covers it: a
-`zh-Hans-CN` Mac also reads `zh-Hans`, the folder most third-party apps ship, then `zh_CN`, the key
-Apple's own loctables use. A script-only `zh-Hans` maximizes to reach the same region. A tag without a
-script otherwise keeps its exact, underscore and bare-language forms. Bokmål (`nb`) additionally
-reads `no` after `nb`, because Apple's Norwegian loctables use that key; an explicit `nb.lproj` still
-wins. Other languages, including Nynorsk (`nn`), gain no alias.
+A tag carrying a script is read under more codes, because no one folder name covers it: a
+`zh-Hans-US` Mac also reads `zh-Hans`, the folder most third-party apps ship, then its own region
+`zh_US`, then `zh_CN`, the script's home region and the key Apple's own loctables use. A region is read
+only when it writes the tag's script, so `zh-Hans-HK` skips the Traditional `zh_HK`, and `zh-Hant-HK`
+reads `zh_HK` before `zh_TW`. A tag without a script otherwise keeps its exact, underscore and
+bare-language forms. Bokmål (`nb`) additionally reads `no` after `nb`, because Apple's Norwegian
+loctables use that key; an explicit `nb.lproj` still wins. Other languages, including Nynorsk (`nn`),
+gain no alias.
 
 The user's own language wins the **display name**, so a row reads the way Finder reads it. The rest,
 English included, ride along as alternate titles, matched as typed and never transliterated.
@@ -457,7 +459,7 @@ only while the score is above 1 and the entry was opened in the last 17 days, wh
 stale habit stop overriding the alignment.
 
 Every pick through `LauncherCoordinator.launch` is a visit, with the query as it was typed: a list
-click, a result, a favorite by ⌘-digit or from the compact bar, the ⌘K Open row. A global shortcut
+click, a result, a favorite by ⌘-digit, the ⌘K Open row. A global shortcut
 is not a visit, and neither is a fallback or a query-driven row. A category listing records the visit
 and not the word. `rank` reads the store once per pass through `snapshot()` — one clock read, not one
 per candidate — and the memos key on the ranking, alias, visibility, favorites and shortcut revisions
@@ -536,8 +538,10 @@ Volume slider all render through `DialogController` rather than an `NSAlert`
 `arrow.clockwise`, Empty Trash `trash.slash` — so the dialog is recognizably about the row that
 opened it. Output volume and mute actions also show Tinycast's transient volume HUD, since macOS only draws
 its own for real media keys. Volume Up/Down walk a 5% grid (`VolumeLevel.stepped`, covered by
-`Tests/volume-test.swift`): an off-grid level snaps to the next line rather than past it, so from 37%
-up lands on 40% and down on 35%, and repeated presses stay on round numbers.
+`Tests/volume-test.swift`): each press moves one line from the level's nearest line, so from 37% up
+lands on 40% and down on 30%, and repeated presses stay on round numbers. Stepping from the nearest
+line matters for devices that store a level slightly off the one set (45.1% for 45%): stepping from
+the read-back level alone would aim at the same line again and never move.
 
 An action whose effect is invisible reports back through a pill (`MessageHUDController`, the same one
 Custom Commands and Snippets confirm through) rather than finishing silently:
@@ -693,7 +697,7 @@ internals live in [navigation.md](navigation.md) and [menu-search.md](menu-searc
 The ranking harness covers the frecency curve, search-term retention and its 17-day gate, pruning,
 persistence and both reset paths; see the command in `development.md`.
 
-Launcher rows and compact favorites ask for the point size they actually draw at, scaled by the
+Launcher rows ask for the point size they actually draw at, scaled by the
 view's `displayScale`: 24/26/29pt becomes 48/52/58px at 2×. `IconCache` still rasterizes through its
 96px canvas first — AppKit picks the representation and the drop shadow from that size — and then
 keeps only the row-sized bitmap, in an 8 MB cost-capped row cache separate from the 32 MB one.
@@ -748,10 +752,9 @@ that screen; the eleventh favorite is still listed and reorderable, and simply h
 
 Both palette sizes serve the chords from the same prefix, because `paletteIsCollapsed` already
 requires an empty query: **compact implies empty implies `favoriteCount` is the pinned prefix**. That
-is why `LauncherScreen.pinnedFavorites` feeds the strip, the chords and the numbered rows alike,
-rather than the compact bar re-deriving an empty-query order of its own. In compact the strip draws
-the first five; ⌘6–⌘0 still launch favorites it has no room for, and the "…" is a button after them
-rather than a slot, so no favorite loses its digit to the overflow.
+is why `LauncherScreen.pinnedFavorites` feeds the chords and the numbered rows alike, rather than
+the compact bar re-deriving an empty-query order of its own. The compact bar draws no favorites, yet
+every slot still launches one.
 
 Holding ⌘ swaps each numbered row's kind label for its chord. `PalettePanel` publishes the modifier
 into `PaletteState.commandHeld` from `.flagsChanged` and clears it in `resignKey` — not in `prepare`,
@@ -819,13 +822,14 @@ and the lead card keep SwiftUI's own gesture. The operation is **copy only**, as
 [clipboard.md](clipboard.md#dragging-out) explains: on the boot volume a file-URL drag would default
 to a move, and moving an app out of `/Applications` is never what a launcher should do. The image is
 the shared icon bitmap when it is warm and `NSWorkspace`'s otherwise, never a decode, and a landed
-drop hides the palette through `PaletteCoordinator.dragLanded()`. Compact mode's favorite buttons do
-not drag.
+drop hides the palette through `PaletteCoordinator.dragLanded()`.
 
 ## Quitting and restarting apps
 
-`RunningAppsMonitor` (live from `NSWorkspace` launch/terminate notifications) drives both the row's
-running dot and the availability of the running-only actions:
+`RunningAppsMonitor` (live from a KVO observation of `NSWorkspace.runningApplications`) drives both the
+row's running dot and the availability of the running-only actions. It observes the list rather than
+`didTerminateApplicationNotification`, which arrives while the list still holds the quitting app, so
+reading the list there left the dot on until some later launch or quit:
 
 - **Quit Application** — a row of an app's ⌘K Actions menu, shown only while that app is
   running, also bound to **⌃⇧Q** on the selected row. The chord guard mirrors the menu row's

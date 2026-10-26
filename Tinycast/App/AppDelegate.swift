@@ -14,7 +14,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         // FORK: previews — Xcode's canvas hosts the app; starting AppCore there (hotkeys, Hyper Key, listeners) crashes it.
         guard !Self.isRunningForPreviews else { return }
-        AppCore.shared.start()
+        AppCore.shared.start(launchedByUser: isUserLaunch)
     }
 
     func application(_ application: NSApplication, open urls: [URL]) {
@@ -72,5 +72,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let pid = event.attributeDescriptor(forKeyword: keySenderPIDAttr)?.int32Value
         else { return false }
         return NSRunningApplication(processIdentifier: pid)?.bundleIdentifier == "com.apple.dock"
+    }
+
+    /// Only a plain open counts; a login item or a URL open launches with nothing to show.
+    private var isUserLaunch: Bool {
+        guard let event = NSAppleEventManager.shared().currentAppleEvent,
+            event.eventClass == kCoreEventClass, event.eventID == kAEOpenApplication
+        else { return false }
+        return event.paramDescriptor(forKeyword: keyAEPropData)?.enumCodeValue
+            != keyAELaunchedAsLogInItem
     }
 }

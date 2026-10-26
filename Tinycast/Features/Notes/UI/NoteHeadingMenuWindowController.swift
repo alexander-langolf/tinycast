@@ -30,8 +30,9 @@ final class NoteHeadingMenuWindowController {
 
     private func ensurePanel() -> NotesPanel {
         if let panel { return panel }
-        // FORK: accent-scope
-        let hosting = NSHostingView(rootView: NoteHeadingMenuView().environment(coordinator).forkAppearance())
+        let hosting = NSHostingView(
+            // FORK: accent-scope
+            rootView: NoteHeadingMenuView().environment(coordinator).motionScope().forkAppearance())
         hosting.sizingOptions = []
         let panel = NotesPanel(
             content: hosting,

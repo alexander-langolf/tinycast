@@ -16,6 +16,8 @@ in `Features/Settings/` (`Model/`, `Service/`, `SettingsFileSchema.swift`), the 
 - **A capability grant never has a key.** Snippets, Extensions, Calendar access, Auto Join, Camera
   Preview, Quick Actions, MCP and clipboard text recognition are switched on only in the app, which
   asks first. `settings-file-test` checks those paths stay absent.
+- **Removing a key ships a migration that strips it.** The import reports a key it no longer knows on
+  every launch, until a change made in the app rewrites the file. See [migrations.md](../migrations.md).
 - **`SettingsFileSchema`'s switch is exhaustive.** A new `SettingsFileKey` case fails to build until it
   is bound to a property.
 - **A bad edit never costs a setting.** A key the file leaves out keeps its value; a value Tinycast
@@ -41,6 +43,12 @@ Navigator bookmarks/recent paths are bundle-local content, outside this mirror.
 `.Trash` are skipped either way. It is mirrored through AppSettings and kept out of backups.
 
 ## Layout
+
+`appearance.compactBarCommands` is an ordered array of zero to four unique command identifiers.
+For example, `["command:clipboard-history", "command:search-emoji", "command:ai-chat"]` shows
+Clipboard History, Emoji & Symbols and Quick AI in that order. Only the eight commands offered by
+Compact Shortcuts are accepted; unknown, duplicate, unsupported or excess entries reject the whole
+value. `[]` removes every shortcut, and omitting the key leaves the current selection unchanged.
 
 | File | Role |
 | --- | --- |
@@ -98,7 +106,7 @@ because the app rewrites the file.
 ```json
 {
   "general": {
-    "language": "system",
+    "language": "en",
     "showInMenuBar": true,
     "showNotchBar": false,
     "automaticallyCheckForUpdates": true,
@@ -124,7 +132,7 @@ Where a number has a special case, the case is a word:
 
 | Key | Values |
 | --- | --- |
-| `general.language` | `"en"` (default), `"de"`, `"es"`, `"fr"`, `"ja"`, `"ko"`, `"pt"`, `"ru"`, `"zh-Hans"` |
+| `general.language` | `"en"`, `"de"`, `"es"`, `"fr"`, `"ja"`, `"ko"`, `"pt"`, `"ru"`, `"zh-Hans"` |
 | `clipboard.retentionDays` | 1, 7, 30, 90, 180, 365, `"forever"` |
 | `ai.retentionDays` | 7, 30, 90, `"forever"` |
 | `ai.newChatAfterMinutes` | 2, 5, 10, 30, `"never"` |
@@ -137,6 +145,9 @@ Where a number has a special case, the case is a word:
 | `calendar.hideCurrentEventAfterMinutes` | `"never"`, 0 (as it starts), 5, 10, 30 |
 | `windowManagement.gap` | 0 to 64 |
 | `snippets.folder`, `notes.folder` | an absolute or `~/` path, or `null` for Application Support |
+
+On first launch, `general.language` is set to the primary system language if supported, otherwise
+`"en"`. That explicit choice is saved; later system-language changes do not change it.
 
 ## Shortcut chords
 

@@ -67,7 +67,8 @@ final class RoomPreviewController {
             let frame = geometry.flip(screen.frame)
             let host = NSHostingView(
                 rootView: RoomPreviewView(model: model, origin: frame.origin, size: frame.size)
-                    .forkAppearance())  // FORK: accent-scope
+                    // FORK: accent-scope
+                    .motionScope().forkAppearance())
             // The controller owns the frame; without this the hosting view would size the window.
             host.sizingOptions = []
             let panel = RoomPreviewPanel()

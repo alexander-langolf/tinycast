@@ -22,11 +22,10 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
     private let frameAnimator = PaletteFrameAnimator()  // FORK: palette-motion
     /// ⌘V: `Edit ▸ Paste` claims it before `sendEvent` whenever the board also carries text.
     private var pasteMonitor: Any?
-    /// ⌘⎋: the window server claims it, so no keystroke is left for the responder chain to see.
+    /// ⌘esc: the window server claims it, so no keystroke is left for the responder chain to see.
     private lazy var commandEscapeTap = CommandEscapeTap { [weak self] in
-        guard let self, self.panel?.isKeyWindow == true else { return false }
+        guard let self, self.panel?.isKeyWindow == true else { return }
         self.core.palette.prepare(mode: .launcher)
-        return true
     }
 
     private struct DragSession {
@@ -83,6 +82,7 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
             positionPanel(panel, collapsed: core.paletteCoordinator.paletteIsCollapsed)
             // Flush first-mount layout off-screen, so the safe-area settle isn't visible.
             panel.contentView?.layoutSubtreeIfNeeded()
+            panel.displayIfNeeded()
             core.inputSourceSwitcher.beginSession(
                 preferredInputSourceID: core.settings.autoSwitchInputSourceID)
             // Events go stale while the palette is closed, and the countdown only ticks while up.
@@ -91,11 +91,11 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
             core.notchBar.sessionDidStart()  // FORK: notch-bar
             core.palette.noteVisible(true)
             core.clipboardStore.setTextSearchActive(true)
-            // Only while we are on screen: a system-wide tap has no business outliving the window.
-            commandEscapeTap.enable()
             // Non-activating, so summoning never raises our own aux windows behind it.
             panel.makeKeyAndOrderFront(nil)
             panel.orderFrontRegardless()
+            // The corner is clipped in SwiftUI, so a stale square shadow rims the first frame.
+            panel.invalidateShadow()
             // A never-activated login item can drop the first key request, so re-assert.
             DispatchQueue.main.async { [weak panel] in
                 guard let panel, panel.isVisible, !panel.isKeyWindow else { return }
@@ -238,6 +238,7 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
 
     /// Not for a dialog or a modal: hiding tears down a running command.
     func windowDidResignKey(_ notification: Notification) {
+        commandEscapeTap.disable()
         guard isVisible, !core.isShowingDialog else { return }
         if core.palette.menuOpen { return }
         // A file panel sets its own level under ours, so sink rather than dismiss.
@@ -249,6 +250,7 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
     }
 
     func windowDidBecomeKey(_ notification: Notification) {
+        commandEscapeTap.enable()
         panel?.level = .palette
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
@@ -511,6 +513,8 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
                 visibleFrame: NSScreen.screens.first { $0.frame.contains(anchor) }?.visibleFrame
                     ?? panel.screen?.visibleFrame ?? targetScreen()?.visibleFrame)
         }
+        // A shadow is cut once from the window's alpha, so compact's moving glass relies on its own.
+        panel.hasShadow = !collapsed
         // FORK: palette-motion
         frameAnimator.move(
             panel, to: frame,

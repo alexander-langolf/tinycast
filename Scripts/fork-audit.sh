@@ -83,6 +83,7 @@ direct_tokens = {
         "menuSymbolSize", "menuSymbolSize"],
     "Tinycast/Features/Quicklinks/UI/QuicklinkEditorView.swift": ["menuSymbolSize"],
     "Tinycast/Palette/RootPaletteView.swift": ["menuSymbolSize"],
+    "Tinycast/Features/Launcher/UI/CompactBar.swift": ["headerIconSize"],
 }
 for path in sorted(Path("Tinycast").rglob("*.swift")):
     filename = path.as_posix()
@@ -149,6 +150,7 @@ allowed = {
     "Tinycast/Features/Settings/Panes/GeneralSettingsView.swift": [
         ".system(size: Self.glyph[size] ?? 13, weight: .medium)"],
     "Tinycast/Features/Settings/Panes/PermissionsSettingsView.swift": [
+        ".system(size: SettingsListMetrics.iconSize - Theme.Spacing.xs)",
         ".system(size: SettingsListMetrics.iconSize - Theme.Spacing.xs)"],
     "Tinycast/Features/Snippets/Settings/SnippetsSettingsView.swift": [
         ".system(size: Theme.Size.settingsRowIcon - Theme.Spacing.xs)"],

@@ -14,29 +14,34 @@ struct AppearanceSettingsView: View {
                         Text(appearance.title).tag(appearance)
                     }
                 } label: {
-                    SettingsRowTitle(.generalAppearance, "Theme")
+                    SettingsRowTitle(.generalAppearance, "Appearance")
                     if isThemed { Text("Only applies to Tinycast (default) colours.") }
                 }
                 .settingsEnabled(!isThemed)
+                Toggle(isOn: $settings.animationsEnabled) {
+                    SettingsRowTitle(.generalAppearance, "Show animations")
+                }
                 InterfaceSizeRow()
                 ForkFontRow()
                 ForkFontRow(kind: .monospaced)
                 WindowModeRow()
-                Toggle(isOn: $settings.showFavoritesInCompactMode) {
-                    SettingsRowTitle(.generalAppearance, "Show favorites in compact mode")
-                    Text("Launch them with ⌘1–⌘5.")
-                }
-                .settingsEnabled(settings.compactMode)
+                    .background {
+                        if !settings.compactMode {
+                            Color.clear.settingsAnchor(.generalCompactShortcuts)
+                        }
+                    }
                 Toggle(isOn: $settings.openOnCursorScreen) {
                     SettingsRowTitle(.generalAppearance, "Follow the cursor across displays")
                 }
                 Toggle(isOn: $settings.paletteDraggable) {
-                    SettingsRowTitle(.generalAppearance, "Drag to reposition")
-                    Text("Drag the strip above the search field.")
+                    SettingsRowTitle(.generalAppearance, "Drag to move the launcher")
+                    Text("Move the launcher by dragging the search bar.")
                 }
             } header: {
                 SettingsSectionHeader(.generalAppearance)
             }
+
+            if settings.compactMode { CompactShortcutsSection() }
 
             ForkColorThemeSection()
             ForkThemeSection(component: .agentCard) { AgentCardThemePreview() }

@@ -74,7 +74,7 @@ private struct DictationPanelView: View {
     }
 }
 
-private final class DictationPanel: NSPanel {
+private final class DictationPanel: NSPanel, AnimatedPanel {
     var onAccept: (() -> Void)?
     var onCancel: (() -> Void)?
 
@@ -90,7 +90,7 @@ private final class DictationPanel: NSPanel {
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         hidesOnDeactivate = false
         isReleasedWhenClosed = false
-        animationBehavior = .none
+        followMotion()
     }
 
     override var canBecomeKey: Bool { true }
@@ -122,7 +122,7 @@ final class DictationPanelController {
             panel
             ?? DictationPanel(
                 // FORK: accent-scope
-                content: NSHostingView(rootView: DictationPanelView(state: state).forkAppearance()))
+                content: NSHostingView(rootView: DictationPanelView(state: state).motionScope().forkAppearance()))
         panel.onAccept = onAccept
         panel.onCancel = onCancel
         self.panel = panel
