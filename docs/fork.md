@@ -435,6 +435,8 @@ unless they have an explicit symbol-only allowance. The audit is a static guard,
 
 `OverflowFade.swift` keeps explicit `Double(...)` conversions: upstream's `min(overflow.top / band, 1)` is an ambiguous operand under the local Xcode 26 toolchain (verified 2026-10-08 by a failed build). Drop the hook once upstream compiles without it.
 
+`HyperKeyEngine.swift` declares `init(route:includesShift:)`: Xcode 26.2 makes the memberwise initializer private because the struct has private stored properties, so `HyperKeyTap` cannot call it (verified 2026-10-26 by a failed build). Drop the hook once the local toolchain matches upstream's CI Xcode.
+
 ## Upstream hooks
 
 FileNavigator and TerminalInstances are fork-owned feature folders; terminal role, card, grid and
@@ -511,6 +513,8 @@ launcher changes live there without upstream hooks. The generated pbxproj except
 | `docs/features/file-search.md` | `// FORK: file-navigator` | Document existing folder activation and File Navigator actions. |
 | `AGENTS.md` | `// FORK: documentation` | Link the fork maintenance guide. |
 | `Tinycast/DesignSystem/Scrolling/OverflowFade.swift` | `// FORK: overflow-double` | Compile fix: explicit `Double` for the fade strengths. |
+| `Tinycast/Features/HotKeys/Model/HyperKeyEngine.swift` | `// FORK: memberwise-init` | Compile fix: explicit `init(route:includesShift:)` for the local toolchain. |
+| `Tinycast/Palette/RootPaletteView.swift` | `// FORK: palette-type-check` | Move upstream's compact-selection observers out of `stateObservers` so the chain type-checks. |
 | `Scripts/run-tests.sh` | `// FORK: fork-harness` | Register the fork-layer harness. |
 | `Scripts/run-tests.sh` | `// FORK: harness-sources` | Compile affected harnesses with real fork dependencies, including the file-session runner. |
 | `Tinycast/App/AppCore.swift` | `// FORK: appearance-observation` | Refresh AppKit palette geometry after font or theme-token changes. |
@@ -735,6 +739,7 @@ All files changed from `a506eda` (including files restored exactly to upstream):
 - `Tinycast/DesignSystem/InterfaceMetrics.swift` — edited.
 - `Tinycast/DesignSystem/PopoverMenu.swift` — edited.
 - `Tinycast/DesignSystem/Scrolling/OverflowFade.swift` — `overflow-double` compile fix.
+- `Tinycast/Features/HotKeys/Model/HyperKeyEngine.swift` — `memberwise-init` compile fix.
 - `Tinycast/DesignSystem/SettingsComponents.swift` — restored to upstream.
 - `Tinycast/DesignSystem/SteadySegmentedPicker.swift` — restored to upstream.
 - `Tinycast/DesignSystem/SymbolImage.swift` — edited.

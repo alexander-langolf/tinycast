@@ -365,7 +365,7 @@ struct RootPaletteView: View {
                 // The window's frame is the size source, so the glass and clip stay matched.
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 // Compact, the bar's own glass shapes are the surface and the window is bare.
-                .background(isCollapsed ? .clear : ForkTheme.current.paletteScrim)  // FORK: appearance-theme
+                .background(isCollapsed ? AnyShapeStyle(Color.clear) : ForkTheme.current.paletteScrim)  // FORK: appearance-theme
                 // Hidden rather than unmounted, so expanding never shows a frame without glass.
                 .background(GlassEffectView().opacity(isCollapsed ? 0 : 1))
                 .overlay {
@@ -447,21 +447,28 @@ struct RootPaletteView: View {
         (hostWindow as? PalettePanel)?.onFileNavigatorKey = nil
     }
 
-    /// Split from `body` for the same reason `keyHandlers` is: one chain cannot carry them all.
-    @ViewBuilder
-    private func stateObservers(_ content: some View) -> some View {
-        emojiObservers(content.modifier(FileNavigatorPaletteObserver()))  // FORK: file-navigator
-            // Every show bumps focusToken so the search field refocuses.
-            .onChange(of: vm.focusToken) {
-                resetCompactSelection()
-                searchFocused = !screen.hidesSearchField
-            }
+    // FORK: palette-type-check
+    /// Split from `stateObservers`: with the fork's observers, one chain no longer type-checks in time.
+    private func compactSelectionObservers(_ content: some View) -> some View {
+        content
             .onChange(of: vm.isVisible) { resetCompactSelection() }
             .onChange(of: vm.isComposing) {
                 if vm.isComposing { resetCompactSelection() }
             }
             .onChange(of: compactCommands) {
                 compactSelection.reconcile(commands: compactCommands)
+            }
+    }
+
+    /// Split from `body` for the same reason `keyHandlers` is: one chain cannot carry them all.
+    @ViewBuilder
+    private func stateObservers(_ content: some View) -> some View {
+        // FORK: palette-type-check
+        compactSelectionObservers(emojiObservers(content.modifier(FileNavigatorPaletteObserver())))  // FORK: file-navigator
+            // Every show bumps focusToken so the search field refocuses.
+            .onChange(of: vm.focusToken) {
+                resetCompactSelection()
+                searchFocused = !screen.hidesSearchField
             }
             // A preserved screen re-summons as it was left, so a menu must end with the palette.
             .modifier(

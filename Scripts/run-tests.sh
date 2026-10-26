@@ -83,7 +83,7 @@ run() {
     shift
     # // FORK: harness-sources keeps standalone harnesses on the shipped fork implementation.
     case " $* " in
-        *"/Theme.swift "*|*"/InterfaceMetrics.swift "*|*"/NoteMarkdownTypography.swift "*|*"/SettingsFileSchema.swift "*|*"/IconCache.swift "*)
+        *"/Theme.swift "*|*"/InterfaceMetrics.swift "*|*"/NoteMarkdownTypography.swift "*|*"/SettingsFileSchema.swift "*|*"/IconCache.swift "*|*"/AppWindowController.swift "*)
             set -- "$@" Tinycast/Fork/ForkAppearance.swift Tinycast/Fork/ForkTypography.swift \
                 Tinycast/Fork/ForkColors.swift Tinycast/Fork/ForkAssets.swift Tinycast/Fork/ForkAppearanceScope.swift \
                 Tinycast/Fork/Theme/ForkColorPalette.swift Tinycast/Fork/Theme/ForkColorTheme.swift \
