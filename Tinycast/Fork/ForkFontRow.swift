@@ -36,7 +36,7 @@ struct ForkFontRow: View {
 
     var body: some View {
         SettingsRow(
-            title: kind.title,
+            title: LocalizedStringResource(stringLiteral: kind.title),
             subtitle: kind.subtitle,
             anchor: .generalAppearance
         ) {

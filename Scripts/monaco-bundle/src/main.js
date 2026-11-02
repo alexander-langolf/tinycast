@@ -9,6 +9,7 @@ const post = (message) => window.webkit.messageHandlers.tinycast.postMessage(mes
 let editor;
 let savedVersion = 0;
 let reportedDirty = false;
+let projectTheme;
 
 function reportDirty() {
   const dirty = editor.getModel().getAlternativeVersionId() !== savedVersion;
@@ -17,15 +18,45 @@ function reportDirty() {
   post({ type: "dirty", dirty });
 }
 
+function convertTheme(theme) {
+  const rules = [];
+  for (const entry of theme.tokenColors) {
+    const scopes = Array.isArray(entry.scope) ? entry.scope : [entry.scope ?? ""];
+    for (const group of scopes) {
+      for (const scope of group.split(",")) {
+        const rule = { token: scope.trim() };
+        if (entry.settings.foreground !== undefined) {
+          rule.foreground = entry.settings.foreground.replace(/^#/, "");
+        }
+        if (entry.settings.fontStyle !== undefined) rule.fontStyle = entry.settings.fontStyle;
+        rules.push(rule);
+      }
+    }
+  }
+  return {
+    base: theme.type === "light" ? "vs" : "vs-dark",
+    inherit: true,
+    colors: { ...theme.colors },
+    rules,
+  };
+}
+
 function create(options) {
+  projectTheme = undefined;
+  if (options.projectTheme) {
+    monaco.editor.defineTheme("tinycast-project", convertTheme(options.projectTheme));
+    projectTheme = "tinycast-project";
+  }
   editor = monaco.editor.create(document.getElementById("root"), {
     value: options.text,
     language: options.language,
-    theme: options.theme,
+    theme: projectTheme ?? options.theme,
     fontFamily: options.fontFamily,
     fontSize: options.fontSize,
+    lineHeight: options.lineHeight,
+    wordWrap: options.wordWrap,
     automaticLayout: true,
-    minimap: { enabled: true },
+    minimap: { enabled: options.minimap },
     scrollBeyondLastLine: false,
     renderWhitespace: "selection",
     smoothScrolling: true,
@@ -53,7 +84,7 @@ window.tinycastEditor = {
     savedVersion = version;
     reportDirty();
   },
-  setTheme: (theme) => monaco.editor.setTheme(theme),
+  setTheme: (theme) => monaco.editor.setTheme(projectTheme ?? theme),
   setFont: (family, size) => editor.updateOptions({ fontFamily: family, fontSize: size }),
   focus: () => editor.focus(),
 };

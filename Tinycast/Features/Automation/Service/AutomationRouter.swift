@@ -28,6 +28,16 @@ final class AutomationRouter {
     }
 
     func route(_ call: AutomationCall) async -> AutomationOutcome {
+        // FORK: workflow-server
+        let context = call.correlationID.map {
+            ForkTrace.Context(id: $0, operation: .workflow, clientID: call.caller.clientID)
+        } ?? ForkTrace.context
+        return await ForkTrace.$context.withValue(context) {
+            await ForkAutomationTrace.run(call) { await dispatch(call) }  // FORK: core-capabilities
+        }
+    }
+
+    private func dispatch(_ call: AutomationCall) async -> AutomationOutcome {
         let operation = call.operation
         guard admit(call.caller) else {
             await recordThrottled(call)
@@ -85,6 +95,17 @@ final class AutomationRouter {
 
     /// A name the registry does not know never reaches `route`, but the attempt is still logged.
     func recordUnknown(
+        _ name: String, caller: AutomationCaller, arguments: [String: JSONValue], transport: String,
+        callerRequestID: String?
+    ) async {
+        // FORK: core-capabilities
+        await ForkAutomationTrace.unknown(caller: caller) {
+            await recordUnknownAttempt(name, caller: caller, arguments: arguments,
+                                       transport: transport, callerRequestID: callerRequestID)
+        }
+    }
+
+    private func recordUnknownAttempt(
         _ name: String, caller: AutomationCaller, arguments: [String: JSONValue], transport: String,
         callerRequestID: String?
     ) async {
@@ -160,7 +181,8 @@ final class AutomationRouter {
                 callerRequestID: call.callerRequestID, caller: call.caller.label,
                 client: call.caller.clientID,
                 operation: call.operation.name,
-                arguments: AutomationAuditEvent.summary(of: call.arguments), detail: detail))
+                arguments: ForkAutomationTrace.auditArguments(call),  // FORK: core-capabilities
+                detail: ForkAutomationTrace.auditDetail(detail, call: call)))
     }
 
     /// What the runner worked out before approval: the exact thing the user will be shown.

@@ -141,14 +141,15 @@ struct FileNavigatorState: Sendable {
         _ rows: [FileSearchResult], filter: String, shouldStop: () -> Bool = { false }
     ) -> [FileSearchResult] {
         var scored: [(row: FileSearchResult, score: Int)] = []
-        let terms = ForkSearch.terms(filter, profile: .fuzzy)
+        let query = ForkSearch.Query(filter, profile: .fuzzy)  // FORK: search
         for row in rows {
             if shouldStop() { return [] }
             if filter.isEmpty { scored.append((row, 0)); continue }
+            let text = ForkSearch.Text(row.name)  // FORK: search
             var score = 0
             var matches = true
-            for term in terms {
-                let hit = ForkSearch.hit(term, in: row.name)
+            for term in query.terms {
+                let hit = ForkSearch.hit(term, in: text, raw: row.name)  // FORK: search
                 if term.negated {
                     if hit != nil { matches = false; break }
                 } else if let hit {

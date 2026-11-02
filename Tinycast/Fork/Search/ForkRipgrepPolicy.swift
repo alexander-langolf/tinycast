@@ -59,6 +59,6 @@ enum ForkRipgrepPolicy {
         }
             || ["Library", ".Trash"].contains {
                 path == home + "/" + $0 || path.hasPrefix(home + "/" + $0 + "/")
-            } || ignore.excludes(path: path)
+            } || ignore.excludes(name: (path as NSString).lastPathComponent, path: path)
     }
 }

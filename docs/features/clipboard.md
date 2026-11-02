@@ -146,7 +146,8 @@ order, so the single-predicate form reads the whole table instead. The floor is 
 load everything — while the history is shorter than the window.
 
 Searching is trigram FTS, which needs **at least three characters**; shorter queries, and the
-no-database fallback path, filter the in-memory window instead. Results are memoized one query deep,
+no-database fallback path, filter the in-memory window instead. Under fork search, typed search matches text entries only; see
+[fork.md](../fork.md#search). Results are memoized one query deep,
 with a second memo for the empty query, and both are invalidated whenever `items` changes.
 The FTS query picks its newest `searchLimit` row IDs before materializing rows, so a broad query
 never builds more items than it can show. Pins are still matched separately in memory, and the type
@@ -161,6 +162,9 @@ retention cut can strand hundreds of files, so those deletions run off the main 
 capture-time pruning from hitching.
 
 ## Image and PDF text search
+
+Under fork search, the "Search text in images and PDFs" switch is hidden and no `ClipboardTextIndexer`
+is created; see [fork.md](../fork.md#search). The rest of this section describes upstream behaviour.
 
 **Search text in images and PDFs is off by default.** The per-machine switch is excluded from
 settings backups. A cold disabled launch creates no OCR schema, indexer, search task or Vision request,

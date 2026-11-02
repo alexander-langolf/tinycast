@@ -10,21 +10,23 @@ final class QuickActionRunner {
     static func selection(
         in targetApp: NSRunningApplication?, using injector: TextInjector
     ) async throws -> String {
+        return try await ForkTrace.step(.selectionRead, category: .selection) {  // FORK: observability
         // A shortcut press is an explicit gesture, so it may prompt, as snippet expansion does.
         guard Permissions.ensureAccessibility() else { throw QuickActionFailure.needsAccessibility }
         guard let targetApp,
             targetApp.bundleIdentifier != Bundle.main.bundleIdentifier
         else { throw QuickActionFailure.noTarget }
 
-        let reported = AccessibilityText.read(in: targetApp)
-        if case .text(let text) = reported { return try accepted(text) }
-        if let copied = await injector.copySelection(from: targetApp) {
-            return try accepted(copied)
-        }
+        // FORK: core-capabilities
+        let reported = await ForkSelectionAdapters.read(from: targetApp) { app in
+            await injector.copySelection(from: app)
+        }  // FORK: btt-selection
+        if let selection = reported.selection { return try accepted(selection.text) }
         // Only when Accessibility saw a text element is "nothing is selected" the honest answer.
-        throw reported == .empty
+        throw reported.accessibilityWasEmpty
             ? QuickActionFailure.noSelection
             : .unreadableApp(targetApp.localizedName)
+        }  // FORK: observability
     }
 
     static func accepted(_ text: String) throws -> String {
@@ -41,6 +43,7 @@ final class QuickActionRunner {
         instructionOverride: String?,
         onDelta: @MainActor (String) -> Void = { _ in }
     ) async throws -> String {
+        return try await ForkTrace.step(.modelRequest, category: .quickActions) {  // FORK: observability
         let request = AIRequest(
             instructions: QuickActionPrompt.instructions(
                 for: action, override: instructionOverride),
@@ -61,6 +64,7 @@ final class QuickActionRunner {
             throw AIProviderError.responseFailed(String(localized: "The model returned nothing."))
         }
         return trimmed
+        }  // FORK: observability
     }
 
     /// The on-device window counts the prompt and the reply against one budget, so both need a cap.

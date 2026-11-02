@@ -97,6 +97,10 @@ struct AIConnection: Codable, Equatable, Identifiable, Sendable {
     }
 
     func reasoningOptions(for model: String) -> ReasoningOptions? {
+        // FORK: claude-account — only the account's connection; the key is ForkClaudeAccountSettings'.
+        if UserDefaults.standard.string(forKey: "fork.claudeAccount.connectionID") == id.uuidString {
+            return reasoningOptions?[model]
+        }
         guard provider == .openRouter || takesThinkingField else { return nil }
         return reasoningOptions?[model] ?? (takesThinkingField ? .thinkingSwitch : nil)
     }

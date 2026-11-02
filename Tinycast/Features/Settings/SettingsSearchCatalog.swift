@@ -109,10 +109,12 @@ enum SettingsSearchCatalog {
         general + ForkSettingsSearch.appearance  // FORK: appearance-pane
         + applications + systemSettings + systemActions + commands + quicklinks
         + FileNavigatorSettingsSearch.entries  // FORK: file-navigator
-        + appleShortcuts + fallbacks + clipboard + snippets + fileSearch + windowManagement
+        + appleShortcuts + fallbacks + clipboard + clipboardTextSearch  // FORK: search
+        + snippets + fileSearch + windowManagement
         + navigation + notes + calendar + emoji + ai + quickActions + dictation + extensions
         + ForkSettingsSearch.automation  // FORK: automation-settings
         + ForkSettingsSearch.quickAIRoot  // FORK: quick-ai-root
+        + ForkSettingsSearch.claudeUsage  // FORK: claude-usage
         + permissions
         + backup + about
 
@@ -517,9 +519,6 @@ enum SettingsSearchCatalog {
             .clipboardHistory, "Keep history for",
             keywords: ["retention", "delete", "privacy", "expire"]),
         .init(
-            .clipboardHistory, "Search text in images and PDFs",
-            keywords: ["OCR", "recognize", "scan", "screenshot", "background", "idle"]),
-        .init(
             .clipboardHistory, "Default action",
             keywords: ["enter", "return", "paste", "copy", "primary"]),
         .init(
@@ -529,6 +528,14 @@ enum SettingsSearchCatalog {
             .clipboardDisabledApplications, "Clear history",
             keywords: ["delete", "erase", "wipe"])
     ]
+
+    // Fork search runs no recognized-text search, so the row it would find is hidden too.
+    private static let clipboardTextSearch: [SettingsSearchEntry] =
+        ForkSearch.isEnabled ? [] : [  // FORK: search
+            .init(
+                .clipboardHistory, "Search text in images and PDFs",
+                keywords: ["OCR", "recognize", "scan", "screenshot", "background", "idle"])
+        ]
 
     private static let emoji: [SettingsSearchEntry] = [
         .init(

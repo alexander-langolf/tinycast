@@ -81,6 +81,11 @@ run() {
     done
     local name=$1
     shift
+    # // FORK: observability
+    case " $* " in *"/TextInjection/Service/"*)
+        set -- "$@" Tinycast/Fork/Core/Observability/ForkEvent.swift Tinycast/Fork/Core/Observability/ForkTrace.swift \
+            Tinycast/Fork/Core/Observability/ForkLog.swift Tinycast/Fork/Core/Observability/ForkJSONLMirror.swift ;;
+    esac
     # // FORK: harness-sources keeps standalone harnesses on the shipped fork implementation.
     case " $* " in
         *"/Theme.swift "*|*"/InterfaceMetrics.swift "*|*"/NoteMarkdownTypography.swift "*|*"/SettingsFileSchema.swift "*|*"/IconCache.swift "*|*"/AppWindowController.swift "*)
@@ -119,7 +124,7 @@ run() {
     esac
     case " $* " in
         *"/ForkAppearance.swift "*|*"/SearchRelevance.swift "*|*"/LauncherMatch.swift "*|*"/ClipboardStore.swift "*|*"/FileSearchQuery.swift "*|*"/SnippetsScreen.swift "*|*"/QuicklinkListScreen.swift "*)
-            case " $* " in *"Fork/Search/"*) ;; *) set -- "$@" Tinycast/Fork/Search/ForkFzf.swift Tinycast/Fork/Search/ForkSearch.swift ;; esac
+            case " $* " in *"Fork/Search/"*) ;; *) set -- "$@" Tinycast/Fork/Search/ForkFzf.swift Tinycast/Fork/Search/ForkSearch.swift Tinycast/Fork/Search/ForkSearchText.swift ;; esac
             # // FORK: harness-sources folds through FuzzyMatch.normalized, so it needs SearchRelevance too.
             case " $* " in *"/SearchRelevance.swift "*) ;; *) set -- "$@" Tinycast/Features/Launcher/Model/SearchRelevance.swift ;; esac
             ;;
@@ -155,25 +160,132 @@ run() {
     printf '%s %s %s %s\n' "$pri" "$name" "$opt" "$*" >> "$queue"
 }
 
+# // FORK: claude-usage
+run claude-usage-model-test Tinycast/Fork/ClaudeUsage/Model/*.swift
+
+# // FORK: workflow-server
+run fork-workflow-test Tinycast/Fork/Core/Primitives/ForkTargetHandleStore.swift \
+    Tinycast/Fork/Core/Primitives/ForkModelArguments.swift \
+    Tinycast/Fork/Core/Workflows/ForkWorkflowRoute.swift Tinycast/Fork/Core/Workflows/ForkWorkflowEnvironment.swift \
+    Tinycast/Features/AI/Model/JSONValue.swift Tinycast/Fork/Core/Primitives/ForkPrimitiveOperations.swift \
+    Tinycast/Features/Automation/Model/AutomationMCPCall.swift \
+    Tinycast/Features/Automation/Model/AutomationProtocolVersion.swift \
+    Tinycast/Features/Automation/Model/AutomationRPCError.swift \
+    Tinycast/Features/Automation/Model/AutomationRPCID.swift \
+    Tinycast/Features/Automation/Model/AutomationOperation.swift Tinycast/Features/Automation/Model/AutomationScope.swift \
+    Tinycast/Features/Automation/Model/AutomationSchemaValidator.swift \
+    Tinycast/Fork/Core/Observability/ForkEvent.swift Tinycast/Fork/Core/Observability/ForkLogReader.swift
+
+# // FORK: local-lyra
+run fork-lyra-model-test Tinycast/Fork/Lyra/Model/*.swift \
+    Tinycast/Fork/Core/Policy/ForkLyraPolicy.swift Tinycast/Fork/Core/Policy/ForkPolicySnapshot.swift \
+    Tinycast/Fork/Core/Policy/ForkPolicyFailure.swift Tinycast/Fork/Core/Observability/ForkEvent.swift \
+    Tinycast/Fork/Core/Primitives/ForkPrimitiveOperations.swift \
+    Tinycast/Features/AI/Model/JSONValue.swift Tinycast/Features/Automation/Model/AutomationOperation.swift \
+    Tinycast/Features/Automation/Model/AutomationScope.swift
+run fork-lyra-card-test Tinycast/Fork/Lyra/UI/ForkLyraSuggestionController.swift \
+    Tinycast/Fork/Lyra/Service/ForkLyraFocusObserver.swift Tinycast/Fork/ForkTypography.swift \
+    Tinycast/Fork/Core/Ports/ForkSelection.swift Tinycast/Fork/Core/Ports/ForkSelectionSource.swift \
+    Tinycast/Fork/Core/Observability/ForkEvent.swift Tinycast/Platform/NotificationToken.swift
+run fork-lyra-kitty-test Tinycast/Fork/Core/Adapters/ForkKittySelectionSource.swift \
+    Tinycast/Fork/Lyra/UI/ForkLyraSuggestionController.swift Tinycast/Fork/ForkTypography.swift \
+    Tinycast/Fork/Core/Ports/ForkSelection.swift Tinycast/Fork/Core/Ports/ForkSelectionSource.swift \
+    Tinycast/Fork/Core/Observability/ForkEvent.swift Tinycast/Fork/Core/Observability/ForkTrace.swift \
+    Tinycast/Platform/ProcessExit.swift
+# // FORK: local-lyra
+run fork-lyra-hotkey-test Tinycast/Fork/Lyra/Service/ForkLyraHotKey.swift \
+    Tinycast/Features/HotKeys/Service/KeyShortcut.swift Tinycast/Features/HotKeys/Model/HotKeyBinding.swift \
+    Tinycast/Features/HotKeys/Model/DoubleTapModifier.swift Tinycast/Features/HotKeys/Model/ModifierKey.swift \
+    Tinycast/Features/HotKeys/Model/HyperKey.swift Tinycast/Features/HotKeys/Model/HIDKeyMapping.swift \
+    Tinycast/Platform/ASCIIKeyboardLayout.swift
+# // FORK: policy-split
+run fork-policy-test Tinycast/Fork/Core/Policy/*.swift Tinycast/Fork/Lyra/Model/*.swift \
+    Tinycast/Features/Automation/Model/AutomationOperation.swift Tinycast/Features/Automation/Model/AutomationScope.swift \
+    Tinycast/Features/AI/Model/JSONValue.swift Tinycast/Fork/Core/Observability/ForkEvent.swift \
+    Tinycast/Fork/Core/Observability/ForkTrace.swift Tinycast/Fork/Core/Observability/ForkLog.swift \
+    Tinycast/Fork/Core/Observability/ForkJSONLMirror.swift
+run fork-lyra-supervision-test Tinycast/Fork/Core/Supervision/ForkProcessControl.swift \
+    Tinycast/Fork/Core/Supervision/ForkProcessSupervisor.swift Tinycast/Fork/Core/Observability/ForkEvent.swift \
+    Tinycast/Fork/Core/Observability/ForkTrace.swift Tinycast/Fork/Core/Observability/ForkLog.swift \
+    Tinycast/Fork/Core/Observability/ForkJSONLMirror.swift
+run fork-lyra-stream-test Tinycast/Features/AI/Model/AIRequest.swift \
+    Tinycast/Features/AI/Model/AIConnection.swift Tinycast/Features/AI/Model/AppleIntelligence.swift \
+    Tinycast/Features/AI/Model/AITool.swift Tinycast/Features/AI/Model/JSONValue.swift \
+    Tinycast/Features/AI/Model/AIRequestBody.swift Tinycast/Features/AI/Model/AIStreamDecoder.swift \
+    Tinycast/Features/AI/Model/AIThinkTagDecoder.swift Tinycast/Features/AI/Model/AIProviderFailure.swift
+
+# // FORK: observability
+run fork-observability-test Tinycast/Fork/Core/Observability/ForkEvent.swift \
+    Tinycast/Fork/Core/Observability/ForkTrace.swift Tinycast/Fork/Core/Observability/ForkLog.swift \
+    Tinycast/Fork/Core/Observability/ForkJSONLMirror.swift Tinycast/Fork/Core/Observability/ForkLogReader.swift
+# // FORK: core-capabilities
+run fork-selection-test Tinycast/Fork/Core/Ports/ForkSelection.swift \
+    Tinycast/Fork/Core/Ports/ForkSelectionSource.swift Tinycast/Fork/Core/Capabilities/ForkSelectionReader.swift \
+    Tinycast/Fork/Core/Observability/ForkEvent.swift Tinycast/Fork/Core/Observability/ForkTrace.swift \
+    Tinycast/Fork/Core/Observability/ForkLog.swift Tinycast/Fork/Core/Observability/ForkJSONLMirror.swift
+run fork-capability-arguments-test Tinycast/Fork/Core/Capabilities/ForkQuickActionArguments.swift \
+    Tinycast/Fork/Core/Capabilities/ForkSelectionOperations.swift Tinycast/Fork/Core/Primitives/ForkPrimitiveOperations.swift \
+    Tinycast/Fork/Core/Observability/ForkCallCLI.swift \
+    Tinycast/Features/QuickActions/Model/BuiltInQuickAction.swift Tinycast/Platform/LocalizedResource.swift \
+    Tinycast/Features/AI/Model/JSONValue.swift Tinycast/Features/Automation/Model/AutomationOperation.swift \
+    Tinycast/Features/Automation/Model/AutomationScope.swift Tinycast/Features/Automation/Model/AutomationSchemaValidator.swift
+# // FORK: app-supervision
+run fork-supervision-test Tinycast/Fork/Core/Supervision/ForkAppControl.swift \
+    Tinycast/Fork/Core/Supervision/ForkAppSupervisor.swift Tinycast/Fork/Core/Supervision/ForkBTTSelectionScript.swift \
+    Tinycast/Fork/Core/Observability/ForkEvent.swift Tinycast/Fork/Core/Observability/ForkTrace.swift \
+    Tinycast/Fork/Core/Observability/ForkLog.swift Tinycast/Fork/Core/Observability/ForkJSONLMirror.swift
+
 # // FORK: fork-harness pins typography, fallback, caching and untouched colours.
 run fork-layer-test Tinycast/Platform/Appearance.swift Tinycast/DesignSystem/Theme.swift \
     Tinycast/DesignSystem/InterfaceMetrics.swift
 
 # // FORK: fork-search pins the fork's fzf matcher, syntax, profiles and hook adapters.
-run fork-search-test Tinycast/Features/Launcher/Model/SearchRelevance.swift \
+run -O fork-search-test Tinycast/Features/Launcher/Model/SearchRelevance.swift \
     Tinycast/Fork/Search/ForkFzf.swift Tinycast/Fork/Search/ForkSearch.swift \
-    Tinycast/Features/FileSearch/Model/*.swift
+    Tinycast/Fork/Search/ForkSearchText.swift \
+    Tinycast/Features/FileSearch/Model/*.swift \
+    Tests/fork-search-reference/ReferenceFzf.swift Tests/fork-search-reference/ReferenceSearch.swift \
+    Tests/fork-search-corpus.swift
+
+# // FORK: fork-search-performance pins the 5 ms warm search budget.
+run -O fork-search-performance Tinycast/Features/Launcher/Model/SearchRelevance.swift \
+    Tinycast/Fork/Search/ForkFzf.swift Tinycast/Fork/Search/ForkSearch.swift \
+    Tinycast/Fork/Search/ForkSearchText.swift \
+    Tinycast/Features/FileSearch/Model/*.swift \
+    Tests/fork-search-corpus.swift
 
 # // FORK: monaco-editor
 run monaco-editor-test Tinycast/Features/MonacoEditor/Model/*.swift \
     Tinycast/Features/FileNavigator/Model/FileNavigatorEditorKind.swift
+
+# // FORK: monaco-editor
+run monaco-settings-test Tinycast/Features/MonacoEditor/Model/*.swift \
+    Tinycast/Features/MonacoEditor/Service/MonacoSettingsLoader.swift
+
+# // FORK: monaco-editor
+run monaco-close-returns-test Tinycast/Features/MonacoEditor/Model/*.swift \
+    Tinycast/Features/MonacoEditor/UI/MonacoEditorSession.swift \
+    Tinycast/Features/MonacoEditor/UI/MonacoEditorCoordinator.swift \
+    Tinycast/Features/MonacoEditor/Service/MonacoFileIO.swift \
+    Tinycast/Features/FileNavigator/Model/*.swift \
+    Tinycast/Features/FileNavigator/UI/FileNavigatorCoordinator.swift \
+    Tinycast/Features/FileNavigator/Service/DirectoryLister.swift \
+    Tinycast/Features/FileNavigator/Service/FileNavigatorActionsAdapter.swift \
+    Tinycast/Features/FileSearch/Model/*.swift \
+    Tinycast/Features/FileSearch/Service/FileSearchSession.swift \
+    Tinycast/Features/FileSearch/UI/FileSearchCoordinator.swift \
+    Tinycast/Palette/PaletteCoordinator.swift \
+    Tinycast/Features/Launcher/Model/SearchRelevance.swift \
+    Tinycast/Fork/Search/ForkFzf.swift Tinycast/Fork/Search/ForkSearch.swift \
+    Tinycast/Fork/Search/ForkSearchText.swift Tinycast/Fork/Search/ForkRipgrepPolicy.swift
 
 # // FORK: file-navigator
 run file-navigator-test Tinycast/Features/FileNavigator/Model/*.swift \
     Tinycast/Features/TerminalInstances/Model/TerminalEditorKey.swift \
     Tinycast/Features/FileSearch/Model/FileSearchResult.swift \
     Tinycast/Features/Launcher/Model/SearchRelevance.swift \
-    Tinycast/Fork/Search/ForkFzf.swift Tinycast/Fork/Search/ForkSearch.swift
+    Tinycast/Fork/Search/ForkFzf.swift Tinycast/Fork/Search/ForkSearch.swift \
+    Tinycast/Fork/Search/ForkSearchText.swift
 
 L=Tinycast/Features/Launcher/Model
 run slow -O fuzz-test      $L/SearchRelevance.swift $L/ScriptRomanization.swift \
@@ -446,7 +558,7 @@ run fallback-test          Tinycast/Features/Launcher/Model/Fallback.swift \
                            Tinycast/Platform/LocalizedResource.swift
 run dictionary-test        Tinycast/Features/Dictionary/Model/DictionaryEntry.swift \
                            Tinycast/Features/Dictionary/Model/DictionaryMarkup.swift
-// FORK: chrome-search
+# FORK: chrome-search
 run chrome-google-search-test Tinycast/Fork/ChromeSearch/Model/*.swift \
                            Tinycast/Fork/ChromeSearch/Service/ChromeHistoryReader.swift \
                            Tinycast/Fork/ChromeSearch/Service/ChromeSearchSession.swift \

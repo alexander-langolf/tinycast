@@ -134,10 +134,11 @@ The upstream FileSearch folder is unchanged; editor roles stay within TerminalIn
 
 ## Entry points and windows
 
-`TinycastLaunch` (`@main`) pins the interface language, then runs `TinycastApp`, which declares
-only two `MenuBarExtra` scenes — Tinycast's own item and the
-calendar's, each inserted by one preference and independent of the other; everything else visible is
-driven imperatively from AppKit. Extension menu extras are dynamic `NSStatusItem`s owned entirely by
+<!-- // FORK: claude-usage -->
+`TinycastLaunch` (`@main`) pins the interface language, then runs `TinycastApp`.
+Its three independent `MenuBarExtra` scenes show Tinycast's launcher, calendar, and Claude usage.
+Each item has its own insertion preference; AppKit drives the remaining windows.
+Extension menu extras are dynamic `NSStatusItem`s owned entirely by
 `Features/Extensions/`, through `ExtensionManager`, with no scene or lifecycle wiring in the core.
 
 - **Command palette** — a borderless floating `NSPanel` (`Palette/PalettePanel.swift`) hosting SwiftUI

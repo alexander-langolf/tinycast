@@ -107,7 +107,7 @@ enum DirectoryLister {
             else { return nil }
         } else if !request.showHidden {
             guard values.isHidden != true, !url.lastPathComponent.hasPrefix("."),
-                !request.ignore.excludes(path: url.path)
+                !request.ignore.excludes(name: url.lastPathComponent, path: url.path)
             else { return nil }
         }
         var target = values

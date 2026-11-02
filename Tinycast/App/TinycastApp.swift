@@ -3,8 +3,19 @@ import SwiftUI
 @main
 enum TinycastLaunch {
     static func main() {
+        clearAgentEnvironment()  // FORK: agent-env
         AppSettings.pinLanguage()
         TinycastApp.main()
+    }
+
+    // Agent-launched Tinycast must not hand the agent session to apps it opens.
+    private static func clearAgentEnvironment() {
+        for name in ProcessInfo.processInfo.environment.keys {
+            guard name != "CODEX_HOME",
+                name.hasPrefix("CLAUDE") || name.hasPrefix("CODEX_")
+            else { continue }
+            unsetenv(name)
+        }
     }
 }
 
@@ -13,7 +24,6 @@ struct TinycastApp: App {
 
     private let appName = Bundle.main.appDisplayName
 
-    /// Two independent items: one preference each, no state either can read off the other.
     var body: some Scene {
         MenuBarExtra(isInserted: menuBarInsertion) {
             MenuBarMenu(appName: appName)
@@ -27,6 +37,28 @@ struct TinycastApp: App {
         } label: {
             CalendarMenuBarLabel(appName: appName)
         }
+
+        // FORK: claude-usage
+        MenuBarExtra(isInserted: claudeUsageMenuBarInsertion) {
+            ClaudeUsageMenuBarMenu().environment(AppCore.shared.claudeUsageCoordinator)
+        } label: {
+            ClaudeUsageMenuBarLabel(appName: appName).environment(AppCore.shared.claudeUsageCoordinator)
+        }
+    }
+
+    // FORK: claude-usage
+    private var claudeUsageMenuBarInsertion: Binding<Bool> {
+        let settings = AppCore.shared.claudeUsageCoordinator.settings
+        let isInserted = settings.display != .disabled
+        return Binding(
+            get: { isInserted },
+            set: { inserted in
+                if inserted {
+                    if settings.display == .disabled { settings.display = .usageIcon }
+                } else if settings.display != .disabled {
+                    settings.display = .disabled
+                }
+            })
     }
 
     /// Read in `body` for Observation; SwiftUI echoes the binding back, so only a change writes.

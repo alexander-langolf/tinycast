@@ -37,7 +37,9 @@ final class HotKeyCenter {
     private var idToKey: [UInt32: String] = [:]
     private var nextCarbonID: UInt32 = 0
     private var eventHandler: EventHandlerRef?
-    private let signature: OSType = 0x5459_4354  // FourCC "TYCT"
+    private let signature: OSType
+
+    init(signature: OSType = 0x5459_4354) { self.signature = signature }  // FORK: local-lyra
 
     /// While true every hotkey is soft-unregistered, so a recorder can capture combos.
     var isPaused = false {

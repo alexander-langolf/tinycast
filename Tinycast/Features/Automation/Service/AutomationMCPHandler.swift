@@ -136,7 +136,8 @@ final class AutomationMCPHandler {
         let outcome = await router.route(
             AutomationCall(
                 request: UUID(), caller: caller, operation: operation, arguments: arguments,
-                transport: "mcp-http", callerRequestID: id.description))
+                transport: "mcp-http", correlationID: call.correlationID,  // FORK: workflow-server
+                callerRequestID: id.description))
         switch outcome {
         case .value(let value):
             return success(id, toolResult(value, isError: false), call.era)
@@ -177,7 +178,8 @@ final class AutomationMCPHandler {
         let outcome = await router.route(
             AutomationCall(
                 request: UUID(), caller: caller, operation: operation, arguments: [:],
-                transport: "mcp-http", callerRequestID: id.description))
+                transport: "mcp-http", correlationID: call.correlationID,  // FORK: workflow-server
+                callerRequestID: id.description))
         switch outcome {
         case .value(let value):
             let contents: JSONValue = .object([

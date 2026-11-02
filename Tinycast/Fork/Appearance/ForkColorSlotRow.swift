@@ -9,7 +9,7 @@ struct ForkColorSlotRow: View {
     @State private var typed = ""
 
     var body: some View {
-        SettingsRow(title: slot.title, anchor: .appearanceColors) {
+        SettingsRow(title: LocalizedStringResource(stringLiteral: slot.title), anchor: .appearanceColors) {
             HStack(spacing: Theme.Spacing.sm) {
                 ColorPicker(slot.title, selection: swatch, supportsOpacity: false)
                     .labelsHidden()

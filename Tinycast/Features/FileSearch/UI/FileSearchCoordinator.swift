@@ -1,4 +1,5 @@
 import AppKit
+import Observation  // FORK: monaco-editor
 
 @MainActor
 final class FileSearchCoordinator {
@@ -11,6 +12,87 @@ final class FileSearchCoordinator {
     private let windowController: PaletteWindowController
     private var sharePicker: NSSharingServicePicker?
     private unowned let core: AppCore
+
+    // FORK: monaco-editor
+    private struct EditorReturn {
+        let id = UUID()
+        let query: String
+        let filter: FileSearchFilter
+        let selectedID: String?
+        let selection: Int
+        var restoredSelection: Int? = nil
+    }
+
+    private var editorReturn: EditorReturn?  // FORK: monaco-editor
+
+    // FORK: monaco-editor
+    func editorOrigin() -> MonacoEditorCoordinator.Origin {
+        let snapshot = EditorReturn(
+            query: palette.query, filter: palette.fileSearchFilter,
+            selectedID: session.results.indices.contains(palette.selection)
+                ? session.results[palette.selection].id : nil,
+            selection: palette.selection)
+        return { [weak self] in self?.restore(snapshot) }
+    }
+
+    // FORK: monaco-editor
+    var editorReturnFilter: FileSearchFilter? {
+        guard let snapshot = editorReturn else { return nil }
+        guard palette.mode == .fileSearch, palette.query == snapshot.query else {
+            editorReturn = nil
+            return nil
+        }
+        return snapshot.filter
+    }
+
+    // FORK: monaco-editor
+    var editorReturnSelection: Int? {
+        guard let snapshot = editorReturn, editorReturnFilter != nil else { return nil }
+        guard palette.fileSearchFilter == snapshot.filter else {
+            editorReturn = nil
+            return nil
+        }
+        if let selection = snapshot.restoredSelection {
+            guard palette.selection == selection else {
+                editorReturn = nil
+                return nil
+            }
+            return selection
+        }
+        guard session.state == .ready else { return snapshot.selection }
+        return session.results.firstIndex { $0.id == snapshot.selectedID }
+            ?? min(snapshot.selection, max(0, session.results.count - 1))
+    }
+
+    // FORK: monaco-editor
+    private func restore(_ snapshot: EditorReturn) {
+        editorReturn = snapshot
+        session.cancel()
+        paletteCoordinator.showPalette(mode: .fileSearch, seeding: snapshot.query)
+        palette.fileSearchFilter = snapshot.filter
+        palette.selection = snapshot.selection
+        session.search(snapshot.query, filter: snapshot.filter)
+        observeEditorReturn(snapshot.id)
+    }
+
+    // FORK: monaco-editor
+    private func observeEditorReturn(_ id: UUID) {
+        guard editorReturn?.id == id, editorReturnFilter != nil,
+            palette.fileSearchFilter == editorReturn?.filter
+        else { return }
+        if session.state == .ready {
+            if let selection = editorReturnSelection {
+                editorReturn?.restoredSelection = selection
+                palette.selection = selection
+            }
+            return
+        }
+        withObservationTracking {
+            _ = session.state
+        } onChange: { [weak self] in
+            Task { @MainActor in self?.observeEditorReturn(id) }
+        }
+    }
 
     init(
         settings: AppSettings, appIndex: AppIndex, session: FileSearchSession,

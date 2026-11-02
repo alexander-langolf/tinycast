@@ -26,7 +26,7 @@ struct FileNavigatorPreview: View {
                     .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(.tertiary)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if palette.isVisible, !palette.fileSearchQuickLook {
+            } else if palette.isVisible {
                 FileSearchSurface(url: result.url)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .clipShape(RoundedRectangle(cornerRadius: metrics.radius.card))

@@ -23,6 +23,15 @@ final class AutomationRunner {
         var prepared = AutomationRouter.Prepared()
         let arguments = call.arguments
         switch call.operation.name {
+        case ForkLyraOperations.rewrite.name:  // FORK: local-lyra
+            guard let policy = ForkPolicySnapshot.current ?? core.forkPolicy.snapshot else {
+                return .failure(PrepareFailure("Invalid Lyra arguments."))
+            }
+            do { _ = try ForkLyraArguments(arguments: arguments, modes: policy.policy.availableModes) }  // FORK: policy-split
+            catch { return .failure(PrepareFailure("Invalid Lyra arguments.")) }
+        case ForkSelectionOperations.quickActionRun.name:  // FORK: core-capabilities
+            do { _ = try ForkQuickActionArguments(arguments: arguments) }
+            catch { return .failure(PrepareFailure("Invalid Quick Action arguments.")) }
         case AutomationOperationCatalog.terminalRun.name:
             guard let command = arguments["command"]?.stringValue,
                 !command.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -51,6 +60,15 @@ final class AutomationRunner {
     func perform(_ call: AutomationCall, prepared: AutomationRouter.Prepared) async -> AutomationOutcome {
         let arguments = call.arguments
         switch call.operation.name {
+        case ForkLyraOperations.rewrite.name:  // FORK: local-lyra
+            return await ForkLyraAutomation.perform(call, coordinator: core.forkLyra)
+        case ForkSelectionOperations.quickActionRun.name:  // FORK: core-capabilities
+            return await ForkCoreCapabilities.perform(call, core: core)
+        // FORK: workflow-server
+        case ForkSelectionOperations.selectionRead.name, ForkPrimitiveOperations.modelComplete.name,
+             ForkPrimitiveOperations.textReplace.name, ForkPrimitiveOperations.preview.name,
+             ForkPrimitiveOperations.marker.name, ForkPrimitiveOperations.result.name:
+            return await core.forkPrimitives.perform(call)
         case AutomationOperationCatalog.hudShow.name:
             showMessage(from: call.caller.label, text: arguments["text"]?.stringValue ?? "")
             return .value(.object(["shown": .bool(true)]))
@@ -86,6 +104,8 @@ final class AutomationRunner {
 
     private func read(_ call: AutomationCall) async -> AutomationOutcome {
         switch call.operation.name {
+        case ForkHealth.resource.name, ForkHealth.repair.name:  // FORK: app-supervision
+            return await core.forkSupervision.health(call)
         case AutomationOperationCatalog.agents.name:
             await core.agentRuns.refreshOnce()
             return .value(.object(["runs": .array(core.agentRuns.runs.map(Self.json))]))

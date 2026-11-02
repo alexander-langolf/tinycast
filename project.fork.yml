@@ -1,7 +1,14 @@
 # Fork sources and ForkAssets.xcassets are included by the upstream Tinycast source directory.
 # Per-configuration settings outrank the upstream target's base icon setting after include merging.
+fileGroups:
+  - docs/features/claude-usage.md # // FORK: claude-usage
 targets:
   Tinycast:
+    sources:
+      - path: server/policy # // FORK: workflow-server
+        type: folder
+      - path: server/prompts # // FORK: workflow-server
+        type: folder
     dependencies:
       # Automation bridge: `Tinycast.app/Contents/Helpers/tinycast mcp --stdio`.
       - target: TinycastCLI
@@ -94,10 +101,15 @@ targets:
     platform: macOS
     sources:
       - TinycastCLI
+      - Tinycast/Fork/Core/Observability/ForkDiagnosticsCLI.swift
+      - Tinycast/Fork/Core/Observability/ForkCallCLI.swift # // FORK: core-capabilities
+      - Tinycast/Fork/Core/Observability/ForkEvent.swift
+      - Tinycast/Fork/Core/Observability/ForkLogReader.swift
     settings:
       base:
         EXECUTABLE_NAME: tinycast
         PRODUCT_MODULE_NAME: TinycastCLI
+        OTHER_SWIFT_FLAGS: "$(inherited) -D TINYCAST_DIAGNOSTICS_CLI"
         SKIP_INSTALL: YES
         SWIFT_VERSION: "6.0"
         SWIFT_STRICT_CONCURRENCY: complete

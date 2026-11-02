@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "fix": {
+    "minWords": 3,
+    "maxCharacters": 1000,
+    "pauseMs": 500,
+    "punctuationEndsPause": true
+  },
+  "selection": {
+    "minWords": 3,
+    "maxCharacters": 1000
+  },
+  "modes": [
+    { "name": "fix", "prompt": "prompts/fix.txt" },
+    { "name": "refine", "prompt": "prompts/coach.txt" },
+    { "name": "professional", "prompt": "prompts/professional.txt" },
+    { "name": "friendly", "prompt": "prompts/friendly.txt" }
+  ],
+  "routing": {
+    "fix": "local",
+    "refine": "local",
+    "professional": "local",
+    "friendly": "local"
+  }
+}

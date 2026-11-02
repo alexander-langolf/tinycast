@@ -1,0 +1,8 @@
+{
+  "theme": "themes/monokai-pro-filter-spectrum.json",
+  "fontFamily": "Geist Mono",
+  "fontSize": 16,
+  "lineHeight": 1.7,
+  "minimap": false,
+  "wordWrap": "on"
+}

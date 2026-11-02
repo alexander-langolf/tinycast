@@ -120,10 +120,27 @@ struct RelaunchTests {
     }
 }
 
+// FORK: monaco-editor
+@MainActor
+final class MonacoEditorStub {
+    func requestClose() async -> Bool { true }
+}
+
+// FORK: local-lyra
+@MainActor
+final class ForkLyraStub {
+    func stopForTermination() async {}
+}
+
 @MainActor
 final class AppCore {
     static let shared = AppCore()
     let activationPolicy = ActivationPolicy()
+    // FORK: monaco-editor
+    let monacoEditor = MonacoEditorStub()
+    // FORK: local-lyra
+    let forkLyra = ForkLyraStub()
+    let forkWorkflows = ForkLyraStub()  // FORK: workflow-server
     private let root: URL
     private var stage = "first"
 

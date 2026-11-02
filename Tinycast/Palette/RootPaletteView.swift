@@ -509,7 +509,7 @@ struct RootPaletteView: View {
             .onChange(of: vm.mode) {
                 fileNavigatorModeChanged()  // FORK: file-navigator
                 vm.clipboardFilter = .all
-                vm.fileSearchFilter = .all
+                vm.fileSearchFilter = core.fileSearchCoordinator.editorReturnFilter ?? .all  // FORK: monaco-editor
                 vm.emojiCategoryFilter = .all
                 vm.emojiGridColumnsOverride = nil
                 if menuOpen { closeMenus() }
@@ -1434,7 +1434,8 @@ struct RootPaletteView: View {
 
     /// Every reset lands here, so handlers that fire together agree in whatever order they run.
     private func land(restoringSelection: Bool = false) {
-        let restored = restoringSelection ? vm.restoredSelection : nil
+        let restored = core.fileSearchCoordinator.editorReturnSelection  // FORK: monaco-editor
+            ?? (restoringSelection ? vm.restoredSelection : nil)  // FORK: monaco-editor
         let landing = restored.map { min($0, max(screen.rows.count - 1, 0)) } ?? screen.landingSelection
         vm.selection = landing
         scroll = ScrollIntent(kind: restored != nil ? .follow : landing == 0 ? .top : .center)

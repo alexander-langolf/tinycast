@@ -1,5 +1,6 @@
 import AppKit
 import Carbon.HIToolbox
+// FORK: observability
 
 /// Its own shape, not a caller's result type, so the injector stays owned by no one feature.
 struct InjectedText: Equatable, Sendable {
@@ -212,25 +213,33 @@ final class TextInjector {
     func replaceSelection(
         with text: String,
         in targetApp: NSRunningApplication?,
+        isValid: @escaping @MainActor () -> Bool = { true },  // FORK: core-capabilities
         onDelivered: @escaping @MainActor () -> Void = {},
         onFailed: @escaping @MainActor () -> Void = {}
     ) {
         deliver(
             InjectedText(text), target: targetApp.map(InjectionTarget.external),
             expectedKeyword: nil, keywordLength: 0,
-            automaticGeneration: nil, onDelivered: onDelivered, onFailed: onFailed)
+            automaticGeneration: nil, isValid: isValid, onDelivered: onDelivered, onFailed: onFailed)
     }
 
     /// A `changeCount` that never moves means nothing was selected, not that the old clipboard won.
     func copySelection(from targetApp: NSRunningApplication?) async -> String? {
         await deliveryQueue.drain()
-        guard finishPendingPasteboardOwnership(),
-            await activateAndWaitForTarget(targetApp, automaticGeneration: nil),
-            deliveryIsAllowed(
-                automaticGeneration: nil, targetApp: targetApp,
-                promptForInteractiveAccessibility: true)
-        else { return nil }
-        return await copySelection(from: targetApp, pasteboard: NSPasteboard.general)
+        // FORK: observability
+        let span = ForkTrace.begin(.copySelection, category: .selection, step: .copySelection)
+        let owned = finishPendingPasteboardOwnership()
+        let active = owned ? await activateAndWaitForTarget(targetApp, automaticGeneration: nil) : false
+        let allowed = active && deliveryIsAllowed(
+            automaticGeneration: nil, targetApp: targetApp, promptForInteractiveAccessibility: true)
+        ForkTrace.begin(.copySelection, category: .selection, step: .copyGates)
+            .end(allowed ? .success : .unavailable,
+                 fields: .init(bundleID: targetApp?.bundleIdentifier, allowed: allowed))
+        guard allowed else { span.end(Task.isCancelled ? .cancelled : .unavailable); return nil }
+        let copied = await copySelection(from: targetApp, pasteboard: NSPasteboard.general)
+        span.end(Task.isCancelled ? .cancelled : copied == nil ? .empty : .success,
+                 fields: .init(length: copied?.count))
+        return copied
     }
 
     /// Split for the harness, which drives a stub pasteboard rather than another app.
@@ -250,9 +259,16 @@ final class TextInjector {
         }
 
         Paster.postCommandC(toPid: targetApp?.processIdentifier)
-        for _ in 0..<Self.copyPollAttempts {
+        for attempt in 0..<Self.copyPollAttempts {
             guard await wait(for: Self.copyPollInterval) else { return nil }
-            guard pasteboard.changeCount != original.changeCount else { continue }
+            guard pasteboard.changeCount != original.changeCount else {
+                // FORK: observability
+                if attempt == Self.copyPollAttempts - 1 {
+                    ForkTrace.begin(.copySelection, category: .selection, step: .copyPoll)
+                        .end(.timeout, fields: .init(count: Self.copyPollAttempts))
+                }
+                continue
+            }
             guard let copied = PasteboardSnapshot(pasteboard: pasteboard),
                 let data = copied.firstStringData
             else { return nil }

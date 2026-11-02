@@ -18,6 +18,7 @@ struct AutomationMCPCall: Sendable {
     let method: String
     let params: [String: JSONValue]
     let era: Era
+    var correlationID: UUID? = nil  // FORK: workflow-server
 
     var isNotification: Bool { id == nil }
 
@@ -55,6 +56,7 @@ struct AutomationMCPCall: Sendable {
         }
         let meta = params["_meta"]?.objectValue
         let headerVersion = headers["mcp-protocol-version"]
+        let correlationID = headers["x-tinycast-correlation"].flatMap(UUID.init(uuidString:))  // FORK: workflow-server
 
         if let requested = meta?[versionKey]?.stringValue {
             guard requested == AutomationProtocolVersion.current else {
@@ -63,7 +65,8 @@ struct AutomationMCPCall: Sendable {
             if id != nil, let problem = modernProblem(method, params, meta, headers, headerVersion) {
                 return .failure(problem)
             }
-            return .success(.init(id: id, method: method, params: params, era: .modern))
+            return .success(.init(
+                id: id, method: method, params: params, era: .modern, correlationID: correlationID))
         }
         if let headerVersion, headerVersion == AutomationProtocolVersion.current {
             return .failure(.headerMismatch("The request body carries no protocol metadata"))
@@ -74,13 +77,15 @@ struct AutomationMCPCall: Sendable {
                     id: id, method: method, params: params,
                     era: .legacy(
                         version: AutomationProtocolVersion.negotiatedLegacy(
-                            requested: params["protocolVersion"]?.stringValue))))
+                            requested: params["protocolVersion"]?.stringValue)),
+                    correlationID: correlationID))
         }
         let version = headerVersion ?? "2025-03-26"
         guard AutomationProtocolVersion.isLegacy(version) else {
             return .failure(.unsupportedVersion(requested: version))
         }
-        return .success(.init(id: id, method: method, params: params, era: .legacy(version: version)))
+        return .success(.init(id: id, method: method, params: params, era: .legacy(version: version),
+                             correlationID: correlationID))
     }
 
     private static func modernProblem(

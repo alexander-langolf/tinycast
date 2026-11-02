@@ -32,7 +32,8 @@ struct HTTPAIProvider: AIProvider {
                                 retryAfter: response.value(forHTTPHeaderField: "Retry-After"),
                                 secrets: secrets))
                     }
-                    var decoder = AIStreamDecoder(shape: configuration.shape, secrets: secrets)
+                    var decoder = AIStreamDecoder(
+                        shape: configuration.shape, secrets: secrets, requiresCompleteText: request.requiresCompleteText)  // FORK: local-lyra
                     var chunk = Data()
                     chunk.reserveCapacity(2_048)
                     // Per line, not per 2 KB: a short reply must show before the stream closes.

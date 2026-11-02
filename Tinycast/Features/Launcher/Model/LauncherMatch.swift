@@ -6,6 +6,8 @@ struct SearchText: Sendable, Hashable {
     let units: [UInt16]
     /// Word starts no separator marks, such as a capital after a lowercase letter.
     let humps: [Int]
+    /// fzf view of `units`, prepared with the index so no keystroke refolds it.  // FORK: search
+    let forkText: ForkSearch.Text
 
     var isEmpty: Bool { units.isEmpty }
     var string: String { String(decoding: units, as: UTF16.self) }
@@ -13,13 +15,17 @@ struct SearchText: Sendable, Hashable {
     /// `transliterated` reads another script the way it is typed: `微信` as `wei xin`.
     init(_ raw: String, transliterated: Bool) {
         let latin = transliterated ? ScriptRomanization.latin(raw) : nil
-        units = Array((latin ?? FuzzyMatch.normalized(raw)).utf16)
-        humps = latin == nil ? Self.humps(in: raw) : []
+        let folded = latin ?? FuzzyMatch.normalized(raw)
+        let humps = latin == nil ? Self.humps(in: raw) : []
+        units = Array(folded.utf16)
+        self.humps = humps
+        forkText = ForkSearch.Text(folded, humps: humps)  // FORK: search
     }
 
     init(units: [UInt16], humps: [Int] = []) {
         self.units = units
         self.humps = humps
+        forkText = ForkSearch.Text(String(decoding: units, as: UTF16.self), humps: humps)  // FORK: search
     }
 
     /// Two texts as one phrase, so `brew search` reaches `Search` under `Brew`.
@@ -75,8 +81,13 @@ enum LauncherMatch {
     private static let precheckThreshold = 2
 
     static func match(_ query: SearchText, in target: SearchText) -> Outcome? {
+        match(query, fork: ForkSearch.Query(query.string, profile: .fuzzy), in: target)  // FORK: search
+    }
+
+    /// Compiled once per keystroke, so no candidate pays for the parse.  // FORK: search
+    static func match(_ query: SearchText, fork: ForkSearch.Query, in target: SearchText) -> Outcome? {
         if ForkSearch.isEnabled {  // FORK: search
-            return ForkSearch.launcherScore(query.string, in: target.string, humps: target.humps).map {
+            return ForkSearch.launcherScore(fork, in: target.forkText, raw: target.string).map {
                 $0 == .max ? .exact : .scored(score: $0, skipped: 0)
             }
         }

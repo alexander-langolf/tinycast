@@ -96,7 +96,15 @@ enum SettingsFileSchema {
             return bind(ForkQuickAIRootSettings.current!, \.startWorkEngine)
         case .quickAIRootRetention:  // FORK: quick-ai-root
             return bind(ForkQuickAIRootSettings.current!, \.retention)
+        // FORK: local-lyra
+        case .lyraEnabled: return bind(ForkLyraSettings.current!, \.enabled)
+        case .lyraFixEnabled: return bind(ForkLyraSettings.current!, \.fixEnabled)
+        case .lyraModelPath: return bind(ForkLyraSettings.current!, \.modelPath)
+        case .lyraPolicyDirectory:  // FORK: policy-split
+            return bind(ForkPolicyStore.current!, \.directory) { AppPaths.isFolderPath($0) ? $0 : nil }
         case .aiCommands: return launcher.commandsBinding(for: key, owner: .ai)
+        case .claudeUsageMenuBarDisplay:  // FORK: claude-usage
+            return bind(AppCore.shared.claudeUsageCoordinator.settings, \.display)
         case .quickActionLanguage: return bind(quickActions, \.settings.targetLanguage)
         case .quickActionCommands: return launcher.commandsBinding(for: key, owner: .quickActions)
         // FORK: file-navigator

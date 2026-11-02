@@ -92,6 +92,7 @@ struct AIProvidersPanel: View {
             .padding(.vertical, Theme.Spacing.xl)
         }
         .frame(width: Theme.Size.aiProvidersPanel.width)
+        .modifier(ClaudeUsageAccountSelection(selection: $selection, tab: $tab))  // FORK: claude-usage
         .settingsEditorPanelSurface(controlsOnGlass: false)
         .releasesFocusOnOutsideClick()
         .settingsEditorPanel(item: $editor) { target in
@@ -120,7 +121,10 @@ struct AIProvidersPanel: View {
         }
         .onChange(of: selection) { modelQuery = "" }
         .onChange(of: settings.connections.map(\.id)) { _, ids in
-            if case .api(let id) = selection, !ids.contains(id) { selection = .installed(.codex) }
+            // FORK: claude-account
+            if case .api(let id) = selection, !ids.contains(id),
+                id != core.forkClaudeAccount.preferences.connectionID
+            { selection = .installed(.codex) }
         }
     }
 
@@ -136,12 +140,11 @@ struct AIProvidersPanel: View {
                     ForEach(InstalledAIKind.allCases) { listRow(.installed($0)) }
                 }
                 Section("API Connections") {
-                    if settings.connections.isEmpty {
-                        Text("None yet")
-                            .foregroundStyle(.secondary)
-                            .selectionDisabled()
-                    }
-                    ForEach(settings.connections) { listRow(.api($0.id)) }
+                    // FORK: claude-account
+                    listRow(.api(core.forkClaudeAccount.preferences.connectionID))
+                    ForEach(settings.connections.filter {
+                        $0.id != core.forkClaudeAccount.preferences.connectionID
+                    }) { listRow(.api($0.id)) }
                 }
             }
             .listStyle(.sidebar)
@@ -211,7 +214,22 @@ struct AIProvidersPanel: View {
         case .installed(let kind)?:
             detailForm(.installed(kind)) { installedSections(kind, tab: $0) }
         case .api(let id)?:
-            if let connection = settings.connection(id: id) {
+            // FORK: claude-account
+            if id == core.forkClaudeAccount.preferences.connectionID {
+                detailForm(.api(id)) { tab in
+                    if tab == .models, let connection = settings.connection(id: id) {
+                        connectionSections(connection, tab: tab)
+                    } else {
+                        ForkClaudeAccountSettingsRows(account: core.forkClaudeAccount)
+                    }
+                }
+            } else if id == core.forkLyra.preferences.connectionID, let connection = settings.connection(id: id) {
+                // FORK: local-lyra
+                detailForm(.api(id)) { tab in
+                    if tab == .models { connectionSections(connection, tab: tab) }
+                    else { ForkLyraSettingsRows(coordinator: core.forkLyra) }  // FORK: policy-split
+                }
+            } else if let connection = settings.connection(id: id) {
                 detailForm(.api(id)) { connectionSections(connection, tab: $0) }
             }
         case nil:
@@ -268,13 +286,22 @@ struct AIProvidersPanel: View {
                         .textSelection(.enabled)
                 }
             case .api(let id):
-                if let connection = settings.connection(id: id) {
+                // FORK: claude-account
+                if let connection = settings.connection(id: id),
+                    id != core.forkClaudeAccount.preferences.connectionID,
+                    id != core.forkLyra.preferences.connectionID  // FORK: local-lyra
+                {
                     Button("Edit…") { edit(connection) }
                 }
             case .appleIntelligence:
                 EmptyView()
             }
-            routeToggle(route)
+            // FORK: claude-account
+            if route != .api(core.forkClaudeAccount.preferences.connectionID)
+                || core.forkClaudeAccount.phase == .signedIn
+            {
+                routeToggle(route)
+            }
         }
     }
 
@@ -549,7 +576,11 @@ struct AIProvidersPanel: View {
         if tab == .models {
             modelsSection(
                 route: .api(connection.id),
-                models: connection.models.map { ProviderModel(id: $0, name: $0) })
+                // FORK: claude-account
+                models: connection.models.map {
+                    ProviderModel(id: $0, name: ForkClaudeAccountSettings.isConnection(connection.id)
+                        ? ForkClaudeCatalog.model($0)?.name ?? $0 : $0)
+                })
         } else {
             connectionSection(connection)
         }
@@ -671,6 +702,8 @@ struct AIProvidersPanel: View {
         case .appleIntelligence: return AppleIntelligence.title
         case .installed(let kind): return kind.title
         case .api(let id):
+            // FORK: claude-account
+            if id == core.forkClaudeAccount.preferences.connectionID { return String(localized: "Claude account") }
             return settings.connection(id: id)?.title ?? String(localized: "API Connection")
         }
     }
@@ -680,6 +713,8 @@ struct AIProvidersPanel: View {
         case .appleIntelligence: return String(localized: "On this Mac · No account needed")
         case .installed(let kind): return String(localized: "Installed command · \(kind.command)")
         case .api(let id):
+            // FORK: claude-account
+            if id == core.forkClaudeAccount.preferences.connectionID { return String(localized: "Claude account") }
             let provider = settings.connection(id: id)?.provider.title ?? ""
             return String(localized: "API connection · \(provider)")
         }
@@ -698,9 +733,21 @@ struct AIProvidersPanel: View {
             }
             return kind == .codex ? codexCaption : installedCaption(kind)
         case .api(let id):
+            // FORK: claude-account
+            if id == core.forkClaudeAccount.preferences.connectionID {
+                switch core.forkClaudeAccount.phase {
+                case .signedOut: return String(localized: "Sign in required")
+                case .signingIn: return String(localized: "Signing in…")
+                case .failed: return String(localized: "Sign in required")
+                case .signedIn: break
+                }
+            }
             guard let connection = settings.connection(id: id) else { return "" }
             guard settings.isRouteEnabled(.api(id)) else { return String(localized: "Off") }
-            if keyIsMissing(connection) { return String(localized: "Key missing") }
+            // FORK: claude-account
+            if id != core.forkClaudeAccount.preferences.connectionID, keyIsMissing(connection) {
+                return String(localized: "Key missing")
+            }
             let count = modelCount(connection.models.count)
             return connection.name.isEmpty ? count : "\(connection.provider.title) · \(count)"
         }
@@ -740,6 +787,8 @@ struct AIProvidersPanel: View {
         case .installed(.openCode): return .asset(AIBrand.openCode.assetName)
         case .installed(.cursor): return AIModelOption.cursorIcon
         case .api(let id):
+            // FORK: claude-account
+            if id == core.forkClaudeAccount.preferences.connectionID { return .asset(AIBrand.claude.assetName) }
             guard let connection = settings.connection(id: id) else { return .symbol("sparkles") }
             // OpenRouter is its own brand; resolving by model would show whichever vendor came first.
             if connection.provider == .openRouter { return .asset(AIBrand.openRouter.assetName) }
@@ -843,6 +892,12 @@ struct AIProvidersPanel: View {
     }
 
     private func removeConnection(_ connection: AIConnection) {
+        // FORK: claude-account
+        if connection.id == core.forkClaudeAccount.preferences.connectionID {
+            core.forkClaudeAccount.signOut()
+            pendingRemoval = nil
+            return
+        }
         do {
             try keyStore.removeSecret(for: connection.id)
             try headerStore.removeSecret(for: connection.id)

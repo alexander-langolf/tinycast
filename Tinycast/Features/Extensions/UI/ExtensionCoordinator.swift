@@ -275,6 +275,18 @@ final class ExtensionCoordinator {
             mode: hasRunningCommand ? .extensionCommand : .launcher, restoreAnyMode: true)
     }
 
+    // FORK: selection-copy
+    /// The palette holds key, so the ⌘C would land in its own search field; it steps aside and returns.
+    func borrowSelection(
+        from app: NSRunningApplication, hasRunningCommand: () -> Bool
+    ) async -> String? {
+        let wasVisible = paletteCoordinator.isVisible
+        if wasVisible { paletteCoordinator.hidePalette(restoreFocus: false) }
+        let copied = await core.textInjector.copySelection(from: app)
+        if wasVisible { reopenPalette(hasRunningCommand: hasRunningCommand()) }
+        return copied
+    }
+
     func clearSearchBar() {
         palette.query = ""
     }

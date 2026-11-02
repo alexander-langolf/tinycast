@@ -5,6 +5,8 @@ import AppKit
 @Observable
 final class AppCore {
     static let shared = AppCore()
+    let forkDiagnostics = ForkDiagnostics()  // FORK: observability
+    let forkSupervision = ForkSupervision()  // FORK: app-supervision
     let forkAppearance = ForkAppearance()  // FORK: appearance-owner
     let forkTheme = ForkThemeStore()  // FORK: appearance-theme
 
@@ -80,6 +82,25 @@ final class AppCore {
     let aiSettings = AISettingsStore(
         environmentStore: .keychain,
         isAppleIntelligenceAvailable: { AppleIntelligenceProvider.status().isAvailable })
+    // FORK: claude-account
+    @ObservationIgnored private(set) lazy var forkClaudeAccount = ForkClaudeAccount(settings: aiSettings)
+    // FORK: claude-usage
+    @ObservationIgnored private(set) lazy var claudeUsageCoordinator = ClaudeUsageCoordinator(
+        account: forkClaudeAccount, showSettings: { [unowned self] in
+            settingsCoordinator.showSettings(tab: .ai)
+        })
+    // FORK: workflow-server
+    @ObservationIgnored private(set) lazy var forkPrimitives = ForkPrimitives(core: self)
+    @ObservationIgnored private(set) lazy var forkWorkflows = ForkWorkflowServer(core: self)
+    let forkPolicy = ForkPolicyStore()  // FORK: policy-split
+    // FORK: local-lyra
+    @ObservationIgnored private(set) lazy var forkLyra = ForkLyraCoordinator(
+        ai: aiSettings, clipboard: clipboardManager, policy: forkPolicy) { [unowned self] selection in
+            try AIProviderFactory.make(
+                selection: selection, settings: aiSettings, subscription: chatGPTSubscription,
+                installedAI: installedAI, guardrails: .permissiveContentTransformations,
+                claudeAccount: forkClaudeAccount)
+        }
     let mcpSettings = MCPSettingsStore()
     let mcpOAuth = MCPOAuthManager()
     @ObservationIgnored private(set) lazy var mcp = MCPServerManager(oauth: mcpOAuth)
@@ -323,6 +344,16 @@ final class AppCore {
     }
 
     func start(launchedByUser: Bool) {
+        forkDiagnostics.start()  // FORK: observability
+        forkSupervision.start()  // FORK: app-supervision
+        // FORK: claude-account
+        forkClaudeAccount.start()
+        claudeUsageCoordinator.start()  // FORK: claude-usage
+        forkPolicy.start()  // FORK: policy-split
+        // FORK: local-lyra
+        forkLyra.start()
+        forkSupervision.processes = [forkLyra.server, forkWorkflows.supervisor]  // FORK: workflow-server
+        forkSupervision.workflowActionCount = { [weak self] in self?.forkWorkflows.actionCount ?? 0 }
         forkAppearance.start()  // FORK: appearance-start
         forkTheme.start()  // FORK: appearance-theme
         startForkAIWorkingDirectory()  // FORK: ai-working-directory
@@ -489,6 +520,9 @@ final class AppCore {
             SystemActionRunner.onAsyncFailure = { [weak self] id, failure in
                 self?.systemActionCoordinator.presentSystemActionFailure(id: id, failure: failure)
             }
+            ForkLyraHotKey.seed(defaults: .standard,  // FORK: local-lyra
+                actionKey: HotKeyAction.command(.lyraRewrite).defaultsKey,  // FORK: local-lyra
+                includesShift: settings.hyperKeyIncludesShift)  // FORK: local-lyra
             hotKeys.start(
                 customCommandIDs: Set(customCommands.commands.map(\.id)),
                 quicklinkIDs: Set(quicklinks.quicklinks.map(\.id)),
@@ -542,6 +576,7 @@ final class AppCore {
     }
 
     func handleOpenURL(_ url: URL) {
+        if forkWorkflows.handleLink(url) { return }  // FORK: workflow-server
         if automation.handleLink(url) { return }  // FORK: automation
         guard ExtensionDeepLink.claims(url) else { return }
         guard let route = ExtensionDeepLink.route(url: url) else {
@@ -600,7 +635,8 @@ final class AppCore {
 
     /// Idempotent: both switches are tracked, and either one flipping re-runs the whole decision.
     func applyClipboardTextSearch() {
-        guard settings.clipboardEnabled, settings.clipboardTextSearchEnabled else {
+        guard settings.clipboardEnabled, settings.clipboardTextSearchEnabled, !ForkSearch.isEnabled  // FORK: search
+        else {
             clipboardStore.onItemsChanged = nil
             clipboardStore.onSearchResultsChanged = nil
             clipboardStore.setTextSearchEnabled(false)
@@ -636,11 +672,18 @@ final class AppCore {
     }
 
     func prepareForTermination() {
+        forkWorkflows.stop()  // FORK: workflow-server
+        forkLyra.stop()  // FORK: local-lyra
+        forkPolicy.stop()  // FORK: policy-split
+        forkSupervision.stop()  // FORK: app-supervision
+        forkDiagnostics.stop()  // FORK: observability
         chromeSearch.reset()  // FORK: chrome-search
         notchBar.stop()  // FORK: notch-bar
         ghosttyStatus.stop()  // FORK: notch-bar
         forkClaudeSessionHost.cancelPreparation()  // FORK: claude-session-chat
         forkClaudeSessions.stop()  // FORK: claude-session-chat
+        claudeUsageCoordinator.stop()  // FORK: claude-usage
+        forkClaudeAccount.stop()  // FORK: claude-account
         forkQuickAIRoot.stop()  // FORK: quick-ai-root
         forkQuickAIHandoff.stop()  // FORK: quick-ai-root
         forkQuickAIRootLog.stop()  // FORK: quick-ai-root
@@ -716,7 +759,8 @@ final class AppCore {
         return try AIProviderFactory.make(
             selection: selection, settings: aiSettings, subscription: chatGPTSubscription,
             installedAI: installedAI,
-            guardrails: .permissiveContentTransformations)
+            guardrails: .permissiveContentTransformations,
+            claudeAccount: forkClaudeAccount)  // FORK: claude-account
     }
 
     // MARK: - Feature switches

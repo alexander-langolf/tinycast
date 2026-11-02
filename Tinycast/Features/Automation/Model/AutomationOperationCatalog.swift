@@ -63,7 +63,10 @@ enum AutomationOperationCatalog {
     static let all: [AutomationOperation] = [
         paletteShow, hudShow, questionAsk, questionAcknowledge, terminalFocus, terminalRun,
         agents, terminals, questions, context
-    ]
+    ] + ForkHealth.operations  // FORK: app-supervision
+        + [ForkLyraOperations.rewrite]  // FORK: local-lyra
+        + ForkPrimitiveOperations.operations  // FORK: workflow-server
+        + ForkSelectionOperations.operations  // FORK: core-capabilities
 
     static func tool(named name: String) -> AutomationOperation? {
         all.first { $0.kind == .tool && $0.name == name }

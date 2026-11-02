@@ -5,13 +5,7 @@ import WebKit
 /// The locked-down web view: bundled page only, no network, no navigation, no new windows.
 @MainActor
 final class MonacoWebHost: NSObject, WKNavigationDelegate, WKUIDelegate {
-    struct Options {
-        var text: String
-        var language: String
-        var isDark: Bool
-        var fontFamily: String
-        var fontSize: Double
-    }
+    typealias Options = MonacoEditorOptions
 
     struct Snapshot {
         let text: String
@@ -22,6 +16,11 @@ final class MonacoWebHost: NSObject, WKNavigationDelegate, WKUIDelegate {
     var onMessage: ((MonacoBridgeMessage) -> Void)?
     private var pageURL: URL?
     private var pending: Options?
+    private var project: MonacoSettings.Profile?
+    private var settingsTask: Task<Void, Never>?
+    private var opening = UUID()
+    private var isPageReady = false
+    private var isSettingsReady = false
 
     /// Hands the message handler a weak reference, since the user content controller retains it.
     private final class Proxy: NSObject, WKScriptMessageHandler {
@@ -48,12 +47,51 @@ final class MonacoWebHost: NSObject, WKNavigationDelegate, WKUIDelegate {
     }
 
     isolated deinit {
+        settingsTask?.cancel()
         webView.configuration.userContentController.removeAllScriptMessageHandlers()
     }
 
     /// The editor opens once the bundled page has loaded, so options can arrive before the page is ready.
     func open(_ options: Options) {
+        settingsTask?.cancel()
+        let opening = UUID()
+        self.opening = opening
         pending = options
+        pending?.project = nil
+        project = nil
+        isSettingsReady = false
+        guard let directory = ForkPolicyStore.current?.directory else {
+            finishOpening(.failure(.unreadable))
+            return
+        }
+        let folder = URL(filePath: (directory as NSString).expandingTildeInPath)
+        settingsTask = Task { [weak self] in
+            let result = await MonacoSettingsLoader.load(directory: folder)
+            guard let self, self.opening == opening, !Task.isCancelled else { return }
+            self.finishOpening(result)
+        }
+    }
+
+    private func finishOpening(_ result: Result<MonacoSettings.Profile, MonacoSettings.Failure>) {
+        guard var options = pending else { return }
+        switch result {
+        case .success(let profile):
+            if let failure = options.apply(profile, fontAvailable: { family in
+                NSFontManager.shared.availableFontFamilies.contains {
+                    $0.caseInsensitiveCompare(family) == .orderedSame
+                }
+            }) {
+                recordFailure(failure)
+            }
+            project = options.project
+        case .failure(let failure): recordFailure(failure)
+        }
+        pending = options
+        isSettingsReady = true
+        if isPageReady {
+            openPage()
+            return
+        }
         guard pageURL == nil else { return }
         guard
             let page = Bundle.main.url(
@@ -64,6 +102,17 @@ final class MonacoWebHost: NSObject, WKNavigationDelegate, WKUIDelegate {
         }
         pageURL = page
         webView.loadFileURL(page, allowingReadAccessTo: page.deletingLastPathComponent())
+    }
+
+    private func recordFailure(_ failure: MonacoSettings.Failure) {
+        let reason: ForkEvent.PolicyFailure = switch failure {
+        case .unreadable: .unreadable
+        case .invalidJSON: .invalidJSON
+        case .invalidValue, .missingFont: .invalidValue
+        }
+        ForkLog.record(ForkEvent(
+            level: .warning, category: .supervision, operation: .health, correlationID: opening,
+            step: .fallback, outcome: .failed, fields: .init(policyFailure: reason)))
     }
 
     func snapshot() async -> Snapshot? {
@@ -80,11 +129,17 @@ final class MonacoWebHost: NSObject, WKNavigationDelegate, WKUIDelegate {
     }
 
     func setTheme(isDark: Bool) {
+        pending?.isDark = isDark
         call("window.tinycastEditor.setTheme(theme)", ["theme": Self.theme(isDark: isDark)])
     }
 
     func setFont(family: String, size: Double) {
-        call("window.tinycastEditor.setFont(family, size)", ["family": family, "size": size])
+        pending?.fontFamily = family
+        pending?.fontSize = size
+        call("window.tinycastEditor.setFont(family, size)", [
+            "family": project?.fontFamily(fallback: family) ?? family,
+            "size": project?.settings.fontSize ?? size
+        ])
     }
 
     func focus() {
@@ -105,14 +160,26 @@ final class MonacoWebHost: NSObject, WKNavigationDelegate, WKUIDelegate {
     // MARK: - WKNavigationDelegate
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation?) {
-        guard let options = pending else { return }
+        isPageReady = true
+        openPage()
+    }
+
+    private func openPage() {
+        guard isSettingsReady, var options = pending else { return }
         pending = nil
+        let pageOptions: [String: Any]
+        do {
+            pageOptions = try options.pageOptions()
+        } catch {
+            recordFailure(.invalidValue)
+            options.project = nil
+            project = nil
+            guard let fallback = try? options.pageOptions() else { return }
+            call("window.tinycastEditor.open(options)", ["options": fallback])
+            return
+        }
         let arguments: [String: Any] = [
-            "options": [
-                "text": options.text, "language": options.language,
-                "theme": Self.theme(isDark: options.isDark),
-                "fontFamily": options.fontFamily, "fontSize": options.fontSize
-            ]
+            "options": pageOptions
         ]
         call("window.tinycastEditor.open(options)", arguments)
     }

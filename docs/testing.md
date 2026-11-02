@@ -107,6 +107,7 @@ If a change touches anything in the right column, the harness on the left is man
 
 | Harness | Guards |
 | --- | --- |
+| `fork-lyra-card-test` | Lyra panel placement, system appearance, response states, card controls, rounded masks, and caret arithmetic. <!-- // FORK: local-lyra --> |
 | `fuzz-test` | `Launcher/Model/LauncherMatch.swift`, `LauncherOrder.swift`, `LauncherSuggestions.swift`, `EntryNaming.swift`, `ScriptRomanization.swift`, `SearchRelevance.swift`, `LauncherRankingStore.swift` — **a new ranking complaint is a new case in its `denseIndex`** |
 | `file-navigator-test` | Fork path reducer, picks, actions, missing folders, parent focus, disappearance, fzf syntax, path quoting and editor keys. <!-- // FORK: file-navigator --> |
 | `file-search-test` | `FileSearch/Model/`: folding, masks, scoring, ignore rules, priors, scopes |

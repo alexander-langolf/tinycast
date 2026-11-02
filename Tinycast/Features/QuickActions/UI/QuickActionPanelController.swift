@@ -4,6 +4,7 @@ import SwiftUI
 /// Owns the result panel: one at a time, and the target app keeps its selection while it is up.
 @MainActor
 final class QuickActionPanelController: NSObject, NSWindowDelegate {
+    private var onCompletion: ((String) -> Void)?  // FORK: workflow-server
     private var panel: QuickActionPanel?
     private var state: QuickActionPanelState?
     private var onReplace: ((String) -> Void)?
@@ -19,9 +20,11 @@ final class QuickActionPanelController: NSObject, NSWindowDelegate {
         metrics: InterfaceMetrics,
         languages: [Locale.Language],
         onRetranslate: @escaping (Locale.Language) -> Void,
-        onReplace: @escaping (String) -> Void
+        onReplace: @escaping (String) -> Void,
+        onCompletion: ((String) -> Void)? = nil  // FORK: workflow-server
     ) {
         dismiss()
+        self.onCompletion = onCompletion  // FORK: workflow-server
         self.state = state
         self.onReplace = onReplace
         self.onRetranslate = onRetranslate
@@ -62,6 +65,10 @@ final class QuickActionPanelController: NSObject, NSWindowDelegate {
     }
 
     func dismiss() {
+        // FORK: workflow-server
+        let completion = onCompletion
+        onCompletion = nil
+        completion?("dismissed")
         guard let closing = panel else { return }
         panel = nil
         state = nil
@@ -75,6 +82,12 @@ final class QuickActionPanelController: NSObject, NSWindowDelegate {
     private func copyOutput() {
         guard let state else { return }
         Paster.copyPlainText(state.output)
+        // FORK: workflow-server
+        if let completion = onCompletion {
+            onCompletion = nil
+            dismiss()
+            completion("copy")
+        }
     }
 
     private func openLanguageSettings() {
@@ -83,9 +96,13 @@ final class QuickActionPanelController: NSObject, NSWindowDelegate {
     }
 
     private func replace(_ text: String) {
+        // FORK: workflow-server
+        let completion = onCompletion
+        onCompletion = nil
         let callback = onReplace
         dismiss()
         callback?(text)
+        completion?("replace")  // FORK: workflow-server
     }
 
     /// Grows from the current top-left, so a reply landing after a drag cannot snap the panel back.

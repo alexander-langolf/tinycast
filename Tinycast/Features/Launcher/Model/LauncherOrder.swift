@@ -9,6 +9,9 @@ enum LauncherOrder {
         /// Alternate titles and aliases compare against the text as typed.
         let typed: SearchText
         let term: String
+        /// `latin` and `typed` compiled for the fzf scorer, once per keystroke.  // FORK: search
+        let latinFork: ForkSearch.Query
+        let typedFork: ForkSearch.Query
 
         var isEmpty: Bool { typed.isEmpty }
 
@@ -17,6 +20,8 @@ enum LauncherOrder {
             latin = SearchText(trimmed, transliterated: true)
             typed = SearchText(trimmed, transliterated: false)
             term = typed.string
+            latinFork = ForkSearch.Query(latin.string, profile: .fuzzy)  // FORK: search
+            typedFork = ForkSearch.Query(typed.string, profile: .fuzzy)  // FORK: search
         }
     }
 
@@ -140,11 +145,15 @@ enum LauncherOrder {
             let typedLength = query.typed.units.count
             alias = signals.alias.map { Self.aliasHit($0, query.typed) } ?? .none
             isBoosted = signals.boostedTerms.contains(query.term)
-            let titleMatch = LauncherMatch.match(query.latin, in: profile.title)
+            let titleMatch = LauncherMatch.match(query.latin, fork: query.latinFork, in: profile.title)
             var alternateTitles = profile.alternateTitles
             if alias == .none, let text = signals.alias { alternateTitles.append(text) }
-            let alternates = alternateTitles.map { LauncherMatch.match(query.typed, in: $0) }
-            let subtitleMatch = profile.subtitle.flatMap { LauncherMatch.match(query.latin, in: $0) }
+            let alternates = alternateTitles.map {
+                LauncherMatch.match(query.typed, fork: query.typedFork, in: $0)
+            }
+            let subtitleMatch = profile.subtitle.flatMap {
+                LauncherMatch.match(query.latin, fork: query.latinFork, in: $0)
+            }
 
             func passes(_ outcome: LauncherMatch.Outcome?, _ length: Int) -> Bool {
                 outcome.map { sensitivity.accepts($0, queryLength: length) } ?? false
@@ -153,7 +162,7 @@ enum LauncherOrder {
                 alias != .none || passes(titleMatch, latinLength)
                 || alternates.contains { passes($0, typedLength) } || passes(subtitleMatch, latinLength)
                 || profile.keywords.contains {
-                    passes(LauncherMatch.match(query.latin, in: $0), latinLength)
+                    passes(LauncherMatch.match(query.latin, fork: query.latinFork, in: $0), latinLength)
                 }
             guard isMatching else { return nil }
 

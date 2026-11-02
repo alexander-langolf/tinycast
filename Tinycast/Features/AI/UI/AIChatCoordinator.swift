@@ -254,11 +254,18 @@ final class AIChatCoordinator {
         if case .claude? = selection, let title = await core.installedAI.claudeTitle(for: description) {
             return title
         }
+        // FORK: claude-account
+        if case .api(let connection, _, _)? = selection,
+            connection == core.forkClaudeAccount.preferences.connectionID
+        {
+            return await core.forkClaudeAccount.title(describing: description)
+        }
         guard let selection,
             let provider = try? AIProviderFactory.make(
                 selection: selection, settings: core.aiSettings,
                 subscription: core.chatGPTSubscription, installedAI: core.installedAI,
-                toolServers: servers)
+                toolServers: servers,
+                claudeAccount: core.forkClaudeAccount)  // FORK: claude-account
         else { return nil }
         let request = AIRequest(
             instructions: ChatTitle.instructions,
@@ -633,7 +640,8 @@ final class AIChatCoordinator {
         return try AIProviderFactory.make(
             selection: selection, settings: core.aiSettings,
             subscription: core.chatGPTSubscription, installedAI: core.installedAI,
-            toolServers: toolServers)
+            toolServers: toolServers,
+            claudeAccount: core.forkClaudeAccount)  // FORK: claude-account
     }
 
     /// Tinycast runs a local server itself only while some live chat's route cannot.

@@ -7,6 +7,8 @@ enum AutomationScope: String, CaseIterable, Codable, Sendable, Hashable, Compara
     case clipboardRead = "clipboard:read"
     case ui
     case exec
+    case model  // FORK: workflow-server
+    case selection  // FORK: core-capabilities
 
     var title: String {
         switch self {
@@ -15,6 +17,8 @@ enum AutomationScope: String, CaseIterable, Codable, Sendable, Hashable, Compara
         case .clipboardRead: "Read the clipboard"
         case .ui: "Show messages and ask you questions"
         case .exec: "Run commands (each needs approval)"
+        case .model: String(localized: "Run model completions")  // FORK: workflow-server
+        case .selection: String(localized: "Read and replace selected text")  // FORK: core-capabilities
         }
     }
 

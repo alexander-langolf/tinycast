@@ -23,6 +23,12 @@ enum AIRequestBody {
             "messages": messages,
             "stream": true
         ]
+        // FORK: local-lyra
+        if input.requiresCompleteText {
+            body["temperature"] = 0.2
+            body["max_tokens"] = input.maxOutputTokens
+        }
+        if input.localRewrite { body["cache_prompt"] = true }
         // OpenRouter's own search layer, so it works for every model it routes.
         if input.webSearch, configuration.provider == .openRouter {
             body["plugins"] = [["id": "web"]]

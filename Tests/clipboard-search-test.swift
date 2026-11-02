@@ -90,7 +90,66 @@ struct ClipboardSearchTests {
         try await compare(store, phase: "cleared")
         store.close()
         for query in queries { precondition(store.search(query, filter: .all).isEmpty) }
+        forkChecks()
         print("\(checks) search comparisons passed")
+    }
+
+    /// Fork search: typed matches are text entries only, and each text is prepared once.
+    static func forkChecks() {
+        ForkSearch.setEnabled(true)
+        defer { ForkSearch.setEnabled(false) }
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("clipboard-fork-search-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = ClipboardStore(directory: directory)
+        store.maxAge = ClipboardRetention.forever.maxAge
+        let now = Date()
+        let summary = ClipboardItem(
+            id: UUID(), kind: .text, text: "Quarterly summary for finance", imagePath: nil,
+            createdAt: now.addingTimeInterval(-1), sourceBundleID: nil)
+        let draft = ClipboardItem(
+            id: UUID(), kind: .text, text: "annual report draft", imagePath: nil,
+            createdAt: now.addingTimeInterval(-2), sourceBundleID: nil)
+        let file = ClipboardItem(
+            id: UUID(), kind: .file, text: "/fixture/report.pdf", imagePath: nil,
+            createdAt: now.addingTimeInterval(-3), sourceBundleID: nil)
+        let pinnedImage = ClipboardItem(
+            id: UUID(), kind: .image, text: nil, imagePath: "/fixture/shot.png",
+            createdAt: now.addingTimeInterval(-4), sourceBundleID: nil,
+            pinnedAt: now.addingTimeInterval(-4))
+        let image = ClipboardItem(
+            id: UUID(), kind: .image, text: nil, imagePath: "/fixture/other.png",
+            createdAt: now.addingTimeInterval(-5), sourceBundleID: nil)
+        let entries = [summary, draft, file, pinnedImage, image]
+        precondition(ClipboardStore.importStoredItems(inDatabaseAt: store.dbURL, entries) == entries.count)
+        store.load()
+
+        precondition(store.preparedTextCount == 0, "nothing is prepared before the first query")
+        precondition(
+            store.search("report", filter: .all).map(\.id) == [draft.id],
+            "a file whose path contains the word does not match typed search")
+        precondition(store.preparedTextCount == 2, "the first query prepares each resident text once")
+        for query in ["report", "summary", "shot", "other", "pdf", "a"] {
+            precondition(
+                !store.search(query, filter: .all).contains { $0.kind == .image },
+                "images never appear in typed results: \(query)")
+        }
+        precondition(
+            Set(store.search("", filter: .all).map(\.kind)) == [.text, .file, .image],
+            "an empty query lists every kind")
+        precondition(store.search("summary", filter: .image).isEmpty, "Images filter with a query is empty")
+        precondition(store.search("summary", filter: .file).isEmpty, "Files filter with a query is empty")
+        checks += 7
+
+        let prepared = store.preparedTextCount
+        _ = store.search("summary finance", filter: .all)
+        precondition(store.preparedTextCount == prepared, "extending a query prepares no further text")
+        checks += 1
+
+        precondition(store.clipboardTexts[summary.id] != nil)
+        store.remove(summary)
+        precondition(store.clipboardTexts[summary.id] == nil, "deleting an item removes its cache entry")
+        checks += 2
     }
 
     static func sameResults(_ actual: [ClipboardItem], _ expected: [ClipboardItem]) -> Bool {

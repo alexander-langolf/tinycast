@@ -172,6 +172,38 @@ final class AutomationClientStore {
         return client
     }
 
+    // FORK: workflow-server
+    func ensureWorkflowsClient(defaults: UserDefaults = .standard) async throws -> String {
+        await beginMutation()
+        defer { endMutation() }
+        await loadMetadata()
+        try Task.checkCancellation()
+        let key = "fork.workflows.clientID"
+        let saved = defaults.string(forKey: key).flatMap(UUID.init(uuidString:))
+        let index = saved.flatMap { id in clients.firstIndex { $0.id == id } }
+        let id = index.map { clients[$0].id } ?? UUID()
+        let keychain = keychain
+        var token = try await Task.detached { try keychain.secret(for: id) }.value
+        if token == nil || Self.clientID(in: token ?? "") != id {
+            try await storeToken(for: id)
+            token = try await Task.detached { try keychain.secret(for: id) }.value
+        }
+        guard let token else { throw Failure.keychain }
+        let client = AutomationClient(
+            id: id, label: "workflows", scopes: [.selection, .model, .ui],
+            createdAt: index.map { clients[$0].createdAt } ?? now(), expiresAt: nil)
+        var candidate = clients
+        if let index { candidate[index] = client } else { candidate.append(client) }
+        let records = candidate
+        let fileURL = fileURL
+        try await Task.detached { try Self.writeMetadata(records, at: fileURL) }.value
+        clients = records
+        digests[id] = SHA256.hash(data: Data(token.utf8))
+        defaults.set(id.uuidString, forKey: key)
+        onChange?(index == nil ? nil : id)
+        return token
+    }
+
     /// A new secret under the same identity; the old one stops working at once.
     func rotate(_ id: UUID) async throws {
         await beginMutation()

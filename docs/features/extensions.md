@@ -676,6 +676,13 @@ interval floor instead of sixty.
 `openExtensionPreferences`, `OAuth`,
 `useNavigation`, `Icon`, `Color`, `Image.Mask`, `Keyboard.Shortcut.Common`, `LaunchType`.
 
+<!-- // FORK: selection-copy -->
+`getSelectedText` reads the target app through Accessibility first. After an empty read, the bridge
+borrows a ⌘C copy for user-initiated commands, through the same `TextInjector.copySelection` that
+Quick Actions use. The copy restores the clipboard and adds no clipboard-history entry. A visible
+palette hides during the copy and returns with the running command. Background and menu-bar runs use
+Accessibility only. An empty result keeps the existing no-selection error.
+
 **`raycast://` URLs** — extensions address Raycast by scheme; the most common is a bare
 `open("raycast://")` to bring the window back after something stole focus (1Password's auth flow does
 this). `ExtensionHostBridge` keeps those inside Tinycast: `raycast://extensions/<author>/<extension>/<command>`

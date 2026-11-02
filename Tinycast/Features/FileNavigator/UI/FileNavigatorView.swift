@@ -40,7 +40,7 @@ struct FileNavigatorView: View {
         }
         .overlay {
             if let result = coordinator.quickLookResult {
-                FileSearchQuickLook(result: result) { coordinator.dismissQuickLook() }
+                FileNavigatorQuickLook(result: result) { coordinator.dismissQuickLook() }
             }
         }
     }

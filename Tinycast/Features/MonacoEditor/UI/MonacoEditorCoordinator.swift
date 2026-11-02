@@ -5,26 +5,39 @@ import Observation
 @MainActor
 @Observable
 final class MonacoEditorCoordinator {
+    typealias Origin = @MainActor () -> Void
+
     private(set) var session: MonacoEditorSession?
     @ObservationIgnored private unowned let core: AppCore
     @ObservationIgnored private var appearanceObservation: NSKeyValueObservation?
     @ObservationIgnored private var isTrackingFont = false
+    @ObservationIgnored private var origin: Origin?
+    @ObservationIgnored private var opening = UUID()
 
     init(core: AppCore) {
         self.core = core
     }
 
     /// Replaces the open file after asking about unsaved changes; the palette closes only on success.
-    func open(path: String) async {
+    func open(path: String, origin: Origin? = nil) async {
+        let opening = UUID()
+        self.opening = opening
+        let previous = session
         if let session, session.document.path == path {
             core.monacoEditorPresenter.focus()
             return
         }
-        guard await requestClose() else { return }
-        switch await MonacoFileIO.load(path: path) {
+        guard await permitsClose(), self.opening == opening, self.session === previous,
+            !Task.isCancelled
+        else { return }
+        let result = await MonacoFileIO.load(path: path)
+        guard self.opening == opening, self.session === previous, !Task.isCancelled else { return }
+        switch result {
         case .failure(let failure):
             core.showMessage(failure.message, tone: .danger)
         case .success(let loaded):
+            if previous == nil { self.origin = origin }
+            previous?.host.onMessage = nil
             let session = MonacoEditorSession(document: loaded.document)
             session.host.onMessage = { [weak self, weak session] message in
                 guard let self, let session, self.session === session else { return }
@@ -43,6 +56,13 @@ final class MonacoEditorCoordinator {
 
     /// False when the user cancels or a save fails, so the caller keeps the editor.
     func requestClose() async -> Bool {
+        let session = session
+        guard await permitsClose(), self.session === session, !Task.isCancelled else { return false }
+        close()
+        return true
+    }
+
+    private func permitsClose() async -> Bool {
         guard let session else { return true }
         if session.isDirty {
             let choice = await core.choose(
@@ -60,9 +80,7 @@ final class MonacoEditorCoordinator {
             default: return false
             }
         }
-        guard self.session === session else { return true }
-        close()
-        return true
+        return self.session === session
     }
 
     func save() async {
@@ -115,10 +133,14 @@ final class MonacoEditorCoordinator {
     }
 
     private func close() {
+        opening = UUID()
+        let origin = origin
+        self.origin = nil
         session?.host.onMessage = nil
         session = nil
         appearanceObservation = nil
         core.monacoEditorPresenter.dismiss()
+        origin?()
     }
 
     // MARK: - Appearance

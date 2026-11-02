@@ -11,7 +11,8 @@ enum AIProviderFactory {
         installedAI: InstalledAIManager,
         keyStore: KeychainSecretStore = .aiAPIKeys,
         guardrails: SystemLanguageModel.Guardrails = .default,
-        toolServers: AIToolServerSession? = nil
+        toolServers: AIToolServerSession? = nil,
+        claudeAccount: ForkClaudeAccount? = nil  // FORK: claude-account
     ) throws -> any AIProvider {
         switch selection {
         case .appleIntelligence:
@@ -58,6 +59,10 @@ enum AIProviderFactory {
             guard settings.isRouteEnabled(.api(connectionID)) else {
                 throw AIProviderError.unavailable(
                     String(localized: "\(connection.title) is disabled in AI Settings."))
+            }
+            // FORK: claude-account
+            if let claudeAccount, connectionID == claudeAccount.preferences.connectionID {
+                return try claudeAccount.provider(model: model, effort: savedEffort)
             }
             let baseURL: URL
             do {

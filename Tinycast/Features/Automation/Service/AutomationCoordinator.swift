@@ -62,6 +62,7 @@ final class AutomationCoordinator {
     }
 
     func stop() {
+        core.forkWorkflows.stop()  // FORK: workflow-server
         observationGeneration += 1
         startup?.cancel()
         startup = nil
@@ -120,6 +121,7 @@ final class AutomationCoordinator {
             guard !Task.isCancelled, let self, self.server === server else { return }
             self.clients.watchExpiry()
             server.start()
+            self.core.forkWorkflows.start()  // FORK: workflow-server
         }
         questionPresenter.start()
         observationGeneration += 1

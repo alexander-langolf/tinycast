@@ -96,6 +96,8 @@ struct AIRequest: Equatable, Sendable {
     let instructions: String?
     let messages: [AIMessage]
     let maxOutputTokens: Int
+    let requiresCompleteText: Bool  // FORK: local-lyra
+    let localRewrite: Bool  // FORK: local-lyra
     /// Lets the model search the web; each route has its own switch for that, all off by default.
     let webSearch: Bool
     /// Empty for every route that cannot call one, so a transport need not ask whether it may.
@@ -104,12 +106,15 @@ struct AIRequest: Equatable, Sendable {
     init(
         instructions: String? = nil, messages: [AIMessage],
         maxOutputTokens: Int = defaultMaxOutputTokens,
-        webSearch: Bool = false, tools: [AITool] = [], conversationID: UUID? = nil
+        webSearch: Bool = false, tools: [AITool] = [], conversationID: UUID? = nil,
+        requiresCompleteText: Bool = false, localRewrite: Bool = false  // FORK: local-lyra
     ) {
         self.conversationID = conversationID
         self.instructions = instructions
         self.messages = messages
         self.maxOutputTokens = maxOutputTokens
+        self.requiresCompleteText = requiresCompleteText  // FORK: local-lyra
+        self.localRewrite = localRewrite  // FORK: local-lyra
         self.webSearch = webSearch
         self.tools = tools
     }
@@ -118,7 +123,8 @@ struct AIRequest: Equatable, Sendable {
     func continuing(with messages: [AIMessage], tools: [AITool]) -> AIRequest {
         AIRequest(
             instructions: instructions, messages: messages, maxOutputTokens: maxOutputTokens,
-            webSearch: webSearch, tools: tools, conversationID: conversationID)
+            webSearch: webSearch, tools: tools, conversationID: conversationID,
+            requiresCompleteText: requiresCompleteText, localRewrite: localRewrite)  // FORK: local-lyra
     }
 }
 

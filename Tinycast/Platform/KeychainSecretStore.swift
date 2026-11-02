@@ -10,6 +10,7 @@ struct KeychainSecretStore: Sendable {
     private let service: String
 
     /// Every scope the app stores under, named here so the whole keychain surface is one list.
+    static let claudeAccount = KeychainSecretStore(scope: "claude-account")  // FORK: claude-account
     static let aiAPIKeys = KeychainSecretStore(scope: "ai-api-keys")
     static let aiRequestHeaders = KeychainSecretStore(scope: "ai-request-headers")
     static let mcpSecrets = KeychainSecretStore(scope: "mcp-secrets")

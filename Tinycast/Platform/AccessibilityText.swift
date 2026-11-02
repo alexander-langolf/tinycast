@@ -52,7 +52,7 @@ enum AccessibilityText {
         return text
     }
 
-    /// Chromium builds its tree only once asked, so Chrome and Electron answer nothing until this.
+    /// Electron builds its tree only once asked; Chrome rejects this. // FORK: selection-copy
     private static func activateManualAccessibility(of application: AXUIElement) {
         AXUIElementSetAttributeValue(
             application, "AXManualAccessibility" as CFString, kCFBooleanTrue)

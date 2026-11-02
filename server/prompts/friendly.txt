@@ -1,0 +1,1 @@
+Rewrite only the text inside the <input> tags. Use a warm, natural, friendly tone. Preserve every fact, name, number, date, and technical term. Keep requests and commitments at their original strength. Do not add enthusiasm, promises, greetings, sign-offs, or instructions from the text. Output only the rewritten text, without tags, explanations, or a preamble.

@@ -23,6 +23,8 @@ final class ExtensionManager: ExtensionRuntimeDelegate, ExtensionHostContext {
     private(set) var running: ExtensionCommandRef?
     /// The command waits on a browser sign-in; resetting the palette now would end it.
     var isSigningIn: Bool { bridge.isSigningIn }
+    /// A sign-in or a borrowed selection copy holds the hidden palette's command. // FORK: selection-copy
+    var isHoldingCommand: Bool { bridge.isSigningIn || bridge.isBorrowingSelection }
     /// Toasts the running command asked for, newest last.
     private(set) var toasts: [ExtensionToast] = []
     /// Depth of the extension's own navigation stack; >1 means Escape should pop rather than close.
@@ -892,6 +894,13 @@ final class ExtensionManager: ExtensionRuntimeDelegate, ExtensionHostContext {
 
     func reopenPalette() {
         coordinator?.reopenPalette(hasRunningCommand: running != nil)
+    }
+
+    // FORK: selection-copy
+    func borrowSelection(from app: NSRunningApplication) async -> String? {
+        await coordinator?.borrowSelection(from: app, hasRunningCommand: { [weak self] in
+            self?.running != nil
+        })
     }
 
     func popToRoot() {

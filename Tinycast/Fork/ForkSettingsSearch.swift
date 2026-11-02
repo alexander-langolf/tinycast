@@ -1,20 +1,24 @@
 import Foundation
 
 enum ForkSettingsSearch {
-    static let quickAIWarmRootTitle = "Keep a warm root session (Codex)"
-    static let quickAIStartWorkTitle = "Start Work in"
-    static let quickAIRetentionTitle = "Forget the Quick AI log after"
+    static let quickAIWarmRootTitle: LocalizedStringResource = "Keep a warm root session (Codex)"
+    static let quickAIStartWorkTitle: LocalizedStringResource = "Start Work in"
+    static let quickAIRetentionTitle: LocalizedStringResource = "Forget the Quick AI log after"
     static let quickAIRoot: [SettingsSearchEntry] = [
         .init(.quickAIRoot, quickAIWarmRootTitle, keywords: ["quick ai", "prewarm", "thread"]),
         .init(.quickAIRoot, quickAIStartWorkTitle, keywords: ["quick ai", "claude", "codex", "handoff"]),
         .init(.quickAIRoot, quickAIRetentionTitle, keywords: ["retention", "handoff", "history", "prune"])
     ]
 
+    static let claudeUsageMenuBar = SettingsSearchEntry(
+        .aiProviders, "Menu Bar", keywords: ["claude", "usage", "limits", "session", "weekly", "percent"])
+    static let claudeUsage: [SettingsSearchEntry] = [claudeUsageMenuBar]
+
     static let entry = SettingsSearchEntry(
         .generalAppearance, "Interface font", keywords: ["font", "typeface", "family"])
     static let monoEntry = SettingsSearchEntry(
         .generalAppearance, "Monospaced font", keywords: ["font", "code", "mono", "fixed width", "terminal"])
-    static let aiWorkingDirectoryTitle = "Working folder"
+    static let aiWorkingDirectoryTitle: LocalizedStringResource = "Working folder"
     static let aiWorkingDirectoryEntry = SettingsSearchEntry(
         .aiChat, aiWorkingDirectoryTitle,
         keywords: ["cwd", "directory", "vault", "agents.md", "claude.md", "codex", "claude"])
@@ -32,14 +36,15 @@ enum ForkSettingsSearch {
             .init(.appearanceColors, "Window gradient", keywords: ["fade", "background"])
         ]
         + ForkColorTheme.Slot.allCases.map {
-            SettingsSearchEntry(.appearanceColors, $0.title, keywords: ["color", "colour", "theme", "hex"])
+            SettingsSearchEntry(.appearanceColors, LocalizedStringResource(stringLiteral: $0.title), keywords: ["color", "colour", "theme", "hex"])
         }
         + ForkThemeToken.Component.allCases.flatMap { component -> [SettingsSearchEntry] in
             let anchor = SettingsAnchor.appearance(component)
             let group = SettingsSearchEntry(
-                group: anchor, anchor.title, keywords: ["appearance", "theme", "reset"])
+                group: anchor, LocalizedStringResource(stringLiteral: anchor.title),
+                keywords: ["appearance", "theme", "reset"])
             return [group]
-                + component.tokens.map { SettingsSearchEntry(anchor, $0.title, keywords: $0.keywords) }
+                + component.tokens.map { SettingsSearchEntry(anchor, LocalizedStringResource(stringLiteral: $0.title), keywords: $0.keywords) }
         }
 
     /// The Automation pane, its sections and the rows a user would search for by name.

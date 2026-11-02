@@ -143,45 +143,66 @@ agentkit MCP ([Agentkit MCP](../../agentkit/README.md#agentkit-mcp)).
 
 ## Search
 
-Search Files and navigator global words get their candidates from the local `fsearch` daemon through
-one long-lived `fsearch stdio` child that `FileSearchSession` owns (see
-[file-search.md](features/file-search.md)). This is the one external-tool dependency, in the same
-category as the `rg` the navigator's ⌘F scan still uses: nothing is bundled or linked, and a missing
-`fsearch` shows "File search is unavailable" with no fallback engine. fsearch's order is the ranking;
-the fork's fzf scorer below serves the launcher, clipboard, snippets, quicklinks and the navigator's
-in-folder filter. The blank-screen recents stay on Spotlight, since fsearch has no `mtime` sort.
-Settings → File Navigator shows the discovered `fsearch` path and whether it has Full Disk Access.
+Search Files and navigator global words use upstream's in-process `FileIndex` (see
+[file-search.md](features/file-search.md)); the fork adds no file-search engine of its own. The
+fork's fzf scorer below serves the launcher, clipboard, snippets, quicklinks and the navigator's
+in-folder filter.
 
 Every list input matches with one fzf v2 scorer, fork-owned in `Tinycast/Fork/Search/`
 (`ForkFzf` scores, `ForkSearch` parses syntax and adapts it to upstream callers). `ForkSearch.setEnabled`
 is the switch, turned on in `ForkAppearance.start()`; off, every hook falls through to upstream behaviour.
-The scorer and syntax were settled in `prototype/fuzzy-search`; clipboard retrieval follows the owner's
-revised fuzzy-search decision:
+The scorer and syntax come from `prototype/fuzzy-search`. The hook sites are listed in
+[Upstream hooks](#upstream-hooks).
 
+- A search compiles its query once into `ForkSearch.Query`: the parsed terms, the positive terms and
+  the letter count. Each candidate is prepared once into `ForkSearch.Text`: its units, per-unit
+  bonuses, source offsets (nil for ASCII without CR), `isASCII`, and the folded string that anchors
+  read. A launcher entry prepares its text when the entry is created, using its humps.
+- A clipboard item is prepared once into `ForkSearch.ClipboardText`: a `head` of at most 4,096
+  characters for fuzzy scoring, and a `whole` text for literal words when the item is longer.
 - Words are ANDed in any order; fzf extended syntax: `'exact`, `^prefix`, `suffix$`, `!exclude`. No typo tolerance.
 - Every search surface uses the **fuzzy** profile (letters may be skipped); `'word` keeps an exact
   contiguous word. Clipboard positives must each clear the launcher's medium score bar, based on
   that word's folded length.
-  The item filter and OCR in-loop filter use `clipboardScore`; the clipboard union carries each
-  item's score through pin handling and ranking, without scoring duplicates again.
-- Clipboard retrieval unions the full-history trigram FTS hits for positive words of 3+ letters
-  with fuzzy-filtered resident items (the newest ~1,000, plus resident pins), deduplicating by item ID.
-  FTS retains its 200-newest-hit cap and only retrieves literal long words: older skipped-letter
-  matches outside the resident window remain unavailable. Plain long `!words` become FTS exclusions;
-  anchored or short exclusions stay in the memory filter. Ordinary text matches rank by fzf score,
-  ties newest-first; 1–2 non-space characters keep newest-first. Pins retain upstream's first-place
-  handling. Fuzzy clipboard scoring scans only the first 4,096 characters of each item, including
-  OCR text; skipped-letter matches beyond that prefix are unavailable. Past the prefix, words (any
-  length, and `suffix$` words) match literally against the whole text and `!words` found anywhere
-  reject the item; `^prefix` words are judged on the prefix. ASCII words do that literal check as a
-  byte scan, so past the prefix `cafe` misses "café" (non-ASCII words fold accents). Literal matches
-  use the word's self-match score when no accepted prefix alignment exists. OCR-only matches retain
-  upstream's retrieval and insertion order. The scorer lowercases ASCII bytes directly and rejects
-  absent subsequences before computing bonuses or alignment; non-ASCII characters keep the shared fold.
+- The scorer runs on units. `ForkFzf.match` rejects a term that is not a subsequence of the text
+  before it computes bonuses or alignment. It then aligns in the window from the term's first letter
+  to its last, over the columns that hold a term letter, with one flat back-pointer buffer. ASCII
+  anchors compare units directly; other text compares its folded form.
+- The fork fold is `ForkSearch.fold`: `FuzzyMatch.normalized` without emoji skin-tone modifiers (U+1F3FB–U+1F3FF)
+  and emoji variation selectors (U+FE0E, U+FE0F). Fuzzy scoring, anchors, the launcher's exact-name check and the
+  clipboard's non-ASCII literal-word check all use this one fold; ASCII literal words keep their byte scan.
+- Typed clipboard search matches **text entries only**, pinned or not. The full-text (FTS) statement
+  keeps `kind = 'text'` before its 200-row limit, so files and images take no slot. With an empty
+  query every kind is listed; with a query, the Images and Files filters show nothing.
+- Clipboard retrieval unions two sets, deduplicated by item ID: the text-only FTS hits for positive words
+  of 3+ letters, and the fuzzy-filtered resident text items (the newest ~1,000, plus resident pins). A query under
+  three characters skips FTS and uses only the resident items. FTS keeps its 200-newest-hit cap and
+  only retrieves literal long words: older skipped-letter matches outside the resident window remain
+  unavailable. Plain long `!words` become FTS exclusions; anchored or short exclusions stay in the
+  memory filter.
+- Ordinary text matches rank by fzf score, ties newest-first; 1–2 non-space characters keep
+  newest-first. Pins retain upstream's first-place handling.
+- Fuzzy clipboard scoring scans only the first 4,096 characters of each item. Skipped-letter matches
+  beyond that prefix are unavailable. Past the prefix, words (any length, and `suffix$` words) match
+  literally against the whole text. A `!word` found anywhere rejects the item. A `^prefix` word is
+  judged on the prefix. ASCII words do that literal check as a byte scan, so past the prefix `cafe`
+  misses "café"; non-ASCII words fold accents. Literal matches use the word's self-match score when
+  no accepted prefix alignment exists.
+- The clipboard union scores each candidate once and carries that score through pin handling and ranking.
+- `ClipboardStore` keeps prepared text in `clipboardTexts`, keyed by item ID. An item's text never
+  changes after capture, so its preparation is reused. Every change to `items` drops entries for
+  items outside the resident window. Entries for items outside that window are also dropped as a
+  group when their count reaches `searchLimit` (200).
+- Recognized-text (OCR) search is off under fork search. `AppCore.applyClipboardTextSearch` creates no
+  `ClipboardTextIndexer` and cancels a running one. `ClipboardStore` runs no recognized-text search.
+  The "Search text in images and PDFs" toggle and its settings-search entry are hidden. Copy Text
+  still extracts on demand, because `ClipboardTextWorker.extract` reads neither the switch nor the indexer.
+- Two checks guard the scorer. `Tests/fork-search-performance.swift` times each query over 1,000 corpus
+  items on prepared text and fails when a query's warm median over nine runs exceeds the 5 ms budget.
+  The parity harness, `Tests/fork-search-test.swift`, compares `ForkSearch` with the frozen copies in
+  `Tests/fork-search-reference/` on the corpus from `Tests/fork-search-corpus.swift`: `match`,
+  `clipboardScore`, `launcherScore` and `tiered` must return equal results, positions included.
 - A query of only `!words` matches nothing. Lone syntax tokens (`!`, `'`, `^`, `$`) match literally.
-- File search sends the typed words to fsearch untouched, pushing only the type filter, and enforces
-  scopes, ignore patterns, hidden paths and `~/Library` locally on the returned paths before the 200-row
-  cap; a full page that filtering leaves short is re-queried once with a larger limit.
 - Plain substring filters in Uninstall, calculator history, AI chat lists, window layouts and settings
   lists are unchanged.
 
@@ -302,7 +323,22 @@ File Navigator, hosted in an offline WKWebView. Hooks, each marked `// FORK: mon
 setting (`AppSettings`, `AppSettingsKey`, `SettingsFileKey`/`SettingsFileSchema`, backup coverage), the Edit
 branch in `FileNavigatorCoordinator.run`, and the two lazy owners on `AppCore`. The page bundle is
 generated by `Scripts/monaco-bundle`. See [monaco-editor.md](features/monaco-editor.md).
-The harness is registered but implementation-session execution is prohibited.
+
+<!-- // FORK: monaco-editor -->
+
+Project editor settings live in `server/editor/monaco.json`, with a relative theme path under `server/editor/themes/`.
+`MonacoWebHost` reads the active `ForkPolicyStore.directory` on each open and passes the parsed profile through its options object.
+The page converts the copied VS Code theme and keeps the project theme during app appearance changes.
+The font, size, line height, minimap, and wrapping come from the project file.
+Invalid files and unavailable fonts use the built-in appearance and emit a typed failure without file contents.
+The `monaco-settings-test` harness covers the loader, mapper, and page conversion without a web view.
+The `monaco-project-settings` change owns this configuration.
+The `monaco-vscode-settings-and-return` change remains a separate proposal.
+
+The editor retains the first caller's return closure across document replacement.
+File Navigator and Search Files capture explicit snapshots before the palette hides.
+Successful close dismisses Monaco before restoring the originating screen and reloading its rows.
+The harnesses are registered; execution belongs to Claude's verification pass.
 
 `Tinycast.xcodeproj/project.pbxproj` is an explicit **generated exception** to inline hook markers:
 XcodeGen owns it and adds the new files from `project.yml`'s source directory. It is never hand-edited;
@@ -324,6 +360,34 @@ logs only handoff metadata, clears the composer and calls `QuickAICoordinator.st
 Overflow writes revalidate the source chat, draft, attachments, settings and directory before
 launching; a stale result leaves the current chat untouched. Start Work retires the warm root
 with reason `newChat` through `startNewChat`, which also prewarms the next root.
+
+## Claude account chat
+
+`Tinycast/Fork/ClaudeAccount/` owns the Claude account route. `AppCore` owns `ForkClaudeAccount`
+and restores its API connection when the account has tokens. AI Settings exposes browser sign-in,
+Copy Code sign-in, sign-out and Refresh. The connection keeps its ID across sign-ins.
+
+The sign-in uses Proof Key for Code Exchange (PKCE) and a loopback callback on port 53692, with a
+free-port fallback. Copy Code sign-in uses Claude's hosted callback and accepts `code#state`.
+Tokens live in the bundle-scoped `claude-account` Keychain item. One shared task refreshes an
+expired token. A request retries one HTTP 401 before any stream event; another rejection signs out.
+
+`ForkClaudeCatalog` copies pi 1.2.0's 17 Anthropic entries, in catalog order. The connection carries
+the catalog names and effort ladders, with Medium as the default. An API refusal hides the model
+or effort level. Sign-in and Refresh clear refusals. The account row owns Refresh; the general
+API connection editor remains for user-configured endpoints.
+
+`ForkClaudeRequestBody` sends structured messages, the Claude Code identity block, prompt cache
+marks and each model's thinking shape. `ForkClaudeStreamObserver` reads the same server-sent event
+(SSE) bytes as `AIStreamDecoder`. The provider retains thinking blocks and signatures by tool-call
+ID for the active user turn. A fork-owned transcript sidecar stores assistant-effort fingerprints
+under the bundle's defaults domain, so later requests can restore historical effort messages.
+Title requests use the first available catalog Haiku model and send no thinking fields.
+
+The provider uses a private, cacheless ephemeral URL session. Access tokens enter the existing
+failure redaction path. The Claude CLI, Claude session chat and Quick AI warm root keep their
+existing routes. The implementation contract is
+[claude-account-chat](../openspec/changes/claude-account-chat/design.md).
 
 ## Claude session chat
 
@@ -437,6 +501,145 @@ unless they have an explicit symbol-only allowance. The audit is a static guard,
 
 `HyperKeyEngine.swift` declares `init(route:includesShift:)`: Xcode 26.2 makes the memberwise initializer private because the struct has private stored properties, so `HyperKeyTap` cannot call it (verified 2026-10-26 by a failed build). Drop the hook once the local toolchain matches upstream's CI Xcode.
 
+## Observability and companion supervision
+
+`AppCore` owns `ForkDiagnostics` and `ForkSupervision`. Diagnostics mirror structured events to
+`Diagnostics/events.jsonl` under the channel's Application Support directory. Each file has
+permissions `0600`. The mirror rotates at 5 MiB and retains three archives.
+Events also reach the unified log under `com.tinycast`. Typed fields admit lengths, counts,
+bundle identifiers, client identifiers, booleans, and numeric codes. Error messages and HTTP
+header values stay outside the event schema.
+
+`ForkTrace` carries the correlation identifier through the Quick Action task, selection reads,
+and the model request. `ForkClaudeAccountProvider` explicitly carries the task-local context
+into its detached request task. The request trace counts headers with Authorization excluded.
+
+`ForkAppSupervisor` supervises BetterTouchTool through `ForkAppControl`. The workspace adapter
+launches the app without activation and observes termination. Relaunches wait two seconds and
+stop after three attempts in ten minutes. The first launch of an absent app is separate from
+the relaunch budget. Readiness checks wait up to three seconds and use a one-second AppleScript
+probe. Unsupported browsers skip supervision and selection scripting.
+
+`tinycast://health` requires `context:read`. The resource reports companion state, launch time,
+relaunch count, Secure Event Input, its owner PID when available, and Accessibility permission.
+The `health_repair` tool uses the same scope and resets the relaunch budget.
+
+`tinycast health [--json] [--repair]` uses the authenticated Automation bridge.
+`tinycast logs` reads the channel's files directly. Log filters accept `--id`, `--op`, `--level`,
+and `--since` in minutes. `--follow` tracks appended records across rotation. Both commands accept
+`--channel`; health also accepts `--client`.
+
+## Core capabilities
+
+`ForkSelectionSource` and `ForkTextSink` define selection reads and text replacement in `Fork/Core/Ports/`.
+Adapters reuse Accessibility, BetterTouchTool, and `TextInjector`.
+`ForkSelectionReader` tries the sources in that order and lets callers exclude the clipboard borrow.
+Quick Actions retain their selection validation.
+Extensions borrow only for user-initiated commands through `context.borrowSelection`, which hides the palette.
+
+The `selection` scope grants `selection_read` and `quick_action_run` without per-call approval.
+Both tools require the existing privileged audit log.
+Selection audit records omit arguments and replace failure details with a fixed message.
+Automation traces record a typed operation name, client identifier, duration, and outcome without content.
+
+`ForkQuickActionService` runs without opening the palette.
+The service uses `AppCore.quickActionProvider(for:)`, including action-specific model overrides and permissive transformation guardrails.
+A per-call instruction overrides the stored action instruction.
+Translate uses `TextTranslator` and the configured target language; Translate rejects instruction overrides.
+The tools use the frontmost external app.
+When Tinycast is frontmost, a visible palette supplies its recorded target app.
+A hidden palette and a Tinycast window produce a missing-target error.
+The service hides a visible palette before a clipboard borrow.
+
+`apply` defaults to false.
+An applied result reports the injector's delivery acknowledgement through `applied`.
+Concurrent API calls generate independently; `TextInjector` serializes delivery.
+Cancellation stops a pending sink continuation and invalidates queued delivery.
+An injector delivery that has started follows the injector's existing event-delivery contract.
+
+`tinycast call <tool> [--args <json>] [--channel dev|stable|beta] [--client <id>]` uses the existing channel credentials and HTTP bridge.
+The command prints the tool's JSON payload and reports errors on stderr with a nonzero exit status.
+`Scripts/scriptkit/tinycast-rewrite.ts` calls Rewrite through `tinycast` on PATH and shows a notification.
+
+## Workflow server
+
+`AppCore` owns the [workflow server and native primitives](features/workflows.md).
+The Bun server runs Rewrite, Fix Grammar, and selection Fix from repository files.
+Native Quick Actions provide the fallback when server health fails.
+The server catalog gates run links, and polling completes native panel and marker interactions.
+The built-in Automation client uses a persisted identifier and the selection, model, and UI scopes.
+Native and server diagnostic files share correlation identifiers and merge through `tinycast logs`.
+
+## Local Lyra
+
+`AppCore` owns `ForkLyraCoordinator` in `Tinycast/Fork/Lyra/`.
+The feature offers Fix markers, a rewrite panel, and the `lyra_rewrite` Automation tool.
+The [Lyra feature guide](features/lyra.md) describes the controls and safety boundaries.
+
+“Rewrite with Lyra” is a built-in palette command with the `sparkles` symbol.
+Settings under Commands and the `commands.builtIn` settings-file records expose its normal hotkey binding.
+`ForkLyraHotKey` seeds Hyper+R once before the manager loads bindings, using the user's Include Shift setting.
+The seed preserves existing bindings and skips chords held by other stored actions.
+The seed-attempt flag prevents later launches from restoring a removed binding or retrying a skipped seed.
+Disabled Lyra ignores the command.
+The existing policy gates remain in `openPanel()`.
+
+`ForkKittySelectionSource` reads kitty selections through the running bundle's kitten executable and a process-specific remote-control socket.
+The rewrite command opens a Copy-only card near the mouse and streams the selected policy mode.
+Return copies a completed rewrite and dismisses the card; the copy icon keeps the card visible.
+Empty selections and read failures produce a HUD without opening a card.
+Fix on pause and Accessibility text reads stay disabled in kitty, and Lyra rejects terminal writes.
+The shared Rewrite and Fix Grammar selection chain excludes the kitty adapter because those quick actions paste their output.
+The [kitty selection section](features/lyra.md#kitty-selections) defines the socket convention, deadline, and delivery rules.
+
+The local connection uses the OpenAI-compatible endpoint `http://127.0.0.1:8765/v1`.
+The default policy routes Fix to the local connection.
+Policy routing selects the connection for every panel mode.
+A private ephemeral session probes the model server without a disk cache.
+`ForkLlamaServer` starts, reuses, or adopts the server through `ForkProcessSupervisor` and `ForkProcessControl`.
+The existing app supervisor retains ownership of companion apps.
+Health responses include a `processes` array, and `tinycast health` renders the process state and ownership.
+
+`ForkLyraFocusObserver` implements the selection source port and preserves Accessibility snapshots.
+`ForkLyraTextSink` implements the text sink port with original-value, selection, element, and frontmost-app checks.
+The sink verifies Accessibility writes and falls back to System Events paste for stable targets.
+The sink shares Tinycast's complete clipboard lease and capture bookkeeping.
+The termination hook drains insertion and owned-server cleanup before the app quits.
+
+`HotKeyCenter` accepts an optional Carbon signature.
+Lyra uses `LYRA` so its registrations cannot collide with Tinycast's `TYCT` identifiers.
+The feature registers plain Tab only while a marker or preview appears.
+The Command detector uses Tinycast's 300-millisecond gap between the first release and second press.
+
+Lyra policy files live in `server/policy/`, with prompt files under `server/prompts/`.
+`AppCore.forkPolicy` owns `ForkPolicyStore` and its DispatchSource monitor.
+The store reads policy files off the main actor and retains the last valid snapshot after rejection.
+`project.fork.yml` bundles the same policy and prompt folders as fallback resources.
+Limits, delays, runtime modes, prompts, and UUID connection routes come from the snapshot.
+`fork.policy.directory` selects the server configuration root and mirrors through `ai.lyraPolicyDirectory`.
+Policy routes use `local` for the fork-owned connection or a connection UUID.
+The panel connection picker and `ai.lyraPanelConnection` mirror key are retired.
+The stored UserDefaults value remains untouched.
+An existing settings file must omit the retired key.
+
+BetterTouchTool owns selection triggers through the `lyra-fix-selection` server action.
+The action reads selection handles and presents the native marker through Automation primitives.
+The marker retains selection-only replacement and the existing Tab controls.
+Tinycast contains no app list or selection-delay trigger for Lyra.
+Lyra events carry a validated 12-character hexadecimal policy version.
+The [feature document](features/lyra.md#runtime-policy) defines the policy schema and limits.
+The four prompt files match Local Lyra's benchmark prompts byte for byte.
+
+Lyra requests opt into strict text completion through `AIRequest.requiresCompleteText`.
+The HTTP decoder rejects truncation, tool completion, and a missing normal completion reason for those requests.
+The local request retains temperature 0.2, 2,048 output tokens, and prompt caching.
+Other AI requests keep their existing request and completion behavior.
+
+`ForkTrace` records Lyra triggers, requests, first-token timing, markers, insertion paths, and dismissals under operation `lyra`.
+A suggestion retains its correlation context through the apply or dismiss action.
+`lyra_rewrite` uses the `selection` scope and omits arguments and result content from the audit log.
+Trace events contain lengths, durations, typed outcomes, and numeric error codes.
+
 ## Upstream hooks
 
 FileNavigator and TerminalInstances are fork-owned feature folders; terminal role, card, grid and
@@ -445,6 +648,93 @@ launcher changes live there without upstream hooks. The generated pbxproj except
 
 | File | Tag | Purpose |
 | --- | --- | --- |
+| `Tinycast/App/AppCore.swift` | `// FORK: claude-usage` | Own, start, and stop the Claude usage coordinator. |
+| `Tinycast/App/TinycastApp.swift` | `// FORK: claude-usage` | Declare the independent usage scene and its insertion binding. |
+| `Tinycast/Features/Settings/Model/SettingsFileKey.swift` | `// FORK: claude-usage` | Name the `ai.claudeUsageMenuBar` preference. |
+| `Tinycast/Features/Settings/SettingsFileSchema.swift` | `// FORK: claude-usage` | Bind the display preference to the settings file. |
+| `Tinycast/Features/Settings/SettingsSearchCatalog.swift` | `// FORK: claude-usage` | Register the searchable Claude usage picker. |
+| `Tinycast/Features/Settings/SettingsEditorPresenter.swift` | `// FORK: claude-usage` | Inject the coordinator into settings and provider panels. |
+| `Tinycast/Features/AI/Settings/AISettingsView.swift` | `// FORK: claude-usage` | Open providers for usage settings and search requests. |
+| `Tinycast/Features/AI/Settings/AIProvidersPanel.swift` | `// FORK: claude-usage` | Select the Claude account for usage settings requests. |
+| `Scripts/run-tests.sh` | `// FORK: claude-usage` | Register the pure usage model harness. |
+| `docs/architecture.md` | `// FORK: claude-usage` | Describe the three independent menu bar scenes. |
+| `Tinycast/App/AppCore.swift` | `// FORK: workflow-server` | Own workflow services, register process health, and forward run links. |
+| `Tinycast/App/AppDelegate.swift` | `// FORK: workflow-server` | Drain workflow insertion and process shutdown before termination. |
+| `Tinycast/Features/Automation/Model/AutomationScope.swift` | `// FORK: workflow-server` | Declare the model scope and localized title. |
+| `Tinycast/Features/Automation/Model/AutomationCall.swift` | `// FORK: workflow-server` | Carry the correlation identifier into routing. |
+| `Tinycast/Features/Automation/Model/AutomationMCPCall.swift` | `// FORK: workflow-server` | Read the correlation header from validated requests. |
+| `Tinycast/Features/Automation/Model/AutomationOperationCatalog.swift` | `// FORK: workflow-server` | Register native workflow primitives. |
+| `Tinycast/Features/Automation/Service/AutomationClientStore.swift` | `// FORK: workflow-server` | Provision the built-in workflows client under the mutation lock. |
+| `Tinycast/Features/Automation/Service/AutomationCoordinator.swift` | `// FORK: workflow-server` | Start and stop workflow supervision with Automation. |
+| `Tinycast/Features/Automation/Service/AutomationMCPHandler.swift` | `// FORK: workflow-server` | Forward correlation identifiers into tool and resource calls. |
+| `Tinycast/Features/Automation/Service/AutomationRouter.swift` | `// FORK: workflow-server` | Adopt the caller correlation identifier for tracing. |
+| `Tinycast/Features/Automation/Service/AutomationRunner.swift` | `// FORK: workflow-server` | Dispatch native workflow primitives. |
+| `Tinycast/Features/QuickActions/UI/QuickActionCoordinator.swift` | `// FORK: workflow-server` | Route external Rewrite and Fix Grammar with a native fallback. |
+| `Tinycast/Features/QuickActions/UI/QuickActionPanelController.swift` | `// FORK: workflow-server` | Report Replace, Copy, and Dismiss through an optional callback. |
+| `Tinycast/Features/QuickActions/UI/QuickActionPanelState.swift` | `// FORK: workflow-server` | Accept the workflow diff flag. |
+| `project.fork.yml` | `// FORK: workflow-server` | Bundle server policy and prompt folders for typed Lyra. |
+| `Scripts/run-tests.sh` | `// FORK: workflow-server` | Register workflow harnesses and primitive source dependencies. |
+| `Tests/relaunch-test.swift` | `// FORK: workflow-server` | Provide the workflow shutdown fixture for the delegate harness. |
+| `Tinycast/App/AppCore.swift` | `// FORK: local-lyra` | Own and wire the Lyra coordinator, AI factory, and process health registration. Seed the rewrite command before loading hotkeys. |
+| `Tinycast/Features/Launcher/Model/CommandID.swift` | `// FORK: local-lyra` | Declare Rewrite with Lyra with its title and symbol. |
+| `Tinycast/Features/Launcher/UI/LauncherCoordinator.swift` | `// FORK: local-lyra` | Restore host focus and dispatch the rewrite command to Lyra's gated panel entry point. |
+| `docs/features/hotkeys.md` | `// FORK: local-lyra` | Describe the bindable rewrite command and one-time default. |
+| `Tinycast/App/AppDelegate.swift` | `// FORK: local-lyra` | Await Lyra clipboard restoration and owned-server shutdown before termination. |
+| `Tinycast/Features/AI/Model/AIRequest.swift` | `// FORK: local-lyra` | Carry opt-in rewrite completion and local request flags. |
+| `Tinycast/Features/AI/Model/AIRequestBody.swift` | `// FORK: local-lyra` | Apply rewrite sampling, output budget, and local prompt caching. |
+| `Tinycast/Features/AI/Model/AIStreamDecoder.swift` | `// FORK: local-lyra` | Reject incomplete responses for opt-in text rewrites. |
+| `Tinycast/Features/AI/Service/HTTPAIProvider.swift` | `// FORK: local-lyra` | Pass the rewrite completion contract to the shared decoder. |
+| `Tinycast/Features/AI/Settings/AIProvidersPanel.swift` | `// FORK: local-lyra` | Expose Lyra settings on its connection and protect the connection editor. |
+| `Tinycast/Features/HotKeys/Service/HotKeyCenter.swift` | `// FORK: local-lyra` | Accept a distinct Carbon signature for fork-owned hotkeys. |
+| `Tinycast/Features/Automation/Model/AutomationOperationCatalog.swift` | `// FORK: local-lyra` | Register the Lyra rewrite tool. |
+| `Tinycast/Features/Automation/Service/AutomationRunner.swift` | `// FORK: local-lyra` | Validate Lyra arguments and dispatch the headless rewrite. |
+| `Tinycast/Features/Settings/Model/SettingsFileKey.swift` | `// FORK: local-lyra` | Declare AI-section Lyra preference keys. |
+| `Tinycast/Features/Settings/SettingsFileSchema.swift` | `// FORK: local-lyra` | Bind Lyra preferences to the settings file. |
+| `Scripts/run-tests.sh` | `// FORK: local-lyra` | Register the Lyra model, card, hotkey seed, process, and strict-stream harnesses. |
+| `Tests/relaunch-test.swift` | `// FORK: local-lyra` | Stub the Lyra owner so the harness compiles the quit hook in `AppDelegate`. |
+| `Tinycast/App/AppCore.swift` | `// FORK: policy-split` | Own, start, stop, and inject the runtime policy store. |
+| `Tinycast/Features/AI/Settings/AIProvidersPanel.swift` | `// FORK: policy-split` | Render Lyra settings without the retired panel connection picker. |
+| `Tinycast/Features/Automation/Service/AutomationRunner.swift` | `// FORK: policy-split` | Validate runtime modes for Lyra rewrites. |
+| `Tinycast/Features/Settings/Model/SettingsFileKey.swift` | `// FORK: policy-split` | Declare the policy-directory mirror key. |
+| `Tinycast/Features/Settings/SettingsFileSchema.swift` | `// FORK: policy-split` | Bind the policy-directory preference to the settings file. |
+| `project.yml` | `// FORK: policy-split` | Delegate the policy folder resource to the fork project. |
+| `Scripts/run-tests.sh` | `// FORK: policy-split` | Register policy and watcher coverage with shipped sources. |
+| `Tinycast/Features/QuickActions/Service/QuickActionRunner.swift` | `// FORK: core-capabilities` | Share ordered selection adapters while preserving validation and refusal reasons. |
+| `Tinycast/Features/Extensions/Service/ExtensionHostBridge.swift` | `// FORK: core-capabilities` | Share ordered selection adapters and retain the user-initiated coordinator borrow. |
+| `Tinycast/Features/TextInjection/Service/TextInjector.swift` | `// FORK: core-capabilities` | Forward a defaulted validity gate for queued replacement. |
+| `Tinycast/Features/Automation/Model/AutomationScope.swift` | `// FORK: core-capabilities` | Add the localized selection scope to the existing Settings scope list. |
+| `Tinycast/Features/Automation/Model/AutomationOperationCatalog.swift` | `// FORK: core-capabilities` | Register the fork-owned selection tools. |
+| `Tinycast/Features/Automation/Service/AutomationRunner.swift` | `// FORK: core-capabilities` | Validate Quick Action arguments and dispatch selection capabilities. |
+| `Tinycast/Features/Automation/Service/AutomationRouter.swift` | `// FORK: core-capabilities` | Trace dispatch outcomes and omit content from selection audit records. |
+| `TinycastCLI/main.swift` | `// FORK: core-capabilities` | Dispatch call requests through the existing authenticated bridge. |
+| `project.fork.yml` | `// FORK: core-capabilities` | Include the call parser and client in the CLI target. |
+| `Scripts/run-tests.sh` | `// FORK: core-capabilities` | Register selection and capability-argument harnesses. |
+| `Tinycast/App/AppCore.swift` | `// FORK: observability` | Own, start, and stop structured diagnostics. |
+| `Tinycast/App/AppCore.swift` | `// FORK: app-supervision` | Own, start, and stop companion supervision. |
+| `Tinycast/Features/QuickActions/UI/QuickActionCoordinator.swift` | `// FORK: observability` | Carry one correlation identifier through selection and model execution. |
+| `Tinycast/Features/QuickActions/Service/QuickActionRunner.swift` | `// FORK: observability` | Record selection and model steps without content. |
+| `Tinycast/Features/Extensions/Service/ExtensionHostBridge.swift` | `// FORK: observability` | Correlate the selected-text read and record Accessibility outcomes. |
+| `Tinycast/Features/TextInjection/Service/TextInjector.swift` | `// FORK: observability` | Record copy gates, copy lengths, and timeouts in every build configuration. |
+| `Tinycast/Features/Automation/Model/AutomationOperationCatalog.swift` | `// FORK: app-supervision` | Register the health resource and repair tool with context:read scope. |
+| `Tinycast/Features/Automation/Service/AutomationRunner.swift` | `// FORK: app-supervision` | Answer the health resource and repair tool through the owned supervisor. |
+| `TinycastCLI/main.swift` | `// FORK: observability` | Dispatch health and logs and reuse the authenticated bridge transport. |
+| `Scripts/run-tests.sh` | `// FORK: observability` | Register the diagnostics harness and add diagnostics sources to TextInjection harnesses. |
+| `Scripts/run-tests.sh` | `// FORK: app-supervision` | Register the Foundation-only companion supervision harness. |
+| `Tinycast/Features/Extensions/Service/ExtensionHostBridge.swift` | `// FORK: selection-copy` | Declare the optional selection borrow and request the borrow after an empty Accessibility read for user-initiated commands. |
+| `Tinycast/Platform/AccessibilityText.swift` | `// FORK: selection-copy` | Identify Electron as the consumer of manual Accessibility and state Chrome's rejection. |
+| `docs/features/extensions.md` | `// FORK: selection-copy` | Describe the selection borrow hook and its launch limits. |
+| `Tinycast/Features/Extensions/Service/ExtensionManager.swift` | `// FORK: selection-copy` | Forward the selection borrow to the coordinator and report a held command while a borrow or sign-in is open. |
+| `Tinycast/Features/Extensions/UI/ExtensionCoordinator.swift` | `// FORK: selection-copy` | Hide a visible palette, borrow the copy through `TextInjector.copySelection`, and show the palette again. |
+| `Tinycast/Palette/PaletteWindowController.swift` | `// FORK: selection-copy` | Skip the pop to root while an extension holds its command, so a hidden palette keeps the running command. |
+| `Tinycast/Features/QuickActions/Service/QuickActionRunner.swift` | `// FORK: btt-selection` | Read a browser selection through BetterTouchTool after an empty Accessibility read and before the ⌘C borrow. |
+| `Tinycast/Features/Extensions/Service/ExtensionHostBridge.swift` | `// FORK: btt-selection` | Read a browser selection through BetterTouchTool before the selection borrow. |
+| `Tinycast/App/AppCore.swift` | `// FORK: claude-account` | Own, restore and stop the account; inject it into the Quick Action provider factory. |
+| `Tinycast/Platform/KeychainSecretStore.swift` | `// FORK: claude-account` | Declare the bundle-scoped Claude account secret store. |
+| `Tinycast/Features/AI/Service/AIProviderFactory.swift` | `// FORK: claude-account` | Accept the account owner and select its provider by connection ID. |
+| `Tinycast/Features/AI/Model/AIConnection.swift` | `// FORK: claude-account` | Expose explicitly stored Anthropic reasoning options to the picker and selection resolver. |
+| `Tinycast/Features/AI/UI/AIModelOption.swift` | `// FORK: claude-account` | Display catalog names for the account connection. |
+| `Tinycast/Features/AI/UI/AIChatCoordinator.swift` | `// FORK: claude-account` | Inject the account into provider creation and delegate account titles to a Haiku request. |
+| `Tinycast/Features/AI/Settings/AIProvidersPanel.swift` | `// FORK: claude-account` | Keep the account row available when signed out; show account controls and catalog names; route connection removal to sign-out. |
 | `Tinycast/App/AppCore.swift` | `// FORK: search` | Own/wire the home index; refresh on palette opening, invalidate on preference changes, stop at quit and rerun visible searches. |
 | `Tinycast/Features/Settings/AppSettings.swift` | `// FORK: search` | Load/persist the engine preference and choose its discovery-dependent default. |
 | `Tinycast/Features/Settings/AppSettingsKey.swift` | `// FORK: search` | Name the bundle-local experimental engine preference. |
@@ -475,6 +765,10 @@ launcher changes live there without upstream hooks. The generated pbxproj except
 | `Tinycast/Features/Settings/SettingsFileSchema.swift` | `// FORK: file-navigator` | Bind editor and command mirror keys using existing conventions. |
 | `Tinycast/Features/Backup/Model/SettingsBackupCoverage.swift` | `// FORK: file-navigator` | Exclude the machine-local editor override from backups. |
 | `Scripts/run-tests.sh` | `// FORK: file-navigator` | Register the model/editor-key harness and settings search source dependency. |
+| `Scripts/run-tests.sh` | `// FORK: monaco-editor` | Register the editor model, project-settings, and close-return coordinator harnesses. |
+| `Tinycast/Features/FileSearch/UI/FileSearchCoordinator.swift` | `// FORK: monaco-editor` | Capture and restore the query, type filter, and selected result; re-run the query and select the nearest surviving row. |
+| `Tinycast/Palette/PaletteCoordinator.swift` | `// FORK: monaco-editor` | Pass the active type filter when opening Search Files. |
+| `Tinycast/Palette/RootPaletteView.swift` | `// FORK: monaco-editor` | Keep the captured Search Files filter and selection when the mode and landing handlers run during a Monaco return. |
 | `Tests/settings-file-test.swift` | `// FORK: file-navigator` | Account for the new fileNavigator settings mirror section. |
 | `docs/README.md` | `// FORK: file-navigator` | Index the fork feature documentation. |
 | `docs/architecture.md` | `// FORK: file-navigator` | Record the fork coordinator and ownership. |
@@ -482,6 +776,7 @@ launcher changes live there without upstream hooks. The generated pbxproj except
 | `docs/features/terminal-instances.md` | `// FORK: file-navigator` | Document editor-role geometry, keys and Browse here origin. |
 | `docs/features/settings-file.md` | `// FORK: file-navigator` | Document mirror keys and local persistence boundaries. |
 | `docs/testing.md` | `// FORK: file-navigator` | Register the harness contract and deferred acceptance sweep. |
+| `docs/testing.md` | `// FORK: local-lyra` | Register the Lyra harnesses. |
 | `Tinycast/App/AppCore.swift` | `// FORK: claude-session-chat` | Own the Claude host, registry and session coordinator; load the registry cache, write hooks and schedule session reconciliation at launch; close readers and attach clients at termination without stopping daemon sessions. |
 | `Tinycast/Features/AI/UI/AIChatSurfacesState.swift` | `// FORK: claude-session-chat` | Intercept single and bulk deletion for registered Claude chats; defer history removal until the session choice and unregistering finish, preserving pinned chats and the requested target IDs. |
 | `Tinycast/Features/AI/UI/AIChatCoordinator.swift` | `// FORK: claude-session-chat` | Expose session controls, select the session provider for registered chat IDs, keep ended sessions read-only, reject file staging and regeneration, and skip separate automatic title requests. |
@@ -499,6 +794,13 @@ launcher changes live there without upstream hooks. The generated pbxproj except
 | `Scripts/run-tests.sh` | `// FORK: fork-search` | Register the fork search harness with the real file-query models. |
 | `Tinycast/Features/Launcher/Model/SearchRelevance.swift` | `// FORK: search` | `FuzzyMatch.match` answers via fzf, tiers kept. |
 | `Tinycast/Features/Launcher/Model/LauncherMatch.swift` | `// FORK: search` | Launcher alignment and sensitivity via fzf. |
+| `Tinycast/Features/Launcher/Model/LauncherMatch.swift` | `// FORK: search` | `SearchText.forkText`: the prepared fzf text, built once per entry. |
+| `Tinycast/Features/Launcher/Model/LauncherOrder.swift` | `// FORK: search` | Compile the latin and typed queries once per keystroke. |
+| `Tinycast/Features/FileNavigator/Model/FileNavigatorState.swift` | `// FORK: search` | Name filter: compiled query and prepared row text. |
+| `Tinycast/App/AppCore.swift` | `// FORK: search` | `applyClipboardTextSearch`: no recognized-text indexer under fork search. |
+| `Tinycast/Features/Clipboard/Settings/ClipboardSettingsView.swift` | `// FORK: search` | Hide the "Search text in images and PDFs" toggle. |
+| `Tinycast/Features/Settings/SettingsSearchCatalog.swift` | `// FORK: search` | Hide the recognized-text settings-search entry. |
+| `Tinycast/Features/Clipboard/Model/ClipboardStore.swift` | `// FORK: search` | Text-only FTS statement (`searchTextOnlyStmt`) and the prepared-text cache (`clipboardTexts`). |
 | `Tinycast/Features/Snippets/UI/SnippetsScreen.swift` | `// FORK: search` | Snippet filter via fzf. |
 | `Tinycast/Features/Quicklinks/UI/QuicklinkListScreen.swift` | `// FORK: search` | Quicklink filter via fzf. |
 | `Tinycast/Features/Clipboard/Model/ClipboardStore.swift` | `// FORK: search` | FTS/resident union, fuzzy medium-threshold filter and rank; upstream pins. |

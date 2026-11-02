@@ -9,5 +9,6 @@ struct AutomationCall: Sendable {
     let arguments: [String: JSONValue]
     let transport: String
     /// The caller's own JSON-RPC id, kept only so the audit log can be matched to its logs.
+    var correlationID: UUID? = nil  // FORK: workflow-server
     var callerRequestID: String?
 }

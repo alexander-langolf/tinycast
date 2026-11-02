@@ -27,11 +27,14 @@ enum FuzzyMatch {
         fileprivate let text: String
         /// Folded once too: the subsequence pass needs random access on every candidate.
         fileprivate let characters: [Character]
+        /// Parsed once, so the fzf tier pass never re-parses per candidate.  // FORK: search
+        fileprivate let fork: ForkSearch.Query
         var isEmpty: Bool { text.isEmpty }
 
         init(_ raw: String) {
             text = FuzzyMatch.normalized(raw)
             characters = Array(text)
+            fork = ForkSearch.Query(text, profile: .fuzzy)  // FORK: search
         }
     }
 
@@ -58,7 +61,7 @@ enum FuzzyMatch {
     static func match(_ query: Query, candidate: Candidate) -> Match? {
         let q = query.text
         let c = candidate.text
-        if ForkSearch.isEnabled { return ForkSearch.tiered(q, c) }  // FORK: search
+        if ForkSearch.isEnabled { return ForkSearch.tiered(query.fork, c) }  // FORK: search
         let length = candidate.length
         guard !q.isEmpty else {
             return Match(

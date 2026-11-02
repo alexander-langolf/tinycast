@@ -13,6 +13,7 @@ final class QuickActionPanelState {
         case needsLanguageDownload
     }
 
+    private let workflowShowsDiff: Bool?  // FORK: workflow-server
     let action: QuickAction
     let original: String
     private(set) var output = ""
@@ -22,7 +23,7 @@ final class QuickActionPanelState {
     @ObservationIgnored private var cachedDiff: [TextDiffEngine.Chunk]?
 
     var diff: [TextDiffEngine.Chunk] {
-        guard action.showsDiff, phase == .finished else { return [] }
+        guard workflowShowsDiff ?? action.showsDiff, phase == .finished else { return [] }
         if let cachedDiff { return cachedDiff }
         let chunks = TextDiffEngine.diff(original: original, modified: output)
         cachedDiff = chunks
@@ -33,7 +34,9 @@ final class QuickActionPanelState {
 
     var canReplace: Bool { phase == .finished && !output.isEmpty }
 
-    init(action: QuickAction, original: String, targetLanguage: Locale.Language) {
+    // FORK: workflow-server
+    init(action: QuickAction, original: String, targetLanguage: Locale.Language, workflowShowsDiff: Bool? = nil) {
+        self.workflowShowsDiff = workflowShowsDiff
         self.action = action
         self.original = original
         self.targetLanguage = targetLanguage

@@ -13,9 +13,10 @@ struct SnippetsScreen: PaletteScreen {
         let enabled = store.snippets.filter { $0.snippet.isEnabled }
         let query = vm.query.trimmingCharacters(in: .whitespaces)
         guard !query.isEmpty else { return enabled }
+        let compiled = ForkSearch.Query(query, profile: .fuzzy)  // FORK: search
         return enabled.filter { record in
-            ForkSearch.contains(query, in: record.snippet.name)  // FORK: search
-                || ForkSearch.contains(query, in: record.snippet.keyword)  // FORK: search
+            ForkSearch.contains(compiled, in: record.snippet.name)  // FORK: search
+                || ForkSearch.contains(compiled, in: record.snippet.keyword)  // FORK: search
         }
     }
 

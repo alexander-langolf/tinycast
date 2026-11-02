@@ -46,6 +46,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 sender.reply(toApplicationShouldTerminate: false)
                 return
             }
+            await AppCore.shared.forkWorkflows.stopForTermination()  // FORK: workflow-server
+            await AppCore.shared.forkLyra.stopForTermination()  // FORK: local-lyra
             await AppCore.shared.stopDictationForTermination()
             // A 300 ms-debounced draft still has to reach disk, but it can no longer veto the quit.
             await AppCore.shared.flushNotesForTermination()

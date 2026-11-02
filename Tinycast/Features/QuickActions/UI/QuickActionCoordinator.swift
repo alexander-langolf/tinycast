@@ -189,7 +189,7 @@ final class QuickActionCoordinator {
                     editor: editor, document: core.notesCoordinator.editorInput,
                     range: editor.selectedRange(), text: editor.injectableSelection))
         } else {
-            target = .external(paletteCoordinator.targetApp)
+            target = .external(source?.externalApp ?? paletteCoordinator.targetApp)  // FORK: workflow-server
         }
         if paletteCoordinator.isVisible {
             paletteCoordinator.hidePalette(restoreFocus: source?.ownEditor is NoteTextView)
@@ -211,13 +211,31 @@ final class QuickActionCoordinator {
         let mine = generation
         running?.cancel()
         running = Task { [weak self] in
-            await work()
+            await ForkTrace.run(.quickAction, category: .quickActions) { await work() }  // FORK: observability
             guard let self, mine == self.generation else { return }
             self.running = nil
         }
     }
 
     private func begin(_ action: QuickAction, target: Target) async {
+        // FORK: workflow-server
+        if case .external(let app) = target, action == .rewrite || action == .fixGrammar {
+            if await core.forkWorkflows.healthy() {
+                do {
+                    try await core.forkWorkflows.run(
+                        action == .rewrite ? "rewrite" : "fix-grammar", target: app?.bundleIdentifier)
+                } catch {
+                    if !Task.isCancelled {
+                        ForkTrace.context?.failure.code.withLock { $0 = -1 }
+                        core.showMessage(String(localized: "The workflow could not be completed."), tone: .danger)
+                    }
+                }
+                return
+            }
+            guard !Task.isCancelled else { return }
+            core.showMessage(String(localized: "The workflow server is not running; using the built-in action"))
+            ForkTrace.begin(.workflow, category: .workflows, step: .fallback).end(.unavailable)
+        }
         let selection: String
         do {
             switch target {

@@ -1,6 +1,6 @@
 # File Navigator
 
-Global words are searched through `fsearch` ([file-search.md](file-search.md)); ⌘F scans the current folder
+Global words are searched through the shared file index ([file-search.md](file-search.md)); ⌘F scans the current folder
 recursively with `rg` when it is installed and the Swift walker otherwise. Direct folder listings and their
 reveal toggle are unchanged.
 
@@ -23,7 +23,8 @@ and rendered acceptance remain for Claude's verification pass.
   the folder watcher. External actions validate the same destination and target set after suspension.
 - Picks are absolute logical paths and survive navigation within an open navigator. A visible-folder
   refresh drops only paths proven missing; hiding entries does not clear picks. Closing releases picks
-  and listing memory. Actions revalidate targets and report unavailable items through Tinycast's HUD,
+  and listing memory. Monaco retains a return snapshot of the input, picks, and focused row.
+  Actions revalidate targets and report unavailable items through Tinycast's HUD,
   retaining the current screen.
 - Application and installer packages are file rows. Logical symlink paths are preserved; canonical
   ancestor cycles are rejected and recursive traversal tracks canonical directories. Direct listings
@@ -148,9 +149,6 @@ blank restores Fresh, independent of the shell's editor environment. The setting
 `fileNavigator.editor` and `fileNavigator.commands`. Install the default with `brew install fresh-editor`;
 if absent, the login shell's own command-not-found error appears in the terminal output.
 
-**fsearch** shares this pane: it shows the discovered executable and warns when the binary has no Full Disk
-Access. A missing binary is explained there and in Search Files, which has no fallback engine.
-
 `TerminalInstancesCoordinator.open(command:directory:isEditor:)` marks the instance before starting
 its shell. Editor instances use the existing palette width and request up to 680 scaled points of
 output, bounded by screen height; columns and rows use the existing measured monospaced faces.
@@ -188,6 +186,12 @@ missing-editor errors visible. No editor is run in the old log renderer.
 With **Settings → File Navigator → Editor kind** set to Monaco, Edit opens the first file in the embedded
 Monaco editor instead of a terminal; see [monaco-editor.md](monaco-editor.md). The editor command is ignored
 then, and Search Files' actions menu offers the same Edit. The kind is mirrored as `fileNavigator.editorKind` and carried by backups.
+
+Closing Monaco restores the folder, filter, picks, and focused row, then reloads the listing.
+Esc, ⌘W, the close button, Save, and Don't Save return through the same path.
+Cancel and a failed save keep Monaco open with the palette hidden.
+A folder removed during editing shows the existing missing-folder recovery state.
+Replacing Monaco's document keeps the screen and snapshot that opened the first file.
 
 ## Reuse from Search Files
 

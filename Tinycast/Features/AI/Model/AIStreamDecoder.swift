@@ -60,13 +60,16 @@ struct AIStreamDecoder: Sendable {
     private let shape: AIHTTPConfiguration.APIShape
     /// What a provider's own error text must never show; the decoder is handed it, never reads it.
     private let secrets: [String]
+    private let requiresCompleteText: Bool  // FORK: local-lyra
+    private var completedText = false  // FORK: local-lyra
     private var parser = SSEParser()
     private var thinkTags = AIThinkTagDecoder()
     private var usage = AIUsage()
     private var partialToolCalls: [Int: PartialToolCall] = [:]
     private(set) var isTerminal = false
 
-    init(shape: AIHTTPConfiguration.APIShape, secrets: [String] = []) {
+    init(shape: AIHTTPConfiguration.APIShape, secrets: [String] = [], requiresCompleteText: Bool = false) {  // FORK: local-lyra
+        self.requiresCompleteText = requiresCompleteText
         self.shape = shape
         self.secrets = secrets
     }
@@ -99,6 +102,8 @@ struct AIStreamDecoder: Sendable {
         var events: [AIStreamEvent] = []
         for payload in payloads where !isTerminal {
             if payload == "[DONE]" {
+                // FORK: local-lyra
+                guard !requiresCompleteText || completedText else { throw AIProviderError.malformedResponse }
                 isTerminal = true
                 if shape == .openAICompatible { events += thinkTags.finish() }
                 events.append(contentsOf: flushToolCalls())
@@ -132,6 +137,11 @@ struct AIStreamDecoder: Sendable {
         }
         var events: [AIStreamEvent] = []
         if let choice = chunk.choices?.first {
+            // FORK: local-lyra
+            if requiresCompleteText, let reason = choice.finishReason {
+                guard reason == "stop" else { throw AIProviderError.malformedResponse }
+                completedText = true
+            }
             if let content = choice.delta?.content, !content.isEmpty {
                 events += thinkTags.feed(content)
             } else if let reasoning = choice.delta?.reasoningText {
@@ -197,11 +207,18 @@ struct AIStreamDecoder: Sendable {
             if !cached.isEmpty { usage.cachedInputTokens = cached.reduce(0, +) }
             return [.usage(usage)]
         case "message_delta":
+            // FORK: local-lyra
+            if requiresCompleteText, let reason = event.delta?.stopReason {
+                guard reason == "end_turn" else { throw AIProviderError.malformedResponse }
+                completedText = true
+            }
             usage.outputTokens = event.usage?.outputTokens ?? usage.outputTokens
             // The calls are complete here, and `message_stop` may never arrive on a tool turn.
             guard event.delta?.stopReason == "tool_use" else { return [.usage(usage)] }
             return [.usage(usage)] + flushToolCalls()
         case "message_stop":
+            // FORK: local-lyra
+            guard !requiresCompleteText || completedText else { throw AIProviderError.malformedResponse }
             isTerminal = true
             return flushToolCalls() + [.finished]
         case "error":

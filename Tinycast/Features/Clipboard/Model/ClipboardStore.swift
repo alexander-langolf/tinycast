@@ -180,6 +180,7 @@ final class ClipboardStore {
                 textSearchMatches = textSearchMatches.map { current[$0.id] ?? $0 }
             }
             invalidateSearch(preservingMatches: true)
+            pruneClipboardTexts()  // FORK: search
             onItemsChanged?()
         }
     }
@@ -205,6 +206,11 @@ final class ClipboardStore {
         (query: String, filter: ClipboardFilter, result: [ClipboardItem])?
     /// Same memo for the empty query, so the pinned split runs once per mutation.
     @ObservationIgnored private var orderedCache: [ClipboardItem]?
+    // FORK: search — prepared text per item; an item's text never changes after capture.
+    @ObservationIgnored private(set) var clipboardTexts: [UUID: ForkSearch.ClipboardText] = [:]
+    @ObservationIgnored private var unresidentTextCount = 0  // FORK: search
+    /// Counts preparations, so the harness can show that a longer query prepares nothing new.
+    @ObservationIgnored private(set) var preparedTextCount = 0  // FORK: search
 
     /// Longest text history holds; a longer copy is skipped, since truncation would lose the tail.
     nonisolated static let maxTextLength = 32_000
@@ -279,6 +285,7 @@ final class ClipboardStore {
     @ObservationIgnored private var loadStmt: OpaquePointer?
     @ObservationIgnored private var windowFloorStmt: OpaquePointer?
     @ObservationIgnored private var searchStmt: OpaquePointer?
+    @ObservationIgnored private var searchTextOnlyStmt: OpaquePointer?  // FORK: search
     @ObservationIgnored private var deleteByIDStmt: OpaquePointer?
     @ObservationIgnored private var pinStmt: OpaquePointer?
     @ObservationIgnored private var staleImagesStmt: OpaquePointer?
@@ -608,9 +615,7 @@ final class ClipboardStore {
         // Pins are matched in memory: all resident, and the LIMIT would otherwise drop one.
         let ordinary =
             ForkSearch.isEnabled  // FORK: search
-            ? ForkSearch.clipboardResults(
-                runSearch(q), resident: items, query: q, id: { $0.id }, text: { $0.text },
-                createdAt: { $0.createdAt }, pinnedAt: { $0.pinnedAt })
+            ? forkOrdinary(q)
             : pinnedItems.filter { $0.matches(q) } + runSearch(q).filter { !$0.isPinned }
         guard !textSearchMatches.isEmpty else { return ordinary }
         let ordinaryIDs = Set(ordinary.map(\.id))
@@ -625,9 +630,48 @@ final class ClipboardStore {
         return pins + unpinned + extra
     }
 
+    /// Fork search matches text entries only, pinned or not, from each one's cached text.
+    private func forkOrdinary(_ q: String) -> [ClipboardItem] {  // FORK: search
+        let resident = Set(items.map(\.id))
+        return ForkSearch.clipboardResults(
+            runSearch(q), resident: items.filter { $0.kind == .text }, query: q, id: { $0.id },
+            prepared: { clipboardText(for: $0, resident: resident) }, createdAt: { $0.createdAt },
+            pinnedAt: { $0.pinnedAt })
+    }
+
+    /// The item's prepared text, folded once and kept until it leaves the resident window.
+    private func clipboardText(  // FORK: search
+        for item: ClipboardItem, resident: Set<UUID>
+    ) -> ForkSearch.ClipboardText? {
+        if let cached = clipboardTexts[item.id] { return cached }
+        guard let text = item.text else { return nil }
+        if !resident.contains(item.id) {
+            // Non-resident entries are bounded by searchLimit; over the bound, all of them go.
+            if unresidentTextCount >= Self.searchLimit {
+                clipboardTexts = clipboardTexts.filter { resident.contains($0.key) }
+                unresidentTextCount = 0
+            }
+            unresidentTextCount += 1
+        }
+        preparedTextCount += 1
+        let prepared = ForkSearch.ClipboardText(text)
+        clipboardTexts[item.id] = prepared
+        return prepared
+    }
+
+    /// Keeps prepared text for resident items only, so a removed or aged-out item frees its entry.
+    private func pruneClipboardTexts() {  // FORK: search
+        guard !clipboardTexts.isEmpty else { return }
+        let resident = Set(items.map(\.id))
+        clipboardTexts = clipboardTexts.filter { resident.contains($0.key) }
+        unresidentTextCount = 0
+    }
+
     private func runSearch(_ q: String) -> [ClipboardItem] {
         // Trigram FTS needs ≥3 characters; shorter queries filter the in-memory window.
-        guard let stmt = searchStmt, q.count >= 3, let match = ForkSearch.clipboardFTS(q) else {  // FORK: search
+        guard let stmt = ForkSearch.isEnabled ? searchTextOnlyStmt : searchStmt, q.count >= 3,  // FORK: search
+            let match = ForkSearch.clipboardFTS(q)
+        else {
             return ForkSearch.isEnabled ? [] : fallbackSearch(q)
         }
         sqlite3_bind_text(stmt, 1, match, -1, SQLITE_TRANSIENT)
@@ -666,7 +710,7 @@ final class ClipboardStore {
     }
 
     private func updateTextSearch(_ query: String, filter: ClipboardFilter) {
-        guard textSearchEnabled, textSearchActive, !query.isEmpty,
+        guard !ForkSearch.isEnabled, textSearchEnabled, textSearchActive, !query.isEmpty,  // FORK: search
             filter == .all || filter == .image || filter == .file
         else {
             if textSearchQuery != nil { invalidateSearch() }
@@ -960,6 +1004,16 @@ final class ClipboardStore {
               ORDER BY rowid DESC LIMIT \(Self.searchLimit)
             ) f JOIN items i ON i.rowid = f.rowid ORDER BY f.rowid DESC
             """)
+        // FORK: search — the LIMIT counts text entries only, so images and files take no slot.
+        searchTextOnlyStmt = prepare(
+            """
+            SELECT i.id, i.kind, i.text, i.image_path, i.created_at, i.source_app, i.pinned_at
+            FROM (
+              SELECT items_fts.rowid FROM items_fts JOIN items t ON t.rowid = items_fts.rowid
+              WHERE items_fts MATCH ? AND t.kind = 'text'
+              ORDER BY items_fts.rowid DESC LIMIT \(Self.searchLimit)
+            ) f JOIN items i ON i.rowid = f.rowid ORDER BY f.rowid DESC
+            """)
         deleteByIDStmt = prepare("DELETE FROM items WHERE id = ?")
         // Only ever sets a stamp: unpinning rewrites the whole row so it leads the history again.
         pinStmt = prepare("UPDATE items SET pinned_at = ? WHERE id = ?")
@@ -982,13 +1036,14 @@ final class ClipboardStore {
 
     private func closeDatabase() {
         [
-            insertStmt, loadStmt, windowFloorStmt, searchStmt, deleteByIDStmt, pinStmt,
-            staleImagesStmt, deleteStaleStmt
+            insertStmt, loadStmt, windowFloorStmt, searchStmt, searchTextOnlyStmt, deleteByIDStmt,
+            pinStmt, staleImagesStmt, deleteStaleStmt
         ].forEach { sqlite3_finalize($0) }
         insertStmt = nil
         loadStmt = nil
         windowFloorStmt = nil
         searchStmt = nil
+        searchTextOnlyStmt = nil
         deleteByIDStmt = nil
         pinStmt = nil
         staleImagesStmt = nil

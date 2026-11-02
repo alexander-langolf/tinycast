@@ -61,6 +61,11 @@ enum SettingsFileKey: String, CaseIterable, Sendable {
     case quickAIStartWorkEngine = "ai.quickAIStartWorkEngine"  // FORK: quick-ai-root
     case quickAIRootRetention = "ai.quickAIRootRetention"  // FORK: quick-ai-root
     case aiCommands = "ai.commands"
+    case claudeUsageMenuBarDisplay = "ai.claudeUsageMenuBar"  // FORK: claude-usage
+    case lyraEnabled = "ai.lyraEnabled"  // FORK: local-lyra
+    case lyraFixEnabled = "ai.lyraFixEnabled"  // FORK: local-lyra
+    case lyraModelPath = "ai.lyraModelPath"  // FORK: local-lyra
+    case lyraPolicyDirectory = "ai.lyraPolicyDirectory"  // FORK: policy-split
     case quickActionLanguage = "quickActions.targetLanguage"
     case quickActionCommands = "quickActions.commands"
     case dictationMode = "dictation.mode"

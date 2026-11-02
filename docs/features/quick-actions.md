@@ -312,3 +312,9 @@ failure handler, so automatic expansion stays silent as before.
 - Harnesses: `quick-action-test` (action metadata, prompt boundaries, preview choices, routes and
   their repair) and
   `text-diff-test` (exact chunks, coalescing, Unicode, ties, token boundaries and fast paths).
+
+## Fork workflow routing
+
+External Rewrite and Fix Grammar use the [workflow server](workflows.md) while server health succeeds.
+The server policy owns their prompts and preview settings.
+The native flow handles Notes, other actions, and the server-down fallback.

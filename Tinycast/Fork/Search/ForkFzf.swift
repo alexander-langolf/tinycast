@@ -68,60 +68,22 @@ enum ForkFzf {
         _ term: [Character], in raw: String, exact: Bool, humps: [Int] = [],
         scheme: Scheme = .standard
     ) -> Hit? {
-        guard !term.isEmpty else { return nil }
-        let bytes = Array(raw.utf8)
-        // Byte offsets equal Character offsets only for ASCII without CR: Swift folds "\r\n" into one Character.
-        if bytes.allSatisfy({ $0 < 128 && $0 != 13 }), term.allSatisfy({ $0.asciiValue != nil }) {
-            let needle = term.map { $0.asciiValue! }
-            let text = bytes.map { (65...90).contains($0) ? $0 + 32 : $0 }
-            guard containsSubsequence(needle, in: text) else { return nil }
-            let humpStarts = Set(humps)
-            var previous: CharClass = scheme == .path ? .delimiter : .white
-            let bonuses = bytes.enumerated().map { index, byte in
-                let current = asciiClass(byte, scheme: scheme)
-                var value = bonus(after: previous, at: current, scheme: scheme)
-                if humpStarts.contains(index) { value = max(value, bonusCamel) }
-                previous = current
-                return value
-            }
-            return exact ? exactMatch(needle, text, bonuses) : align(needle, text, bonuses)
-        }
-        let chars = Array(raw)
-        var text: [Character] = []
-        var sources: [Int] = []
-        for j in chars.indices {
-            let folded: [Character]
-            if let ascii = chars[j].asciiValue {
-                folded = [Character(UnicodeScalar((65...90).contains(ascii) ? ascii + 32 : ascii))]
-            } else {
-                folded = Array(FuzzyMatch.normalized(String(chars[j])))
-            }
-            let expanded = folded.isEmpty ? [chars[j]] : folded
-            text.append(contentsOf: expanded)
-            sources.append(contentsOf: repeatElement(j, count: expanded.count))
-        }
-        guard containsSubsequence(term, in: text) else { return nil }
-        let humpStarts = Set(humps)
-        var previous: CharClass = scheme == .path ? .delimiter : .white
-        var sourceBonuses: [Int] = []
-        for j in chars.indices {
-            let current = charClass(chars[j], scheme: scheme)
-            var value = bonus(after: previous, at: current, scheme: scheme)
-            if humpStarts.contains(j) { value = max(value, bonusCamel) }
-            sourceBonuses.append(value)
-            previous = current
-        }
-        let bonuses = sources.indices.map { index in
-            index > 0 && sources[index] == sources[index - 1]
-                ? bonusConsecutive : sourceBonuses[sources[index]]
-        }
-        guard let hit = exact ? exactMatch(term, text, bonuses) : align(term, text, bonuses) else {
-            return nil
-        }
-        return Hit(score: hit.score, positions: Set(hit.positions.map { sources[$0] }).sorted())
+        match(term.map(ForkSearch.unitCode), in: ForkSearch.Text(raw, scheme: scheme, humps: humps), exact: exact)
     }
 
-    private static func asciiClass(_ byte: UInt8, scheme: Scheme) -> CharClass {
+    /// Best alignment of a folded term over prepared text, as source character offsets.
+    static func match(_ term: [UInt32], in text: ForkSearch.Text, exact: Bool) -> Hit? {
+        guard !term.isEmpty, containsSubsequence(term, in: text.units) else { return nil }
+        guard
+            let hit = exact
+                ? exactMatch(term, text.units, text.bonuses)
+                : align(term, text.units, text.bonuses)
+        else { return nil }
+        guard let sources = text.sources else { return hit }
+        return Hit(score: hit.score, positions: Set(hit.positions.map { Int(sources[$0]) }).sorted())
+    }
+
+    static func asciiClass(_ byte: UInt8, scheme: Scheme) -> CharClass {
         switch byte {
         case 9...13, 32: return .white
         case 47: return .delimiter
@@ -149,15 +111,15 @@ enum ForkFzf {
         return max(bonus, carried, bonusConsecutive)
     }
 
-    private static func exactMatch<C: Equatable>(_ term: [C], _ text: [C], _ bonuses: [Int]) -> Hit? {
+    private static func exactMatch(_ term: [UInt32], _ text: [UInt32], _ bonuses: [UInt8]) -> Hit? {
         let m = term.count
         var best: Hit?
         for start in 0...(text.count - m)
-        where text[start] == term[0] && Array(text[start..<start + m]) == term {
-            var carried = bonuses[start]
-            var score = scoreMatch + bonuses[start] * firstCharMultiplier
+        where text[start] == term[0] && text[start..<start + m].elementsEqual(term) {
+            var carried = Int(bonuses[start])
+            var score = scoreMatch + Int(bonuses[start]) * firstCharMultiplier
             for k in 1..<max(m, 1) where k < m {
-                score += scoreMatch + runBonus(bonuses[start + k], carried: &carried)
+                score += scoreMatch + runBonus(Int(bonuses[start + k]), carried: &carried)
             }
             if score > (best?.score ?? Int.min) {
                 best = Hit(score: score, positions: Array(start..<start + m))
@@ -166,54 +128,105 @@ enum ForkFzf {
         return best
     }
 
-    private static func align<C: Equatable>(_ term: [C], _ text: [C], _ bonuses: [Int]) -> Hit? {
-        let m = term.count, n = text.count
+    private static func align(_ term: [UInt32], _ text: [UInt32], _ bonuses: [UInt8]) -> Hit? {
+        let m = term.count
+        // Alignments lie between the first term[0] and the last term[m-1], so DP only that window.
+        guard let lo = text.firstIndex(of: term[0]), let hi = text.lastIndex(of: term[m - 1]),
+            hi - lo + 1 >= m
+        else { return nil }
         let none = Int.min / 2
-        var score = [Int](repeating: none, count: n)
-        var carried = [Int](repeating: 0, count: n)
-        var back: [[Int]] = [[Int](repeating: -1, count: n)]
-        for j in 0..<n where text[j] == term[0] {
-            score[j] = scoreMatch + bonuses[j] * firstCharMultiplier
-            carried[j] = bonuses[j]
+        let width = hi - lo + 1
+        // Each distinct term letter gets a slot; equal letters share its window columns.
+        var letters: [UInt32] = []
+        var slot: [Int] = []
+        for unit in term {
+            if let known = letters.firstIndex(of: unit) {
+                slot.append(known)
+            } else {
+                letters.append(unit)
+                slot.append(letters.count - 1)
+            }
         }
+        var asciiSlot = [Int](repeating: -1, count: 128)
+        for (index, unit) in letters.enumerated() where unit < 128 { asciiSlot[Int(unit)] = index }
+        let letterSlots = letters
+        func slotOf(_ unit: UInt32) -> Int {
+            unit < 128 ? asciiSlot[Int(unit)] : (letterSlots.firstIndex(of: unit) ?? -1)
+        }
+        // Window columns where each letter occurs, ascending, stored as one run per slot.
+        var counts = [Int](repeating: 0, count: letters.count)
+        for j in 0..<width {
+            let s = slotOf(text[lo + j])
+            if s >= 0 { counts[s] += 1 }
+        }
+        var offsets = [Int](repeating: 0, count: letters.count + 1)
+        for s in letters.indices { offsets[s + 1] = offsets[s] + counts[s] }
+        var occurrence = [Int](repeating: 0, count: offsets[letters.count])
+        var cursor = offsets
+        for j in 0..<width {
+            let s = slotOf(text[lo + j])
+            if s >= 0 {
+                occurrence[cursor[s]] = j
+                cursor[s] += 1
+            }
+        }
+        // Cells are flat: row i is `rowStart[i]..<rowStart[i + 1]`; `back` holds absolute indices.
+        let cellCount = slot.reduce(0) { $0 + counts[$1] }
+        var columns: [Int] = [], scores: [Int] = [], carried: [Int] = [], back: [Int] = []
+        columns.reserveCapacity(cellCount)
+        scores.reserveCapacity(cellCount)
+        carried.reserveCapacity(cellCount)
+        back.reserveCapacity(cellCount)
+        var rowStart = [0]
+        for j in occurrence[offsets[slot[0]]..<offsets[slot[0] + 1]] {
+            columns.append(j)
+            scores.append(scoreMatch + Int(bonuses[lo + j]) * firstCharMultiplier)
+            carried.append(Int(bonuses[lo + j]))
+            back.append(-1)
+        }
+        rowStart.append(columns.count)
         for i in 1..<max(m, 1) where i < m {
-            var next = [Int](repeating: none, count: n)
-            var nextCarried = [Int](repeating: 0, count: n)
-            var from = [Int](repeating: -1, count: n)
-            // max over k <= j-2 of score[k] + k: a gap of g letters costs gapStart + (g-1)*gapExtension = -2-g.
+            let previousStart = rowStart[i - 1], previousEnd = rowStart[i]
+            // Running max over k <= j-2 of score[k] + k: a gap of g letters costs -2-g.
             var gapBest = none, gapAt = -1
-            for j in 1..<n {
-                if j >= 2, score[j - 2] > none, score[j - 2] + (j - 2) > gapBest {
-                    gapBest = score[j - 2] + (j - 2)
-                    gapAt = j - 2
+            var p = previousStart
+            for j in occurrence[offsets[slot[i]]..<offsets[slot[i] + 1]] {
+                // Ascending k with a strict > keeps the first maximum, as the dense row did.
+                while p < previousEnd, columns[p] <= j - 2 {
+                    let value = scores[p] + columns[p]
+                    if value > gapBest { gapBest = value; gapAt = p }
+                    p += 1
                 }
-                guard text[j] == term[i] else { continue }
-                var viaRun = none, runCarry = 0
-                if score[j - 1] > none {
-                    runCarry = carried[j - 1]
-                    viaRun = score[j - 1] + scoreMatch + runBonus(bonuses[j], carried: &runCarry)
+                let bonus = Int(bonuses[lo + j])
+                var viaRun = none, runCarry = 0, runFrom = -1
+                if p < previousEnd, columns[p] == j - 1 {
+                    runCarry = carried[p]
+                    viaRun = scores[p] + scoreMatch + runBonus(bonus, carried: &runCarry)
+                    runFrom = p
                 }
-                let viaGap = gapBest > none ? gapBest - j - 1 + scoreMatch + bonuses[j] : none
+                let viaGap = gapBest > none ? gapBest - j - 1 + scoreMatch + bonus : none
                 if viaRun == none, viaGap == none { continue }
+                columns.append(j)
                 if viaRun >= viaGap {
-                    next[j] = viaRun; nextCarried[j] = runCarry; from[j] = j - 1
+                    scores.append(viaRun); carried.append(runCarry); back.append(runFrom)
                 } else {
-                    next[j] = viaGap; nextCarried[j] = bonuses[j]; from[j] = gapAt
+                    scores.append(viaGap); carried.append(bonus); back.append(gapAt)
                 }
             }
-            score = next
-            carried = nextCarried
-            back.append(from)
+            if columns.count == previousEnd { return nil }
+            rowStart.append(columns.count)
         }
-        guard let end = score.indices.max(by: { score[$0] < score[$1] }), score[end] > none else {
-            return nil
-        }
+        // The first maximal cell wins, as `max(by:)` over the dense row did.
+        let lastStart = rowStart[m - 1]
+        guard lastStart < rowStart[m] else { return nil }
+        var end = lastStart
+        for index in lastStart..<rowStart[m] where scores[index] > scores[end] { end = index }
         var positions = [Int](repeating: 0, count: m)
-        var j = end
+        var index = end
         for i in stride(from: m - 1, through: 0, by: -1) {
-            positions[i] = j
-            j = back[i][j]
+            positions[i] = columns[index] + lo
+            index = back[index]
         }
-        return Hit(score: score[end], positions: positions)
+        return Hit(score: scores[end], positions: positions)
     }
 }

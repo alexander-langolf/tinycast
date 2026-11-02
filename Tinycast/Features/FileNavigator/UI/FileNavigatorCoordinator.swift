@@ -30,7 +30,7 @@ final class FileNavigatorCoordinator {
     @ObservationIgnored private var watchedFolder: String?
     /// The folder listing `candidates` holds in full, so a new filter re-ranks instead of re-listing.
     @ObservationIgnored private var listed: Listing?
-    @ObservationIgnored private let defaults = UserDefaults.standard
+    @ObservationIgnored private let defaults: UserDefaults
     @ObservationIgnored private let persistencePrefix: String
 
     private struct Listing: Equatable {
@@ -39,8 +39,9 @@ final class FileNavigatorCoordinator {
         let subtree: Bool
     }
 
-    init(core: AppCore) {
+    init(core: AppCore, defaults: UserDefaults = .standard) {
         self.core = core
+        self.defaults = defaults
         globalSearch = FileSearchSession(index: core.fileIndexer.index)
         home = FileManager.default.homeDirectoryForCurrentUser.path
         state = FileNavigatorState(home: home)
@@ -81,7 +82,12 @@ final class FileNavigatorCoordinator {
         let files = targets.filter { !$0.isDirectory }
         guard let first = files.first else { return }
         if core.settings.fileNavigatorEditorKind == .monaco {  // FORK: monaco-editor
-            await core.monacoEditor.open(path: first.id)
+            let origin: MonacoEditorCoordinator.Origin? = switch core.palette.mode {
+            case .fileNavigator: editorOrigin()
+            case .fileSearch: core.fileSearchCoordinator.editorOrigin()
+            default: nil
+            }
+            await core.monacoEditor.open(path: first.id, origin: origin)
             return
         }
         let directory = FileNavigatorPath.parent(first.id)
@@ -96,6 +102,22 @@ final class FileNavigatorCoordinator {
     }
 
     var editorKind: FileNavigatorEditorKind { core.settings.fileNavigatorEditorKind }  // FORK: monaco-editor
+
+    private func editorOrigin() -> MonacoEditorCoordinator.Origin {
+        var snapshot = state
+        snapshot.focus = core.palette.selection
+        snapshot.pendingFocus = selected?.id
+        snapshot.panel = nil
+        return { [weak self] in
+            guard let self else { return }
+            self.state = snapshot
+            self.folders.insert(snapshot.folder)
+            self.core.paletteCoordinator.showPalette(mode: .fileNavigator, seeding: snapshot.input)
+            self.state.focus = snapshot.focus
+            self.core.palette.selection = snapshot.focus
+            self.updateInput(snapshot.input, force: true)
+        }
+    }
 
     /// Search Files' Edit row: nil for a folder, otherwise the same destination File Navigator uses.
     func editAction(for result: FileSearchResult) -> PopoverMenuItem? {  // FORK: monaco-editor
@@ -255,7 +277,8 @@ final class FileNavigatorCoordinator {
         let request = DirectoryLister.Request(
             folder: candidate.folder, home: home, showHidden: state.showHidden,
             ignore: FileSearchIgnoreList(
-                patterns: FileSearchIgnoreList.defaults + core.settings.fileSearchIgnorePatterns),
+                patterns: core.settings.fileSearchEffectiveIgnorePatterns,
+                homeDirectory: URL(filePath: home, directoryHint: .isDirectory)),
             pickedPaths: state.picks.map(\.id))
         let input = state.input
         let subtree = state.subtree && candidate.folder == state.folder
@@ -365,7 +388,13 @@ final class FileNavigatorCoordinator {
                 self.observeGlobal(revision: revision)
             }
         }
-        focus(core.palette.selection)
+        if let pending = state.pendingFocus {
+            guard globalSearch.state == .ready else { return }
+            state.pendingFocus = nil
+            focus(rows.firstIndex { $0.id == pending } ?? core.palette.selection)
+        } else {
+            focus(core.palette.selection)
+        }
     }
 
     private func showFailure(_ error: any Error, folder: String, revision: UUID, input: String) async {

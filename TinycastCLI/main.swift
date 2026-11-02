@@ -61,7 +61,8 @@ func parse(_ arguments: [String]) -> Options {
     var options = Options()
     var iterator = arguments.makeIterator()
     guard iterator.next() == "mcp" else {
-        fail("usage: tinycast mcp --stdio [--client <id>] [--channel dev|stable|beta]")
+        fail(  // FORK: observability; // FORK: core-capabilities
+            "usage: tinycast <mcp --stdio|health|logs|call <tool>> [--channel dev|stable|beta] [options]")
     }
     while let argument = iterator.next() {
         switch argument {
@@ -146,6 +147,16 @@ final class Bridge: @unchecked Sendable {
         configuration.timeoutIntervalForRequest = 120
         configuration.timeoutIntervalForResource = 86_400
         session = URLSession(configuration: configuration)
+    }
+
+    // FORK: observability
+    func diagnostics(repair: Bool) async throws -> Data {
+        try await ForkDiagnosticsCLI.health(endpoint: endpoint, token: token, session: session, repair: repair)
+    }
+
+    // FORK: core-capabilities
+    func call(tool: String, arguments: Data) async throws -> Data {
+        try await ForkCallCLI.call(endpoint: endpoint, token: token, session: session, tool: tool, arguments: arguments)
     }
 
     func run() async {
@@ -364,6 +375,9 @@ final class Bridge: @unchecked Sendable {
 }
 
 await Task.detached {
+    if await ForkCallCLI.run(arguments: Array(CommandLine.arguments.dropFirst())) { return }  // FORK: core-capabilities
+    // FORK: observability
+    if await ForkDiagnosticsCLI.run(arguments: Array(CommandLine.arguments.dropFirst())) { return }
     let options = parse(Array(CommandLine.arguments.dropFirst()))
     let token = Credentials.token(
         service: "\(options.channel.bundleIdentifier).automation-clients", client: options.client)

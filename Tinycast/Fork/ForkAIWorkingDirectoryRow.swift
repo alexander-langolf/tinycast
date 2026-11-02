@@ -11,7 +11,7 @@ struct ForkAIWorkingDirectoryRow: View {
             }
             Button("Choose…", action: choose)
         } label: {
-            SettingsRowTitle(.aiChat, verbatim: ForkSettingsSearch.aiWorkingDirectoryTitle)
+            SettingsRowTitle(.aiChat, ForkSettingsSearch.aiWorkingDirectoryTitle)
             Text(subtitle)
         }
         .help("Installed agents start here and read its CLAUDE.md or AGENTS.md. Tools stay off.")

@@ -20,8 +20,6 @@ settings:
     CURRENT_PROJECT_VERSION: "1"
     SWIFT_VERSION: "6.0"
     CODE_SIGN_STYLE: Manual
-    # A stable self-signed identity keeps the Accessibility grant across rebuilds. docs/signing.md
-    CODE_SIGN_IDENTITY: "Tinycast Self-Signed"
     SWIFT_STRICT_CONCURRENCY: complete
     TINYCAST_BUNDLE_IDENTIFIER: com.tinycast.app
   configs:
@@ -45,6 +43,7 @@ targets:
     type: application
     platform: macOS
     sources:
+      # // FORK: policy-split: the fork project owns policy resources outside this source tree.
       - path: Tinycast
         # Helper-only sources: compiling them in would link Vision and PDFKit into the app.
         excludes:
@@ -106,6 +105,8 @@ targets:
         # Debug is its own channel, so a local build never corrupts the installed app's state.
         Debug:
           PRODUCT_NAME: Tinycast Dev
+          # Tinycast Dev is used daily, so it runs optimised like release (docs/development.md).
+          SWIFT_OPTIMIZATION_LEVEL: -O
 
   ClipboardTextHelper:
     type: tool

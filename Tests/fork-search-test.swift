@@ -23,6 +23,9 @@ struct ForkSearchTest {
         clipboardRank()
         clipboardFuzzy()
         clipboardScan()
+        prepared()
+        parity()
+        emojiFold()
         print(failures == 0 ? "\nALL PASSED" : "\n\(failures) FAILED")
         exit(failures == 0 ? 0 : 1)
     }
@@ -197,8 +200,8 @@ struct ForkSearchTest {
                     ForkSearch.terms(token, profile: profile)
                         == [
                             ForkSearch.Term(
-                                text: Array(token), exact: true, prefix: false, suffix: false,
-                                negated: false)
+                                text: Array(token), units: Array(token).map { ForkSearch.unitCode($0) },
+                                exact: true, prefix: false, suffix: false, negated: false)
                         ])
             }
         }
@@ -344,9 +347,9 @@ struct ForkSearchTest {
         var scored = [Int: Int]()
         let result = ForkSearch.clipboardResults(
             [rows[0]], resident: rows, query: "abc", id: { $0.id },
-            text: {
+            prepared: {
                 scored[$0.id, default: 0] += 1
-                return $0.text
+                return ForkSearch.ClipboardText($0.text)
             }, createdAt: { Date(timeIntervalSince1970: Double($0.id)) },
             pinnedAt: { $0.id == 2 ? Date(timeIntervalSince1970: 1) : nil })
         check("union scores each item once including pins and duplicates", scored == [1: 1, 2: 1, 3: 1])
@@ -354,5 +357,149 @@ struct ForkSearchTest {
         check("long literal word still uses full-text FTS", ForkSearch.clipboardFTS("abc") == "\"abc\"")
         ForkSearch.setEnabled(false)
         check("off clipboard has no scan cap", ForkSearch.clipboardScore("abc", beyond) != nil)
+    }
+
+    /// One fold serves every match: skin tones and variation selectors are ignored everywhere.
+    static func emojiFold() {
+        ForkSearch.setEnabled(true)
+        defer { ForkSearch.setEnabled(false) }
+        check(
+            "skin-tone emoji matches its base query",
+            ForkSearch.clipboardScore(
+                ForkSearch.Query("great 👍", profile: .fuzzy), ForkSearch.ClipboardText("great 👍🏽 work")) != nil)
+        check("variation selector is ignored", ForkSearch.clipboardScore("❤", "I ❤️ it") != nil)
+        let long = String(repeating: "x", count: 4096) + " ｶﾀｶﾅ"
+        check("half-width text past the cap matches", ForkSearch.clipboardScore("カタカナ", long) != nil)
+        let item = (id: 1, text: "great 👍🏽 work")
+        for (label, hits, resident) in [("FTS hit", [item], []), ("resident", [], [item])] {
+            let result = ForkSearch.clipboardResults(
+                hits, resident: resident, query: "great 👍", id: { $0.id },
+                prepared: { ForkSearch.ClipboardText($0.text) },
+                createdAt: { _ in Date(timeIntervalSince1970: 1) }, pinnedAt: { _ in nil })
+            check("clipboardResults returns skin-tone item as \(label)", result.map(\.id) == [1])
+        }
+    }
+
+    /// Equatable snapshots: `ForkSearch` and `ReferenceSearch` return distinct Result types.
+    struct ResultKey: Equatable { let score: Int; let positions: [[Int]] }
+    struct TierKey: Equatable {
+        let tier: FuzzyMatch.Tier, offset: Int, queryLength: Int, candidateLength: Int, spread: Int
+    }
+
+    static func resultKey(_ r: ForkSearch.Result?) -> ResultKey? {
+        r.map { ResultKey(score: $0.score, positions: $0.positions) }
+    }
+
+    static func referenceKey(_ r: ReferenceSearch.Result?) -> ResultKey? {
+        r.map { ResultKey(score: $0.score, positions: $0.positions) }
+    }
+
+    static func tierKey(_ m: FuzzyMatch.Match?) -> TierKey? {
+        m.map {
+            TierKey(
+                tier: $0.tier, offset: $0.offset, queryLength: $0.queryLength,
+                candidateLength: $0.candidateLength, spread: $0.spread)
+        }
+    }
+
+    /// Fork and reference agree on every corpus item and query, positions included.
+    static func prepared() {
+        let plain = ForkSearch.Text("Hello World")
+        check("ASCII text has no sources", plain.sources == nil)
+        check(
+            "ASCII units are lowercased bytes",
+            plain.units == Array("hello world".utf8).map(UInt32.init))
+        let straße = ForkSearch.Text("Straße")
+        check("expanded fold has 6 source characters", straße.length == 6)
+        check("expanded fold has 7 units", straße.units.count == 7)
+        check("CRLF counts as one source character", ForkSearch.Text("a\r\nb").length == 3)
+        let flag = "🇩🇪"
+        let flagText = ForkSearch.Text("x\(flag)y")
+        let flagTerm = ForkSearch.terms(flag, profile: .fuzzy)[0]
+        check(
+            "flag encodes to one unit equal to the query's unit",
+            flagTerm.units.count == 1 && flagText.units[1] == flagTerm.units[0])
+        check(
+            "ASCII byte classes match Character classes under both schemes",
+            (0..<128).allSatisfy { byte in
+                let c = Character(UnicodeScalar(UInt8(byte)))
+                return [ForkFzf.Scheme.standard, .path].allSatisfy {
+                    ForkFzf.asciiClass(UInt8(byte), scheme: $0) == ForkFzf.charClass(c, scheme: $0)
+                }
+            })
+        var shapeFailures: [String] = []
+        for item in ForkSearchCorpus.items(count: 2_000, seed: 0x7E57_C0DE) {
+            let text = ForkSearch.Text(String(item.prefix(2_000)))
+            if text.units.count != text.bonuses.count
+                || (text.sources.map { $0.count != text.units.count } ?? false)
+            {
+                shapeFailures.append(String(item.prefix(40)).debugDescription)
+            }
+        }
+        check(
+            "prepared text has aligned arrays for every corpus item", shapeFailures.isEmpty,
+            shapeFailures.prefix(3).joined(separator: " | "))
+    }
+
+    /// The fork fold drops these scalars and `ReferenceSearch` keeps them, so parity strips both sides.
+    static func stripEmojiModifiers(_ s: String) -> String {
+        String(
+            String.UnicodeScalarView(
+                s.unicodeScalars.filter {
+                    !(0x1F3FB...0x1F3FF).contains($0.value) && $0.value != 0xFE0E && $0.value != 0xFE0F
+                }))
+    }
+
+    static func parity() {
+        ForkSearch.setEnabled(true)
+        defer { ForkSearch.setEnabled(false) }
+        let items = ForkSearchCorpus.items(count: 1_000, seed: 0x7E57_C0DE)
+        let head = 2_000
+        var mismatches: [String] = []
+        var comparisons = 0
+        var matched = 0
+        var unmatched = 0
+        var skipped: [Int] = []
+        func compare<T: Equatable>(_ label: String, _ fork: T, _ reference: T, _ item: Int, _ query: String) {
+            comparisons += 1
+            if fork != reference {
+                mismatches.append("item \(item) query \(query.debugDescription) \(label): fork \(fork) vs reference \(reference)")
+            }
+        }
+        for (index, item) in items.enumerated() {
+            // A lone modifier is its own Character; stripping it would shift later positions.
+            let stripped = stripEmojiModifiers(item)
+            guard stripped.count == item.count else {
+                skipped.append(index)
+                continue
+            }
+            let text = String(item.prefix(head))
+            let referenceText = stripEmojiModifiers(text)
+            for query in ForkSearchCorpus.queries {
+                let referenceQuery = stripEmojiModifiers(query)
+                let forkMatch = resultKey(ForkSearch.match(query, fields: [text], profile: .fuzzy))
+                let referenceMatch = referenceKey(
+                    ReferenceSearch.match(referenceQuery, fields: [referenceText], profile: .fuzzy))
+                compare("match", forkMatch, referenceMatch, index, query)
+                if forkMatch == nil { unmatched += 1 } else { matched += 1 }
+                compare(
+                    "clipboardScore", ForkSearch.clipboardScore(query, item),
+                    ReferenceSearch.clipboardScore(referenceQuery, stripped), index, query)
+                compare(
+                    "launcherScore", ForkSearch.launcherScore(query, in: text),
+                    ReferenceSearch.launcherScore(referenceQuery, in: referenceText), index, query)
+                compare(
+                    "tiered", tierKey(ForkSearch.tiered(query, text)),
+                    tierKey(ReferenceSearch.tiered(query, referenceText)), index, query)
+            }
+        }
+        print(
+            "      \(comparisons) comparisons, \(matched) fork matches, \(unmatched) fork misses, "
+                + "\(skipped.count) items skipped for a changed Character count")
+        check("parity corpus exercises both matches and misses", matched > 0 && unmatched > 0)
+        check(
+            "fork and reference agree on \(items.count - skipped.count) items x \(ForkSearchCorpus.queries.count) queries",
+            mismatches.isEmpty,
+            "\(mismatches.count) mismatches, first: \(mismatches.prefix(5).joined(separator: " | "))")
     }
 }

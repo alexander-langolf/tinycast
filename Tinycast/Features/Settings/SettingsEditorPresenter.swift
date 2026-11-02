@@ -390,6 +390,7 @@ extension View {
             .environment(core.customWindowSizeCoordinator)
             .environment(core.calendarStore)
             .environment(core.aiSettings)
+            .environment(core.claudeUsageCoordinator)  // FORK: claude-usage
             .environment(core.mcpSettings)
             .environment(core.mcpCoordinator)
             .environment(core.quickActionSettings)

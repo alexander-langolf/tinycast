@@ -103,6 +103,13 @@ own pane when `SettingsTab.ownedCommands` names it. `hotkey.togglePalette` is th
 no command row. `HotKeyManager` names them all through `CommandID`, so a conflict callout spells an
 action exactly as its command row does.
 
+<!-- // FORK: local-lyra -->
+“Rewrite with Lyra” is a palette command with a recorder in Settings under Commands.
+Its `lyra-rewrite` record in `commands.builtIn` mirrors the normal hotkey binding.
+The fork seeds Hyper+R once, using the user's Include Shift setting and preserving existing bindings and chord owners.
+The seed-attempt flag prevents later launches from restoring a shortcut the user removed.
+The [Lyra guide](lyra.md#controls) names the storage keys and the enable and policy gates.
+
 Like a window command, the chord registers regardless of the launcher row. Search Files and Notes both
 re-check their feature switches before opening; see [file-search.md](file-search.md#invocation) and
 [notes.md](notes.md#ownership-and-enablement). A hidden launcher row does not disable its shortcut, but

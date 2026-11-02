@@ -63,7 +63,7 @@ final class PaletteChipsCoordinator {
     func scopedResults(query: String, _ results: (String) -> AppIndex.Results) -> AppIndex.Results {
         guard let kind = launcherKind else { return results(query) }
         guard !query.trimmingCharacters(in: .whitespaces).isEmpty else {
-            return results(kind.descriptor.sectionTitle)
+            return results(String(localized: kind.descriptor.sectionTitle))
         }
         return AppIndex.Results(entries: results(query).entries.filter { $0.kind == kind })
     }

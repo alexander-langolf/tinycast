@@ -12,11 +12,13 @@ struct ForkThemeTokenRow: View {
         Group {
             if case .flag = token.kind {
                 Toggle(isOn: flag) {
-                    SettingsRowTitle(anchor, token.title)
+                    SettingsRowTitle(anchor, verbatim: token.title)
                     if let subtitle = token.subtitle { Text(subtitle) }
                 }
             } else {
-                SettingsRow(title: token.title, subtitle: token.subtitle, anchor: anchor) {
+                SettingsRow(
+                    title: LocalizedStringResource(stringLiteral: token.title), subtitle: token.subtitle,
+                    anchor: anchor) {
                     HStack(spacing: Theme.Spacing.sm) {
                         control
                         Button {

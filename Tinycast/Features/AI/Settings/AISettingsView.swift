@@ -46,6 +46,7 @@ struct AISettingsView: View {
         .settingsEditorPanel(isPresented: $providersPresented) {
             AIProvidersPanel(onDone: { providersPresented = false })
         }
+        .modifier(ClaudeUsageSettingsLink(isPresented: $providersPresented))  // FORK: claude-usage
         .onAppear {
             core.applyInstalledAILifecycle()
         }

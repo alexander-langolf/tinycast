@@ -14,6 +14,7 @@ protocol ExtensionHostContext: AnyObject {
     /// Every app bundle `getApplications()` reports, from the user's own search scopes.
     var applicationURLs: [URL] { get }
 
+    func borrowSelection(from app: NSRunningApplication) async -> String?  // FORK: selection-copy
     func closeMainWindow(clearRootSearch: Bool)
     /// Bring the palette back after a command hid it — what `raycast://` means to an extension.
     func reopenPalette()
@@ -33,6 +34,11 @@ protocol ExtensionHostContext: AnyObject {
         fallbackText: String?, launchType: ExtensionLaunchType, launchContext: [String: RenderValue]
     ) throws
     func launch(_ link: ExtensionDeepLink) throws
+}
+
+// FORK: selection-copy
+extension ExtensionHostContext {
+    func borrowSelection(from app: NSRunningApplication) async -> String? { nil }
 }
 
 struct ExtensionToast: Sendable, Equatable, Identifiable {
@@ -128,6 +134,8 @@ final class ExtensionHostBridge: ExtensionHostAPI {
     private var reportedSocketFailures: Set<String> = []
     /// One browser sign-in at a time; the palette keeps its command alive while it is out.
     private(set) var isSigningIn = false
+    /// A borrowed ⌘C hides the palette for a moment; the command has to survive it. // FORK: selection-copy
+    private(set) var isBorrowingSelection = false
 
     init(clipboardStore: ClipboardStore, fetcher: ExtensionFetcher = ExtensionFetcher()) {
         self.clipboardStore = clipboardStore
@@ -482,7 +490,7 @@ final class ExtensionHostBridge: ExtensionHostAPI {
             return describe(application: url)
 
         case "selectedText":
-            return try selectedText()
+            return try await selectedText()  // FORK: selection-copy
 
         case "selectedFinderItems":
             return try finderSelection()
@@ -575,7 +583,8 @@ final class ExtensionHostBridge: ExtensionHostAPI {
     }
 
     /// Reads the app the palette displaced, never the system-wide focus.
-    private func selectedText() throws -> String {
+    private func selectedText() async throws -> String {  // FORK: selection-copy
+        return try await ForkTrace.run(.selectedText, category: .selection) {  // FORK: observability
         guard Permissions.ensureAccessibility() else {
             throw ExtensionHostError.unsupported("getSelectedText without the Accessibility permission")
         }
@@ -583,10 +592,18 @@ final class ExtensionHostBridge: ExtensionHostAPI {
             target.processIdentifier != NSRunningApplication.current.processIdentifier
         else { throw ExtensionHostError.unsupported("getSelectedText (no target application)") }
 
-        guard let text = AccessibilityText.selection(in: target), !text.isEmpty else {
-            throw ExtensionHostError.unsupported("getSelectedText (no selection)")
-        }
-        return text
+        // FORK: core-capabilities
+        let result = await ForkSelectionAdapters.read(from: target, acceptingEmptyText: false) { [weak self] app in
+            guard let self, let context = self.context,
+                context.activeLaunchType == .userInitiated, !self.isBorrowingSelection
+            else { return nil }
+            self.isBorrowingSelection = true
+            defer { self.isBorrowingSelection = false }
+            return await context.borrowSelection(from: app)
+        }  // FORK: btt-selection
+        if let selection = result.selection { return selection.text }
+        throw ExtensionHostError.unsupported("getSelectedText (no selection)")
+        }  // FORK: observability
     }
 
     /// Joined on a linefeed, which Finder forbids in a name; a comma would split paths.

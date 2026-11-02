@@ -140,10 +140,22 @@ Videos, Archives. Each case names the `UTType`s it admits. The index records no 
 `contentType(extension:isDirectory:)` derives one from the extension: a folder whose extension is a
 declared package (`.rtfd`, `.pages`) is that document, and any other folder is a folder.
 
-The filter lives on `PaletteState` beside the clipboard's, is reset on every summon, and is never
-persisted. ⌘P and the header button open it through `PaletteFilterAction` and the one `PopoverMenu` path
+The filter lives on `PaletteState` beside the clipboard's and is never persisted.
+A fresh screen resets the filter; returning from Monaco restores the captured filter.
+⌘P and the header button open it through `PaletteFilterAction` and the one `PopoverMenu` path
 `RootPaletteView` uses for every in-window menu; changing it resets the selection, snaps the scroll and
 re-runs the query.
+
+### Returning from Monaco
+
+Search Files shares File Navigator's Edit action and editor-kind setting.
+Closing Monaco restores Search Files' query and type filter, then re-runs the query through the file index.
+The refreshed results keep the selected path, even when the result order changes.
+A vanished result selects the nearest remaining row by index; an empty result set has no selected row.
+Esc, ⌘W, the close button, Save, and Don't Save return through the same close path.
+Cancel and a failed save keep the editor open with the palette hidden.
+Replacing Monaco's document keeps the first origin.
+An editor opened without a File Navigator or Search Files origin closes without showing the palette.
 
 ## Scopes and ignore patterns
 

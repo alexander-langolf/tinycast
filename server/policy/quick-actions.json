@@ -1,0 +1,4 @@
+{
+  "rewrite": { "preview": true },
+  "fix-grammar": { "preview": false }
+}

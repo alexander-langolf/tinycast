@@ -34,6 +34,9 @@ Or from the command line:
 xcodebuild -project Tinycast.xcodeproj -scheme Tinycast -configuration Debug build
 ```
 
+The Debug configuration compiles the `Tinycast` target with `SWIFT_OPTIMIZATION_LEVEL = -O`, so
+Tinycast Dev matches release speed. Set it to `-Onone` locally for a debugger session.
+
 `xcodebuild` uses whatever `xcode-select` points at; if that's the Command Line Tools rather than
 Xcode, prefix with `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer` (the SwiftUI
 `@State`/`@FocusState` macros need Xcode's macOS platform).

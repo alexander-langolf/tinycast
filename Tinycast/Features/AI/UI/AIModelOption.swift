@@ -99,7 +99,9 @@ struct AIModelOption: Identifiable {
             connection.models.map { model in
                 AIModelOption(
                     selection: .api(connection: connection.id, model: model, effort: nil),
-                    title: model,
+                    // FORK: claude-account
+                    title: ForkClaudeAccountSettings.isConnection(connection.id)
+                        ? ForkClaudeCatalog.model(model)?.name ?? model : model,
                     sourceTitle: connection.title,
                     menuIcon: icon(AIBrand.resolve(provider: connection.provider, model: model)))
             }
