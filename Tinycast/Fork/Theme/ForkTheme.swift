@@ -68,11 +68,11 @@ struct ForkTheme: Equatable, Sendable {
         Theme.Colors.adaptive(dark: .srgbInk(0, alpha: dark), light: .srgbInk(1, alpha: light))
     }
 
-    /// A theme's background, mostly solid over the glass, or the adaptive scrim.
+    /// A theme's background, mostly solid over the glass, or an overridden scrim; none by default.
     var paletteScrim: AnyShapeStyle {
         if let palette { return scrim(palette, .background) }
         guard isOverridden(.paletteScrimDark) || isOverridden(.paletteScrimLight) else {
-            return AnyShapeStyle(Theme.Colors.panelScrim)
+            return AnyShapeStyle(Color.clear)
         }
         return AnyShapeStyle(Self.scrim(dark: number(.paletteScrimDark), light: number(.paletteScrimLight)))
     }
@@ -126,7 +126,7 @@ extension ForkThemeToken {
         case .paletteRowCornerRadius: Double(Theme.Radius.row)
         case .paletteSearchFieldSize: Double(Theme.Typography.searchFieldSize)
         case .paletteHeaderPadding: Double(Theme.Size.headerPadding)
-        // `panelScrim`'s two literals, restated.
+        // The retired upstream `panelScrim`'s literals, the starting point when one is overridden.
         case .paletteScrimDark: 0.40
         case .paletteScrimLight: 0.55
         case .agentCardBorder, .terminalDivider, .paletteBorder, .agentCardBorderColor,

@@ -24422,106 +24422,54 @@
         }
       }
     },
-    "Apple Intelligence is still downloading its model." : {
+    "Apple Intelligence is currently unavailable. Check its status in System Settings." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Apple Intelligence lädt sein Modell noch."
+            "value" : "Apple Intelligence ist derzeit nicht verfügbar. Prüfe den Status in den Systemeinstellungen."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Apple Intelligence sigue descargando su modelo."
+            "value" : "Apple Intelligence no está disponible actualmente. Consulta su estado en Ajustes del Sistema."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Apple Intelligence télécharge encore son modèle."
+            "value" : "Apple Intelligence est actuellement indisponible. Consultez son état dans Réglages Système."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Apple Intelligenceはまだモデルをダウンロード中です。"
+            "value" : "Apple Intelligenceは現在利用できません。システム設定で状態を確認してください。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Apple Intelligence가 아직 모델을 다운로드하는 중입니다."
+            "value" : "현재 Apple Intelligence를 사용할 수 없습니다. 시스템 설정에서 상태를 확인하십시오."
           }
         },
         "pt" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A Apple Intelligence ainda está baixando o modelo dela."
+            "value" : "A Apple Intelligence está indisponível no momento. Verifique o status nos Ajustes do Sistema."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Apple Intelligence всё ещё загружает свою модель."
+            "value" : "Apple Intelligence сейчас недоступен. Проверьте его статус в Системных настройках."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Apple Intelligence 仍在下载其模型。"
-          }
-        }
-      }
-    },
-    "Apple Intelligence is still downloading its model. Try again shortly." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Apple Intelligence lädt sein Modell noch. Versuche es gleich noch einmal."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Apple Intelligence sigue descargando su modelo. Vuelve a intentarlo en unos instantes."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Apple Intelligence télécharge encore son modèle. Réessayez dans un instant."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Apple Intelligenceはまだモデルをダウンロード中です。しばらくしてからもう一度お試しください。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Apple Intelligence가 아직 모델을 다운로드하는 중입니다. 잠시 후 다시 시도하십시오."
-          }
-        },
-        "pt" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "A Apple Intelligence ainda está baixando o modelo dela. Tente novamente em instantes."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Apple Intelligence всё ещё загружает свою модель. Повторите попытку чуть позже."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Apple Intelligence 仍在下载其模型。请稍后重试。"
+            "value" : "Apple Intelligence 目前不可用。请在“系统设置”中查看其状态。"
           }
         }
       }
@@ -101369,6 +101317,58 @@
         }
       }
     },
+    "Right-click the icon to create or search notes." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Klicke mit der rechten Maustaste auf das Symbol, um Notizen zu erstellen oder zu durchsuchen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Haz clic derecho en el icono para crear o buscar notas."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Faites un clic droit sur l’icône pour créer ou rechercher des notes."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アイコンを右クリックしてメモを作成または検索します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "아이콘을 오른쪽 클릭하여 메모를 생성하거나 검색합니다."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clique com o botão direito no ícone para criar ou buscar notas."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нажмите на значок правой кнопкой, чтобы создать или найти заметки."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "右键点按图标以创建或搜索笔记。"
+          }
+        }
+      }
+    },
     "Room" : {
       "comment" : "Shortcut owner name in an “already used by” conflict message",
       "localizations" : {
@@ -108966,6 +108966,58 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "在访达中显示"
+          }
+        }
+      }
+    },
+    "Show in Menu Bar" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In der Menüleiste anzeigen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar en la barra de menús"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Afficher dans la barre des menus"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "メニューバーに表示"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "메뉴 막대에 표시"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar na barra de menus"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показывать в строке меню"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在菜单栏中显示"
           }
         }
       }

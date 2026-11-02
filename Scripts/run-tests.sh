@@ -48,12 +48,6 @@ if [ "${1:-}" = "--exec" ]; then
     exit 0
 fi
 
-QUEUE="$BIN/queue"
-EXCLUSIVE_QUEUE="$BIN/exclusive-queue"
-: > "$QUEUE"
-: > "$EXCLUSIVE_QUEUE"
-rm -f "$BIN"/*.failed "$BIN"/*.running
-
 failed=()
 ran=0
 only="${1:-}"
@@ -65,6 +59,15 @@ if [ "$only" = "--index" ]; then
     emit_db=1
     only=""
     printf '[' > "$DB"
+fi
+
+QUEUE="$BIN/queue"
+EXCLUSIVE_QUEUE="$BIN/exclusive-queue"
+# `--index` queues nothing, so it must never reset the state of a suite already running.
+if [ "$emit_db" -eq 0 ]; then
+    : > "$QUEUE"
+    : > "$EXCLUSIVE_QUEUE"
+    rm -f "$BIN"/*.failed "$BIN"/*.running
 fi
 
 # `slow` dispatches in the first wave; `index` only claims editor flags for a hand-run harness.
@@ -316,6 +319,7 @@ run app-installation-test  $L/SearchRelevance.swift $L/ScriptRomanization.swift 
                            Tinycast/Features/Launcher/Service/AppLauncher.swift \
                            Tinycast/Features/Launcher/Service/RunningAppsMonitor.swift \
                            Tinycast/Features/Launcher/Service/FavoritesStore.swift \
+                           $FS/Model/FileSearchResult.swift \
                            Tinycast/Features/Launcher/Service/AliasStore.swift \
                            Tinycast/Features/Launcher/Service/VisibilityStore.swift \
                            Tinycast/Features/Launcher/Service/BundleNameCache.swift \
@@ -841,8 +845,17 @@ run hyper-key-engine-test  Tinycast/Features/HotKeys/Model/HyperKeyEngine.swift 
 run hyper-key-test         Tinycast/Features/HotKeys/Model/HIDKeyMapping.swift \
                            Tinycast/Features/HotKeys/Model/HyperKeyConflictPolicy.swift \
                            Tinycast/Features/HotKeys/Service/KeyboardRemapper.swift \
-                           Tinycast/Features/HotKeys/Service/HyperKeyInstanceLock.swift \
+                           Tinycast/Features/HotKeys/Service/RemapInstanceLock.swift \
                            Tests/hyper-key-fixtures.swift
+run dictation-key-test     Tinycast/Features/HotKeys/Model/HIDKeyMapping.swift \
+                           Tinycast/Features/HotKeys/Model/HyperKeyConflictPolicy.swift \
+                           Tinycast/Features/HotKeys/Service/KeyboardRemapper.swift \
+                           Tinycast/Features/HotKeys/Service/RemapInstanceLock.swift \
+                           Tinycast/Features/HotKeys/Service/DictationKeyManager.swift \
+                           Tinycast/Platform/HealthTicker.swift \
+                           Tinycast/Platform/NotificationToken.swift \
+                           Tests/hyper-key-fixtures.swift \
+                           Tests/dictation-key-fixtures.swift
 run hotkey-dispatch-test   Tinycast/Features/HotKeys/Model/DoubleTapModifier.swift \
                            Tinycast/Features/HotKeys/Model/ModifierKey.swift \
                            Tinycast/Features/HotKeys/Model/HotKeyBinding.swift \
@@ -897,6 +910,7 @@ run ext-form-test          $E/Model/ExtensionFormMetrics.swift \
                            $E/UI/ExtensionListKey.swift \
                            Tests/ext-list-key-test.swift
 run ext-image-size-test   $E/Model/ExtensionImageSize.swift
+run ext-sign-in-test       $E/Service/ExtensionSignInSession.swift
 run ext-accessory-test     $E/Model/RenderNode.swift \
                            $E/Model/ExtensionPickerItem.swift \
                            $E/Model/ExtensionSearchAccessory.swift \

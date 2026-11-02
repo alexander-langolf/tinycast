@@ -220,8 +220,13 @@ struct MonacoCloseReturnsTest {
 }
 
 // Platform stand-ins keep native windows, shared pasteboards and preferences out of this harness.
+@MainActor final class FavoritesStore {
+    func files(homeDirectory: URL) -> [FileSearchResult] { [] }
+}
+
 @MainActor final class AppCore {
     let palette = PaletteState()
+    let favorites = FavoritesStore()
     let settings = AppSettings()
     let fileIndexer = FileIndexer()
     let forkAppearance = ForkAppearance()

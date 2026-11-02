@@ -54,6 +54,8 @@ struct RootPaletteView: View {
         PalettePresentationResolver.current(mode: vm.mode, query: vm.query)
     }
 
+    private var renderingOutset: CGFloat { isCollapsed ? Theme.Size.paletteGlassOutset : 0 }
+
     /// The current mode's screen: its rows are the visible order the flat selection indexes.
     private var screen: any PaletteScreen {
         switch vm.mode {
@@ -364,8 +366,8 @@ struct RootPaletteView: View {
                 .paletteFrameLayout()  // FORK: palette-motion
                 // The window's frame is the size source, so the glass and clip stay matched.
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                // Compact, the bar's own glass shapes are the surface and the window is bare.
-                .background(isCollapsed ? AnyShapeStyle(Color.clear) : ForkTheme.current.paletteScrim)  // FORK: appearance-theme
+                // FORK: appearance-theme, a themed scrim only; upstream's glass carries none.
+                .background(isCollapsed ? AnyShapeStyle(Color.clear) : ForkTheme.current.paletteScrim)
                 // Hidden rather than unmounted, so expanding never shows a frame without glass.
                 .background(GlassEffectView().opacity(isCollapsed ? 0 : 1))
                 .overlay {
@@ -381,8 +383,11 @@ struct RootPaletteView: View {
                 )
                 // FORK: palette-chips
                 .paletteFrameClip(  // FORK: palette-motion
-                    radius: core.paletteChips.paletteRadius(collapsed: isCollapsed, metrics: metrics))),
-            selection: sel)
+                    radius: core.paletteChips.paletteRadius(collapsed: isCollapsed, metrics: metrics),
+                    outset: renderingOutset)),
+            selection: sel
+        )
+        .padding(renderingOutset)
     }
 
     /// The emoji grid's observers, split out so `stateObservers` stays within type-checker reach.
@@ -602,8 +607,9 @@ struct RootPaletteView: View {
                     moveMenu(1)
                     return .handled
                 }
+                // Marked text owns these keys: an IME drives its candidate window with them.
+                if vm.isComposing { return .ignored }
                 if isCollapsed {
-                    guard !vm.isComposing else { return .ignored }
                     if compactSelection.command != nil {
                         activateCompactSelection()
                         return .handled
@@ -623,17 +629,20 @@ struct RootPaletteView: View {
                     moveMenu(-1)
                     return .handled
                 }
+                if vm.isComposing { return .ignored }
                 return moveVertically(-1)
             }
             .onKeyPress(keys: [.leftArrow], phases: [.down, .repeat]) { press in
                 if vm.isControlListOpen { return .ignored }
                 if menuOpen { return .handled }
+                if vm.isComposing { return .ignored }
                 if moveCompactSelection(-1, modifiers: press.modifiers) { return .handled }
                 return moveHorizontally(-1) ? .handled : .ignored
             }
             .onKeyPress(keys: [.rightArrow], phases: [.down, .repeat]) { press in
                 if vm.isControlListOpen { return .ignored }
                 if menuOpen { return .handled }
+                if vm.isComposing { return .ignored }
                 if moveCompactSelection(1, modifiers: press.modifiers) { return .handled }
                 return moveHorizontally(1) ? .handled : .ignored
             }
@@ -676,6 +685,7 @@ struct RootPaletteView: View {
             .onKeyPress(.escape) {
                 // An open control list owns Escape before the palette beneath it.
                 if vm.isControlListOpen { return .ignored }
+                if vm.isComposing, !menuOpen { return .ignored }
                 // FORK: palette-chips
                 if !menuOpen, argumentFocused == nil,
                     core.paletteChips.handleEscape(queryEmpty: vm.query.isEmpty, mode: vm.mode)
@@ -713,10 +723,11 @@ struct RootPaletteView: View {
             }
             .onKeyPress(keys: [.tab], phases: .down) { press in
                 // ⇥ inside an open list belongs to the list, not to the form's field order.
-                if vm.isControlListOpen { return .handled }
+                if vm.isControlListOpen || menuOpen { return .handled }
+                if vm.isComposing { return .ignored }
                 // FORK: palette-chips
-                if !menuOpen, core.paletteChips.handleTab(collapsed: isCollapsed) { return .handled }
-                if !menuOpen { advanceTabFocus(backwards: press.modifiers.contains(.shift)) }
+                if core.paletteChips.handleTab(collapsed: isCollapsed) { return .handled }
+                advanceTabFocus(backwards: press.modifiers.contains(.shift))
                 return .handled
             }
             .modifier(

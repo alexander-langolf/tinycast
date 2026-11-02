@@ -69,9 +69,9 @@ Its first step is `Scripts/check-migrations.sh`: a migration that a stable relea
 stops the run until it is deleted ([migrations.md](migrations.md)). The check reads tags and history,
 so the checkout fetches every commit without blobs.
 
-It builds on a `macos-26` runner with Xcode 26 and publishes a GitHub Release tagged
-`v<full-version>` with a versioned DMG and zip asset, marked prerelease for beta. On success it also
-bumps the matching cask in the tap and announces the release on Discord. A stable run also
+It builds on an `xcode-27` runner with the newest released Xcode 27 and publishes a GitHub Release
+tagged `v<full-version>` with a versioned DMG and zip asset, marked prerelease for beta. On success
+it also bumps the matching cask in the tap and announces the release on Discord. A stable run also
 dispatches the Website workflow, because the site reads the latest version and the
 [changelog](https://tinycast.dev/changelog/) from GitHub at build time.
 
