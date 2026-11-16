@@ -89,7 +89,8 @@ struct RootPaletteView: View {
                 store: snippets, core: core, vm: vm, openActions: openActions)
         case .snippetEditor:
             return SnippetEditorScreen(
-                coordinator: core.snippetCoordinator, openInputMenu: openInputOptions)
+                coordinator: core.snippetCoordinator, openMenuCorner: menuCorner,
+                openInputMenu: openInputOptions)
         case .emoji:
             return EmojiScreen(
                 index: emojiIndex, frequent: frequentEmoji, pinned: core.pinnedEmoji, core: core, vm: vm,
@@ -224,6 +225,15 @@ struct RootPaletteView: View {
             })
     }
 
+    private var dictionaryScopeContent: PopoverMenuContent {
+        PopoverMenuContent(
+            items: DictionaryScope.allCases.map { scope in
+                PopoverMenuItem(title: scope.title, systemImage: scope.systemImage) {
+                    dictionary.select(scope)
+                }
+            })
+    }
+
     private var appMenuContent: PopoverMenuContent {
         let appName = Bundle.main.appDisplayName
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
@@ -235,7 +245,7 @@ struct RootPaletteView: View {
                     title: String(localized: "Changelog"),
                     systemImage: "clock.arrow.trianglehead.2.counterclockwise.rotate.90"
                 ) {
-                    if let url = URL(string: "https://github.com/abue-ammar/tinycast/releases") {
+                    if let url = URL(string: "https://tinycast.dev/changelog/") {
                         openURL(url)
                     }
                 },
@@ -284,6 +294,8 @@ struct RootPaletteView: View {
             return headerMenu(fileSearchFilterContent, width: metrics.size.fileSearchFilterMenuWidth)
         case .emojiCategory:
             return headerMenu(emojiCategoryContent, width: metrics.size.emojiCategoryMenuWidth)
+        case .dictionaryScope:
+            return headerMenu(dictionaryScopeContent, width: metrics.size.fileSearchFilterMenuWidth)
         case .aiModel:
             return headerMenu(
                 AIModelMenu.models(coordinator: core.aiChatCoordinator, chat: quickAI),
@@ -368,8 +380,10 @@ struct RootPaletteView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 // FORK: appearance-theme, a themed scrim only; upstream's glass carries none.
                 .background(isCollapsed ? AnyShapeStyle(Color.clear) : ForkTheme.current.paletteScrim)
-                // Hidden rather than unmounted, so expanding never shows a frame without glass.
-                .background(GlassEffectView().opacity(isCollapsed ? 0 : 1))
+                // Square, as rounded glass feathers its edge; the clip alone cuts a crisp corner.
+                .background {
+                    Color.clear.glassEffect(isCollapsed ? .identity : .regular, in: Rectangle())
+                }
                 .overlay {
                     Theme.Colors.dialogDimming
                         .opacity(core.isDimmingPaletteForDialog && !isCollapsed ? 1 : 0)
@@ -530,6 +544,7 @@ struct RootPaletteView: View {
                     fileSearch.cancel()
                 }
                 if vm.mode == .dictionary {
+                    dictionary.refreshScopes()
                     dictionary.lookUp(vm.query)
                 } else {
                     dictionary.reset()
@@ -812,7 +827,7 @@ struct RootPaletteView: View {
                 if isCollapsed {
                     CompactBar(
                         commands: compactCommands, selection: compactSelection.command,
-                        onRun: runCompactCommand)
+                        onRun: runCompactCommand, onSettled: { hostWindow?.invalidateShadow() })
                 }
             }
             // Next turn, once the show's `land()` and search refocus are done, so neither undoes it.
@@ -912,6 +927,14 @@ struct RootPaletteView: View {
                     help: String(localized: "Filter by category  ⌘P"),
                     action: toggleEmojiCategory)
             }
+            if !isCollapsed, vm.mode == .dictionary, dictionary.hasThesaurus {
+                headerGutter(width: metrics.spacing.md)
+                HeaderMenuButton(
+                    title: dictionary.scope.title, systemImage: dictionary.scope.systemImage,
+                    isOpen: openMenu == .dictionaryScope,
+                    help: String(localized: "Dictionary or thesaurus  ⌘P"),
+                    action: toggleDictionaryScope)
+            }
             if !isCollapsed, vm.mode == .ai {
                 headerGutter(width: metrics.spacing.md)
                 AIModelButton(
@@ -942,7 +965,9 @@ struct RootPaletteView: View {
                     accessory, isOpen: openMenu == .extensionAccessory,
                     action: toggleExtensionSearchAccessory)
             }
-            headerGutter(width: metrics.spacing.md * 2)
+            if isCollapsed { UpdatePill() }
+            // The slack above and below, so the pill stays concentric with the capsule.
+            headerGutter(width: isCollapsed ? metrics.size.headerPadding : metrics.spacing.md * 2)
         }
         // Identical metrics in both states, so typing can't move the search bar.
         .frame(height: metrics.size.headerHeight)
@@ -1089,8 +1114,11 @@ struct RootPaletteView: View {
     ) -> some View {
         // Floating controls, no bar; the edge dissolve ghosts the rows passing beneath.
         HStack(spacing: 0) {
-            appMenuButton
-                .modifier(ExtensionToastSlot(extensions: extensions, showing: vm.mode == .extensionCommand))
+            HStack(spacing: 0) {
+                appMenuButton
+                UpdatePill()
+            }
+            .modifier(ExtensionToastSlot(extensions: extensions, showing: vm.mode == .extensionCommand))
             if showActionGroup {
                 actionGroup(
                     pillLabel: pillLabel, formPrimaryShortcut: formPrimaryShortcut,
@@ -1192,6 +1220,7 @@ struct RootPaletteView: View {
         case .clipboardFilter: toggleClipboardFilter()
         case .fileSearchFilter: toggleFileSearchFilter()
         case .emojiCategory: toggleEmojiCategory()
+        case .dictionaryScope: toggleDictionaryScope()
         case .aiModel: toggleAIModel()
         case .ignored: return false
         }
@@ -1205,6 +1234,16 @@ struct RootPaletteView: View {
         }
         let active = EmojiCategoryFilter.allCases.firstIndex(of: vm.emojiCategoryFilter) ?? 0
         open(.emojiCategory, highlighting: active)
+    }
+
+    private func toggleDictionaryScope() {
+        if openMenu == .dictionaryScope {
+            closeMenus()
+            return
+        }
+        guard dictionary.hasThesaurus else { return }
+        let active = DictionaryScope.allCases.firstIndex(of: dictionary.scope) ?? 0
+        open(.dictionaryScope, highlighting: active)
     }
 
     private func toggleExtensionSearchAccessory() {
@@ -1314,11 +1353,9 @@ struct RootPaletteView: View {
         if presenting, let hostWindow {
             menuPanel.show(
                 view, corner: corner, parent: hostWindow, core: core,
-                clipPath: content.clipPath,
                 onKeyDown: handleMenuPanelKey, onDismiss: closeMenus)
         } else {
-            menuPanel.update(
-                view, corner: corner, core: core, clipPath: content.clipPath)
+            menuPanel.update(view, corner: corner, core: core)
         }
     }
 
@@ -1434,7 +1471,8 @@ struct RootPaletteView: View {
         case .actions: .bottomTrailing
         case .argumentOptions: .belowHeaderTrailing
         case .inputOptions(let corner): corner
-        case .clipboardFilter, .fileSearchFilter, .emojiCategory, .aiModel, .aiReasoning,
+        case .clipboardFilter, .fileSearchFilter, .emojiCategory, .dictionaryScope, .aiModel,
+            .aiReasoning,
             .aiAttachments, .extensionAccessory:
             .belowHeaderTrailing
         case nil: nil
@@ -1672,6 +1710,7 @@ private enum OpenMenu: Equatable {
     case clipboardFilter
     case fileSearchFilter
     case emojiCategory
+    case dictionaryScope
     case aiModel
     case aiReasoning
     case aiAttachments

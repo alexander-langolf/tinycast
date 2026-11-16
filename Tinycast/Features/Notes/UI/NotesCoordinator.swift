@@ -4,10 +4,11 @@ import SwiftUI
 @MainActor
 @Observable
 final class NotesCoordinator {
-    private enum Presentation {
+    private enum Presentation: Equatable {
         case editor
-        case create
+        case create(source: String)
         case search
+        case note(NoteID)
     }
 
     private let store: NotesStore
@@ -23,6 +24,7 @@ final class NotesCoordinator {
     @ObservationIgnored private var loadTask: Task<Void, Never>?
     @ObservationIgnored private var issueTask: Task<Void, Never>?
     @ObservationIgnored private var operationTask: Task<Void, Never>?
+    @ObservationIgnored private var wordCountTask: Task<Void, Never>?
     @ObservationIgnored private var operationID = 0
     @ObservationIgnored private var pendingIssue: NotesStore.Issue?
     private var pendingPresentation: Presentation?
@@ -31,6 +33,7 @@ final class NotesCoordinator {
     private(set) var switcherSelection: NoteID?
     private(set) var switcherFocusRevision = 0
     private(set) var characterCount = 0
+    private(set) var wordCount = 0
     private(set) var formatting = NoteFormatting.plain
     private(set) var isFormattingBarExpanded: Bool
     private(set) var isHeadingMenuPresented = false
@@ -71,6 +74,9 @@ final class NotesCoordinator {
     /// UTF-16 units, straight off the text storage: the only length TextKit hands back in O(1).
     var characterCountLabel: String {
         String(localized: "\(characterCount) characters")
+    }
+    var wordCountLabel: String {
+        String(localized: "\(wordCount) words")
     }
 
     var searchQueryBinding: Binding<String> {
@@ -138,11 +144,23 @@ final class NotesCoordinator {
     }
 
     func createNote() {
-        request(.create)
+        createNote(text: "")
+    }
+
+    func createNote(text: String) {
+        request(.create(source: text))
     }
 
     func searchNotes() {
         request(.search)
+    }
+
+    func open(_ id: NoteID) {
+        request(.note(id))
+    }
+
+    func copyDeepLink(to id: NoteID) {
+        core.deepLinkCoordinator.copyLink(toNote: id)
     }
 
     func openSwitcher() {
@@ -339,9 +357,15 @@ final class NotesCoordinator {
         store.updateSource(source)
     }
 
-    func updateCharacterCount(_ input: NoteEditorInput, _ count: Int) {
+    func updateCounts(_ input: NoteEditorInput, _ characterCount: Int) {
         guard input == editorInput else { return }
-        characterCount = count
+        self.characterCount = characterCount
+        wordCountTask?.cancel()
+        wordCountTask = Task { [weak self] in
+            let wordCount = await NoteWordCount.count(in: input.source)
+            guard let self, !Task.isCancelled, input == editorInput else { return }
+            self.wordCount = wordCount
+        }
     }
 
     /// Id and epoch, not the whole input: comparing a long source on every caret move is not free.
@@ -410,7 +434,12 @@ final class NotesCoordinator {
         loadTask = Task { [weak self] in
             guard let self else { return }
             // Create is its own load: the collection it would wait for is the one it adds to.
-            let loaded = presentation == .create ? await store.create() : await store.start()
+            let loaded =
+                if case .create(let source) = presentation {
+                    await store.create(source: source)
+                } else {
+                    await store.start()
+                }
             guard generation == enablementGeneration else {
                 if !settings.notesEnabled { store.stop() }
                 return
@@ -418,7 +447,9 @@ final class NotesCoordinator {
             loadTask = nil
             guard loaded, settings.notesEnabled, !Task.isCancelled else { return }
             // The note this task just made satisfies a create still pending; never make a second.
-            if presentation == .create, pendingPresentation == .create {
+            if case .create = presentation,
+                pendingPresentation == presentation || pendingPresentation == .create(source: "")
+            {
                 pendingPresentation = .editor
             }
             guard let next = pendingPresentation else { return }
@@ -432,18 +463,25 @@ final class NotesCoordinator {
         case .editor:
             closeSwitcher()
             windowController.show(focusEditor: true)
-        case .create:
-            let generation = presentationGeneration
-            guard await store.create(), settings.notesEnabled, !Task.isCancelled,
-                generation == presentationGeneration
-            else { return }
-            closeSwitcher()
-            windowController.show(focusEditor: true)
+        case .create(let source):
+            await showEditor { await store.create(source: source) }
+        case .note(let id):
+            await showEditor { await store.select(id) }
         case .search:
             // The switcher hangs off the note window, so that window has to exist first.
             windowController.show(focusEditor: false)
             openSwitcher()
         }
+    }
+
+    /// Shown only if the change landed and no newer show or hide claimed the window meanwhile.
+    private func showEditor(after change: () async -> Bool) async {
+        let generation = presentationGeneration
+        guard await change(), settings.notesEnabled, !Task.isCancelled,
+            generation == presentationGeneration
+        else { return }
+        closeSwitcher()
+        windowController.show(focusEditor: true)
     }
 
     /// A newer show or hide retires an older operation's right to put what it loaded on screen.

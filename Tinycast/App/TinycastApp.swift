@@ -3,6 +3,7 @@ import SwiftUI
 @main
 enum TinycastLaunch {
     static func main() {
+        BundleIdentifierMigration.run()
         clearAgentEnvironment()  // FORK: agent-env
         AppSettings.pinLanguage()
         TinycastApp.main()

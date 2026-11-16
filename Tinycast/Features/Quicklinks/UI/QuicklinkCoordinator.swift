@@ -82,6 +82,7 @@ final class QuicklinkCoordinator {
     /// The only entry that seeds an argument from the selection.
     func openQuicklinkFromHotKey(id: UUID) {
         guard let quicklink = openableQuicklink(id: id) else { return }
+        guard !isPrompting(for: quicklink) else { return paletteCoordinator.hidePalette() }
         let attempt = makeAttempt(quicklink, values: [:], forcingDefaultApp: false)
         guard let argument = selectedTextArgument(for: quicklink) else { return open(attempt) }
         guard attempt.context.selection.isEmpty, let app = attempt.copySource else {
@@ -101,6 +102,13 @@ final class QuicklinkCoordinator {
             return openQuicklink(id: id)
         }
         openQuicklink(id: id, values: [target.name: seed])
+    }
+
+    private func isPrompting(for quicklink: Quicklink) -> Bool {
+        guard paletteCoordinator.isShowing(.quicklinks) else { return false }
+        let rows = store.enabled(matching: core.palette.query)
+        let selection = core.palette.selection
+        return rows.indices.contains(selection) && rows[selection].id == quicklink.id
     }
 
     private func openableQuicklink(id: UUID) -> Quicklink? {
@@ -216,6 +224,10 @@ final class QuicklinkCoordinator {
         _ quicklink: Quicklink, link: String, forcingDefaultApp: Bool
     ) {
         if windowController.isVisible { paletteCoordinator.hidePalette(restoreFocus: false) }
+        // Tinycast's own link stays in-process: chosen here, so it never asks or steals focus.
+        if let url = URL(string: link), core.deepLinkCoordinator.handles(url) {
+            return core.deepLinkCoordinator.open(url, source: .tinycast)
+        }
         let openWith = forcingDefaultApp ? nil : quicklink.openWithBundleID
         Task {
             do throws(QuicklinkLauncher.Failure) {
@@ -331,6 +343,17 @@ final class QuicklinkCoordinator {
         paletteCoordinator.showPalette(mode: .quicklinkEditor)
     }
 
+    /// A new quicklink already filled in, from a link; nothing is written until it is saved.
+    func createQuicklink(name: String, link: String, openWithBundleID: String?) {
+        guard settings.quicklinksEnabled else { return }
+        let editor = QuicklinkEditorSession(quicklink: nil)
+        editor.name = name
+        editor.link = link
+        editor.openWithBundleID = openWithBundleID
+        self.editor = editor
+        paletteCoordinator.showPalette(mode: .quicklinkEditor)
+    }
+
     func saveQuicklink() {
         guard settings.quicklinksEnabled, let editor, editor.canSave else { return }
         do {
@@ -435,6 +458,24 @@ final class QuicklinkCoordinator {
     func addImportedQuicklinks(_ incoming: [Quicklink]) -> [Quicklink] {
         let merge = QuicklinkArchive.merge(incoming, into: store.quicklinks)
         return store.append(merge.additions)
+    }
+
+    /// A link's batch: nothing is added until the reader agrees, and duplicates are skipped.
+    func importQuicklinks(offered incoming: [Quicklink]) async {
+        guard settings.quicklinksEnabled, !incoming.isEmpty else { return }
+        guard
+            await core.confirm(
+                title: String(localized: "Add \(incoming.count) quicklinks from a link?"),
+                message: incoming.map { $0.name.isEmpty ? $0.link : "\($0.name) — \($0.link)" }
+                    .joined(separator: "\n"),
+                symbol: Quicklink.sfSymbol, confirmTitle: String(localized: "Add"), tone: .neutral,
+                confirmRole: .standard)
+        else { return }
+        let added = addImportedQuicklinks(incoming)
+        guard !added.isEmpty else {
+            return core.showMessage(String(localized: "Nothing to Import"), tone: .neutral)
+        }
+        core.showMessage(String(localized: "Imported \(added.count) quicklinks."))
     }
 
     func importQuicklinks() async {

@@ -26,7 +26,9 @@
   keeps every entry's id, newest first, and resolves each against the live history, so a promotion
   cannot repeat or skip an entry and a deleted one is passed over rather than pasted.
 - **`Model/ClipboardStore.swift` keeps to Foundation plus SQLite3 and no other app source**, so
-  `clipboard-test` can compile it standalone. It uses `isolated deinit` for its SQLite teardown.
+  `ClipboardTests` can compile it standalone. It uses `isolated deinit` for its SQLite teardown.
+- **An image capture keeps the generation from its pasteboard poll.** Clear History and store close
+  retire it across conversion and file writing; a stale capture inserts nothing and leaves no blob.
 - A database that cannot be opened is deleted and recreated. That is sound because a history is
   captured rather than authored, and there is no UI for an unavailable clipboard — `QuicklinkStore`
   deliberately does the opposite. It is **not** a licence to treat the file as disposable: it lives in
@@ -63,14 +65,24 @@ sensitive-type guards, which stay unconditional — a secret must never be recor
 arrives in. A bare screenshot carries no file URL and still falls through to the `.png`/`.tiff`
 branch untouched.
 
+**Rich text is the last resort.** A copy with no file URL, plain text or image, such as a web page's
+HTML-only Clipboard API write, is converted through `NSAttributedString`, RTF before HTML, and
+recorded as a plain text entry. It sits after the image branch because a browser's image copy
+carries an `<img>` fragment beside the pixels. The HTML importer runs WebKit on the main actor, so
+fragments over 256 KB are skipped to bound the stall.
+
 `ClipboardManager.fileURLs(on:volatileRoots:)` takes both the pasteboard and the roots as
-parameters, so `pasteboard-test` can drive an `NSPasteboard.withUniqueName()` and its own scratch
+parameters, so `PasteboardTests` can drive an `NSPasteboard.withUniqueName()` and its own scratch
 tree: a harness that touched `NSPasteboard.general` would land in the reader's own running Tinycast
 as a genuine copy. `PasteboardFiles` reads each item's own `public.file-url`, so a copied `http` URL stays a link;
 returns nil rather than an empty array, so the text branch runs; caps a batch at
 `maxCapturedFiles`, so a Finder select-all cannot insert ten thousand rows on one tick; and
 **rejects a file under a volatile root** (`/tmp`, `/var/folders`, `~/Library/Caches`), because an
-app that stages a temp export beside better inline content must keep the inline content. Paths come
+app that stages a temp export beside better inline content must keep the inline content. When the
+pasteboard also carries `.png` or `.tiff`, `volatileRoots(on:copiedFrom:)` adds the copying app's own
+`~/Library/Containers/<bundle ID>/`: macOS keeps another app's container closed to Tinycast, so a
+file staged there previews as an icon and goes stale, while its pixels record as an image. A
+container file without pixels, or one copied by another app such as Finder, stays a file. Paths come
 back reversed so the *first* file copied ends up leading the history. Durability checks stop after
 32 accepted files, and decoding stops with them: the reader takes the cap and the durability test
 together rather than filtering a list it has already decoded whole. Rejected paths do not consume
@@ -308,7 +320,7 @@ is a single token by definition. That last step is the only one needing judgemen
 and `index.html` are
 domain-shaped — so a bare domain must be lower case (which is what keeps `Safari.app` out) and end
 in one of a compact set of TLDs people actually copy. It is a heuristic whose worst case files a row
-under the wrong type, and `clipboard-test` pins the cases that matter.
+under the wrong type, and `ClipboardTests` pins the cases that matter.
 
 `search(_:filter:)` filters **after** the pinned/rest split, so a matching pin still leads its block
 in pin order, and the filter joins the search memo's key — keying on the query alone would serve
@@ -343,7 +355,7 @@ is the format's business, not the value's. The rest of CSS Color 4 — the space
 and then removed: they
 restate the same four answers, and a row you scroll past to reach the one you wanted costs more
 than it gives. `oklch()` stays as the one perceptual space people write, and `hsl()` keeps one
-decimal because whole degrees cost up to 5/255 on the way back. `clipboard-test` sweeps every
+decimal because whole degrees cost up to 5/255 on the way back. `ClipboardTests` sweeps every
 offered notation and re-parses it, bar `oklch()`: it states fewer digits than the channel the
 sweep compares to.
 
@@ -417,7 +429,7 @@ uses the current query and type filter, so its first entry is the first visible 
 a no-op. They are fixed to the physical number row, with ⌘1…⌘9 then ⌘0 as their labels.
 
 `load` reads every pinned row plus the newest 1000 unpinned ones as two indexed branches over a
-partial index on `pinned_at` (`Tests/clipboard-test.swift` covers the shape). The single
+partial index on `pinned_at` (`Tests/ClipboardTests.swift` covers the shape). The single
 `pinned_at IS NOT NULL OR rowid >= ?` form reads better but cannot be driven from an index while
 holding row order, so it scans the whole table — ~12ms against ~1ms at 200k rows, on the main actor
 at launch.
@@ -427,7 +439,7 @@ at launch.
 A file copied in Finder is recorded as a reference, never as a copy: Tinycast writes nothing to
 disk for it, and the row's path points at the original wherever it lies. That is the whole reason
 `imagePath` stays nil for a `.file` row — `owns()` is the one ownership rule, and a path it never
-sees can never be deleted by `deleteBlob` or a retention cut. `clipboard-test`'s
+sees can never be deleted by `deleteBlob` or a retention cut. `ClipboardTests`'s
 `referencedFilesOutliveTheirRows` is the case that pins it, across `remove`, a retention cut and
 Clear History alike.
 
@@ -442,7 +454,7 @@ returns false, the coordinator raises a HUD, and the row survives — history is
 happened, and the recorded path is still the answer to "where was it?". The preview says so in
 place, and the Path row keeps showing where the file used to be.
 
-`FilePreviewThumbnailer` is the row tile and the preview still. `QLThumbnailGenerator` is the only
+`FilePreviewThumbnail` is the row tile and the preview still. `QLThumbnailGenerator` is the only
 thing that renders a *content* thumbnail for any type — a video's poster frame, a PDF's first page
 — and with `representationTypes: .all` it falls back to the type icon itself, so every file paints
 something through one path. It copies `ImageThumbnail`'s shape exactly: two byte-bounded caches

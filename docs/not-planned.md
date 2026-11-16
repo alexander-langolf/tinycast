@@ -134,8 +134,6 @@ Tinycast is an all-in-one launcher, not a full window manager. Its window tools 
 - **Layouts per workspace (like FlashSpace).** ([#639](https://github.com/abue-ammar/tinycast/issues/639))
 - **Switch Windows changes.** The order stays stable for muscle memory. No switch-on-release, and no
   alias search. ([#1506](https://github.com/abue-ammar/tinycast/issues/1506), [#1590](https://github.com/abue-ammar/tinycast/issues/1590), [#1589](https://github.com/abue-ammar/tinycast/issues/1589))
-- **Snap or move full-screen windows.** Leaving full screen first makes the window flicker.
-  ([#1232](https://github.com/abue-ammar/tinycast/issues/1232), [#1258](https://github.com/abue-ammar/tinycast/issues/1258))
 - **Follow Stage Manager.** **Instead:** try Window Rooms. ([#1249](https://github.com/abue-ammar/tinycast/issues/1249))
 - **Safari's width after Mission Control.** Safari may reset its width afterwards. ([#1556](https://github.com/abue-ammar/tinycast/issues/1556))
 
@@ -216,8 +214,6 @@ Tinycast is an all-in-one launcher, not a full window manager. Its window tools 
 - **Read selected text in every app.** Many apps and websites don't share it. ([#1492](https://github.com/abue-ammar/tinycast/issues/1492), [#1420](https://github.com/abue-ammar/tinycast/issues/1420))
 - **Another app's Quick Look plugin takes your keys** (like Obsidian's). ([#1607](https://github.com/abue-ammar/tinycast/issues/1607))
 - **Duplicate images with Clop running.** ([#1582](https://github.com/abue-ammar/tinycast/issues/1582))
-- **Notes opening again after you close it** with text selected. Apple's Writing Tools cause this.
-  ([#1164](https://github.com/abue-ammar/tinycast/issues/1164))
 - **One-time-password extensions that paste for you.** ([#829](https://github.com/abue-ammar/tinycast/issues/829))
 
 ## Not now, but maybe later
@@ -226,7 +222,6 @@ These are on hold, not ruled out.
 
 - **Contacts search**, as a separate plugin. ([#1503](https://github.com/abue-ammar/tinycast/issues/1503))
 - **Open files in a Finder replacement.** ([#1494](https://github.com/abue-ammar/tinycast/issues/1494))
-- **Deeplinks for built-in commands.** Waits until the commands settle. ([#1005](https://github.com/abue-ammar/tinycast/issues/1005))
 - **Emoji names in the picker.** Long names don't fit yet. ([#965](https://github.com/abue-ammar/tinycast/issues/965))
 - **Keep any window on top.** ([#527](https://github.com/abue-ammar/tinycast/issues/527))
 

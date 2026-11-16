@@ -112,6 +112,16 @@ final class ClipboardManager {
         "/tmp/", "/var/tmp/", "/var/folders/", NSHomeDirectory() + "/Library/Caches/"
     ]
 
+    /// Another app's container is closed to us, so a copy it stages there beside pixels is scratch.
+    nonisolated static func volatileRoots(
+        on pasteboard: NSPasteboard, copiedFrom bundleID: String?,
+        containers: String = NSHomeDirectory() + "/Library/Containers/",
+        roots: [String] = volatileRoots
+    ) -> [String] {
+        guard let bundleID, pasteboard.availableType(from: [.png, .tiff]) != nil else { return roots }
+        return roots + [containers + bundleID + "/"]
+    }
+
     /// Both parameters are injected environment facts, so a harness can drive its own scratch.
     nonisolated static func fileURLs(
         on pasteboard: NSPasteboard, volatileRoots roots: [String] = volatileRoots
@@ -148,7 +158,8 @@ final class ClipboardManager {
         if let sourceBundleID, settings.clipboardDisabledApps.contains(sourceBundleID) { return }
 
         // Ahead of the text branch: Finder puts the file's *name* on `.string` beside its URL.
-        if let paths = Self.fileURLs(on: pb) {
+        let roots = Self.volatileRoots(on: pb, copiedFrom: sourceBundleID)
+        if let paths = Self.fileURLs(on: pb, volatileRoots: roots) {
             store.addFiles(paths, sourceBundleID: sourceBundleID)
             return
         }
@@ -164,6 +175,7 @@ final class ClipboardManager {
         if let type = pb.availableType(from: [.png, .tiff]), let data = pb.data(forType: type) {
             let isPNG = type == .png
             let store = store
+            let capture = store.captureGeneration
             // A big TIFF→PNG re-encode can take 100ms+, so keep the poll off that path.
             Task.detached(priority: .utility) {
                 let png =
@@ -171,8 +183,26 @@ final class ClipboardManager {
                     ? data
                     : NSBitmapImageRep(data: data)?.representation(using: .png, properties: [:])
                 guard let png else { return }
-                await store.addImage(png, sourceBundleID: sourceBundleID)
+                await store.addImage(png, sourceBundleID: sourceBundleID, capture: capture)
             }
+            return
         }
+
+        guard let text = Self.plainText(fromRichTextOn: pb),
+            !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+            text.count <= ClipboardStore.maxTextLength
+        else { return }
+        store.addText(text, sourceBundleID: sourceBundleID)
+    }
+
+    private static let maxImportedHTMLBytes = 256 * 1024
+
+    static func plainText(fromRichTextOn pasteboard: NSPasteboard) -> String? {
+        if let rtf = pasteboard.data(forType: .rtf) {
+            return NSAttributedString(rtf: rtf, documentAttributes: nil)?.string
+        }
+        guard let html = pasteboard.data(forType: .html), html.count <= maxImportedHTMLBytes
+        else { return nil }
+        return NSAttributedString(html: html, documentAttributes: nil)?.string
     }
 }

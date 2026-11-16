@@ -7,11 +7,12 @@ struct InstalledCLIProvider: AIProvider {
     @MainActor
     init(
         kind: InstalledAIKind, executable: URL?, model: String, effort: String?, workspace: URL,
-        launch: InstalledAILaunch = InstalledAILaunch(), toolServers: AIToolServerSession? = nil
+        launch: InstalledAILaunch = InstalledAILaunch(), toolServers: AIToolServerSession? = nil,
+        toolSession: AIToolSession? = nil
     ) {
         runner = InstalledCLITurnRunner(
             kind: kind, executable: executable, model: model, effort: effort,
-            workspace: workspace, launch: launch, toolServers: toolServers)
+            workspace: workspace, launch: launch, toolServers: toolServers, toolSession: toolSession)
     }
 
     func stream(_ request: AIRequest) -> AIProviderStream {
@@ -26,7 +27,6 @@ final class InstalledCLITurnRunner {  // FORK: ai-working-directory
         environment, access external resources, or modify anything. Use only the conversation and \
         instructions in this request.
         """
-    /// Built-ins are off by `--tools ""`, so this must not forbid what an armed MCP tool does.
     private static let toolSafetyInstructions = """
         You are generating text inside Tinycast. The only tools you may use are the MCP tools \
         supplied with this request, and you may use them for anything they offer. Do not run \
@@ -52,6 +52,8 @@ final class InstalledCLITurnRunner {  // FORK: ai-working-directory
     let workspace: URL  // FORK: ai-working-directory
     private let launch: InstalledAILaunch
     private let toolServers: AIToolServerSession?
+    private let toolSession: AIToolSession?
+    private var bridge: OpenCodeMCPBridge?
 
     private var token: TurnToken?
     private var process: Process?
@@ -73,7 +75,8 @@ final class InstalledCLITurnRunner {  // FORK: ai-working-directory
 
     init(
         kind: InstalledAIKind, executable: URL?, model: String, effort: String?, workspace: URL,
-        launch: InstalledAILaunch, toolServers: AIToolServerSession? = nil
+        launch: InstalledAILaunch, toolServers: AIToolServerSession? = nil,
+        toolSession: AIToolSession? = nil
     ) {
         self.kind = kind
         self.launch = launch
@@ -82,6 +85,7 @@ final class InstalledCLITurnRunner {  // FORK: ai-working-directory
         self.effort = effort
         self.workspace = workspace
         self.toolServers = toolServers
+        self.toolSession = kind == .openCode ? toolSession : nil
     }
 
     nonisolated func stream(_ request: AIRequest) -> AIProviderStream {
@@ -206,6 +210,28 @@ final class InstalledCLITurnRunner {  // FORK: ai-working-directory
             files += attachments
         }
 
+        var bridge: OpenCodeMCPBridge?
+        var openCodeConfiguration: String?
+        defer {
+            if self.bridge !== bridge { bridge?.stop() }
+        }
+        if let toolSession, !toolSession.tools.isEmpty {
+            let connection = OpenCodeMCPBridge(session: toolSession) { event in
+                continuation.yield(event)
+            } failure: { [weak self] message in
+                guard self?.token === token else { return }
+                self?.fail(message)
+            }
+            bridge = connection
+            do {
+                openCodeConfiguration = try await connection.start()
+            } catch {
+                Self.remove(files)
+                continuation.finish(throwing: error)
+                return
+            }
+        }
+
         let process = Process()
         let stdin = Pipe()
         let stdout = Pipe()
@@ -213,6 +239,9 @@ final class InstalledCLITurnRunner {  // FORK: ai-working-directory
         process.executableURL = executable
         process.currentDirectoryURL = cwd  // FORK: ai-working-directory
         process.environment = environment(for: executable)
+        if let openCodeConfiguration {
+            process.environment?["OPENCODE_CONFIG_CONTENT"] = openCodeConfiguration
+        }
         process.standardInput = kind == .grok ? FileHandle.nullDevice : stdin
         process.arguments = arguments(
             promptFile: grokPrompt, mcpConfig: configURL, attachments: attachments)
@@ -259,6 +288,7 @@ final class InstalledCLITurnRunner {  // FORK: ai-working-directory
         }
         privateFiles = files
         self.process = process
+        self.bridge = bridge
         activeExecutable = executable
         self.token = token
         exitStatus = nil
@@ -427,7 +457,8 @@ final class InstalledCLITurnRunner {  // FORK: ai-working-directory
 
     private func prompt(for request: AIRequest) -> String {
         var sections = [
-            activeServers.isEmpty ? Self.safetyInstructions : Self.toolSafetyInstructions
+            activeServers.isEmpty && toolSession?.tools.isEmpty != false
+                ? Self.safetyInstructions : Self.toolSafetyInstructions
         ]
         if let instructions = request.instructions?.trimmingCharacters(in: .whitespacesAndNewlines),
             !instructions.isEmpty
@@ -497,6 +528,7 @@ final class InstalledCLITurnRunner {  // FORK: ai-working-directory
     }
 
     private func finish() {
+        bridge?.stop()
         continuation?.yield(.finished)
         continuation?.finish()
         continuation = nil
@@ -560,6 +592,7 @@ final class InstalledCLITurnRunner {  // FORK: ai-working-directory
     }
 
     private func fail(_ message: String) {
+        bridge?.stop()
         continuation?.finish(throwing: AIProviderError.responseFailed(message))
         continuation = nil
         process?.terminate()
@@ -571,6 +604,8 @@ final class InstalledCLITurnRunner {  // FORK: ai-working-directory
     }
 
     private func cancelActiveTurn() {
+        bridge?.stop()
+        bridge = nil
         cancelConsents()
         continuation?.finish(throwing: CancellationError())
         continuation = nil
@@ -646,6 +681,8 @@ final class InstalledCLITurnRunner {  // FORK: ai-working-directory
     }
 
     private func cleanup() {
+        bridge?.stop()
+        bridge = nil
         cancelConsents()
         process?.terminationHandler = nil
         (process?.standardOutput as? Pipe)?.fileHandleForReading.readabilityHandler = nil

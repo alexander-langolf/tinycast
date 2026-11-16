@@ -120,6 +120,8 @@ struct GeneralSettingsView: View {
             } header: {
                 SettingsSectionHeader(.generalSearch)
             }
+
+            AllowedDeepLinksSection()
         }
         .formStyle(.grouped)
         .settingsScrollTarget(.general)
