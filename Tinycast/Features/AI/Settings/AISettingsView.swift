@@ -29,6 +29,8 @@ struct AISettingsView: View {
                 SettingsSectionHeader(.aiAI)
             }
 
+            ForkAutocompleteSettingsRows(coordinator: core.forkAutocomplete)  // FORK: inline-autocomplete
+
             FeatureCommandsSection(owner: .ai, anchor: .aiCommands)
                 .settingsEnabled(appSettings.aiEnabled)
 

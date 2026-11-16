@@ -38,6 +38,7 @@ final class CodexAppServerClient {
 
     private let codexHome: URL?
     let workspace: URL
+    var cwd: URL { ForkAIWorkingDirectory.current?.url ?? workspace }  // FORK: ai-working-directory
     /// The command the last launch ran, kept after it stops so Settings can still name it.
     private(set) var executable: URL?
     private var process: Process?

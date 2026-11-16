@@ -101,6 +101,9 @@ final class AppCore {
                 installedAI: installedAI, guardrails: .permissiveContentTransformations,
                 claudeAccount: forkClaudeAccount)
         }
+    // FORK: inline-autocomplete
+    @ObservationIgnored private(set) lazy var forkAutocomplete = ForkAutocompleteCoordinator(
+        clipboard: clipboardManager, lyraIsPresenting: { [unowned self] in self.forkLyra.ownsTypingSurface })
     let mcpSettings = MCPSettingsStore()
     let mcpOAuth = MCPOAuthManager()
     @ObservationIgnored private(set) lazy var mcp = MCPServerManager(oauth: mcpOAuth)
@@ -359,6 +362,11 @@ final class AppCore {
         forkPolicy.start()  // FORK: policy-split
         // FORK: local-lyra
         forkLyra.start()
+        // FORK: inline-autocomplete
+        forkLyra.onPresentationChange = { [weak self] visible in
+            if visible { self?.forkAutocomplete.dismiss() }
+        }
+        forkAutocomplete.start()
         forkSupervision.processes = [forkLyra.server, forkWorkflows.supervisor]  // FORK: workflow-server
         forkSupervision.workflowActionCount = { [weak self] in self?.forkWorkflows.actionCount ?? 0 }
         forkAppearance.start()  // FORK: appearance-start
@@ -709,6 +717,7 @@ final class AppCore {
 
     func prepareForTermination() {
         forkWorkflows.stop()  // FORK: workflow-server
+        forkAutocomplete.stop()  // FORK: inline-autocomplete
         forkLyra.stop()  // FORK: local-lyra
         forkPolicy.stop()  // FORK: policy-split
         forkSupervision.stop()  // FORK: app-supervision

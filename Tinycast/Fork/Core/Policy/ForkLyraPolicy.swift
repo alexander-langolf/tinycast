@@ -36,7 +36,10 @@ struct ForkLyraPolicy: Sendable {
     let routing: [ForkLyraMode: Route]
 
     var availableModes: Set<ForkLyraMode> { Set(modes.map(\.name)) }
-    var panelModes: [ForkLyraMode] { modes.map(\.name).filter { $0 != .fix } }
+    var panelModes: [ForkLyraMode] {
+        let names = modes.map(\.name)
+        return names.contains(.fix) ? [.fix] + names.filter { $0 != .fix } : names
+    }
 
     static func decode(_ data: Data) throws -> Self {
         let failure = ForkPolicyFailure(file: "lyra.json", reason: .invalidValue)

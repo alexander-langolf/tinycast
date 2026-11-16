@@ -44,6 +44,10 @@ enum DeepLinkConsentPolicy {
     /// No `default`, so a new command has to be classed before it builds.
     private static func requiresConsent(_ id: CommandID) -> Bool {
         switch id {
+        case .lyraRewrite, .searchGoogle:  // FORK: deep-links
+            true
+        case .browseFiles:  // FORK: deep-links
+            false
         case .fixGrammar, .rewrite, .translate, .summarize, .pasteSequentially, .openCamera,
             .joinNextMeeting, .copyMeetingLink, .openInCalendar, .captureWindowLayout, .openInBrowser,
             .runShellCommand, .quit:

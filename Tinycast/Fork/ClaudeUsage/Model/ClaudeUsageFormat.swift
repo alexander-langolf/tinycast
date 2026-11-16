@@ -4,7 +4,15 @@ enum ClaudeUsageFormat: Sendable {
     static func label(snapshot: ClaudeUsageSnapshot?, display: ClaudeUsageMenuBarDisplay,
         locale: Locale) -> String
     {
-        guard let snapshot, let session = snapshot.session else { return "" }
+        guard let snapshot else { return "" }
+        guard let session = snapshot.session else {
+            // Usage-billed accounts report no limit windows, only money spent.
+            switch display {
+            case .disabled, .usageIcon: return ""
+            case .sessionPercent, .sessionAndWeek:
+                return snapshot.spend.map { money($0.used, locale: locale) } ?? ""
+            }
+        }
         switch display {
         case .disabled, .usageIcon:
             return ""
@@ -21,6 +29,19 @@ enum ClaudeUsageFormat: Sendable {
     static func percent(_ value: Double, locale: Locale) -> String {
         let rounded = value.rounded(.toNearestOrAwayFromZero)
         return (rounded / 100).formatted(.percent.precision(.fractionLength(0)).locale(locale))
+    }
+
+    static func money(_ value: ClaudeUsageSnapshot.Money, locale: Locale) -> String {
+        value.amount.formatted(.currency(code: value.currency)
+            .precision(.fractionLength(value.exponent)).locale(locale))
+    }
+
+    static func spendLine(_ spend: ClaudeUsageSnapshot.Spend, locale: Locale) -> String {
+        let used = money(spend.used, locale: locale)
+        guard let limit = spend.limit else {
+            return String(localized: "Extra usage: \(used) spent", locale: locale)
+        }
+        return String(localized: "Extra usage: \(used) of \(money(limit, locale: locale))", locale: locale)
     }
 
     static func windowTitle(_ window: ClaudeUsageSnapshot.Window, locale: Locale) -> String {

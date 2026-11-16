@@ -97,6 +97,7 @@ struct AIConnection: Codable, Equatable, Identifiable, Sendable {
     /// A preset pointed away from its own API is a gateway, and only a gateway takes a thinking field.
     var takesThinkingField: Bool {
         provider.apiShape(for: URL(string: baseURL)) == .openAICompatible
+            && URL(string: baseURL)?.host()?.lowercased() != "ai-gateway.vercel.sh"  // FORK: vercel-gateway
             && baseURL.trimmingCharacters(in: .whitespacesAndNewlines) != provider.defaultBaseURL
     }
 

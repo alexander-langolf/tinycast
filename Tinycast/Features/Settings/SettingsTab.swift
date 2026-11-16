@@ -39,6 +39,9 @@ enum SettingsTab: CaseIterable, Identifiable {
         case .permissions: "permissions"
         case .backup: "backup"
         case .about: "about"
+        case .fileNavigator: "file-navigator"  // FORK: file-navigator
+        case .appearance: "appearance"  // FORK: appearance-pane
+        case .automation: "automation"  // FORK: automation-settings
         }
     }
 

@@ -135,6 +135,21 @@ run() {
             case " $* " in *"/SearchRelevance.swift "*) ;; *) set -- "$@" Tinycast/Features/Launcher/Model/SearchRelevance.swift ;; esac
             ;;
     esac
+    # // FORK: harness-sources carries decoder and card dependencies through upstream source moves.
+    case " $* " in
+        *"/AIStreamDecoder.swift "*)
+            set -- "$@" Tinycast/Features/AI/Model/AIResponsesDecoder.swift Tinycast/Features/AI/Model/ChatReferences.swift ;;
+    esac
+    case " $* " in
+        *"/ForkLyraSuggestionController.swift "*) set -- "$@" Tinycast/Fork/Lyra/Model/ForkLyraMode.swift ;;
+    esac
+    case " $* " in
+        *"/PaletteCoordinator.swift "*) set -- "$@" Tinycast/Platform/FrontmostApp.swift ;;
+    esac
+    case " $* " in
+        *"/CodexAppServerClient.swift "*|*"/InstalledCLIProvider.swift "*)
+            set -- "$@" Tinycast/Fork/ForkAIWorkingDirectory.swift Tinycast/Platform/AppPaths.swift ;;
+    esac
     # // FORK: harness-sources adds shared fork files from several cases, so each is compiled once.
     local fork_unique=() fork_seen=" " fork_arg
     for fork_arg in "$@"; do
@@ -219,6 +234,13 @@ run fork-lyra-stream-test Tinycast/Features/AI/Model/AIRequest.swift \
     Tinycast/Features/AI/Model/AITool.swift Tinycast/Features/AI/Model/JSONValue.swift \
     Tinycast/Features/AI/Model/AIRequestBody.swift Tinycast/Features/AI/Model/AIStreamDecoder.swift \
     Tinycast/Features/AI/Model/AIThinkTagDecoder.swift Tinycast/Features/AI/Model/AIProviderFailure.swift
+run fork-vercel-test Tinycast/Features/AI/Model/AIRequest.swift \
+    Tinycast/Features/AI/Model/AIConnection.swift Tinycast/Features/AI/Model/AppleIntelligence.swift \
+    Tinycast/Features/AI/Model/AITool.swift Tinycast/Features/AI/Model/JSONValue.swift \
+    Tinycast/Features/AI/Model/AIRequestBody.swift Tinycast/Features/AI/Model/AIStreamDecoder.swift \
+    Tinycast/Features/AI/Model/AIThinkTagDecoder.swift Tinycast/Features/AI/Model/AIProviderFailure.swift \
+    Tinycast/Features/AI/Service/AIProvider.swift Tinycast/Features/AI/Service/HTTPAIProvider.swift \
+    Tinycast/Platform/AppDisplayName.swift Tinycast/Platform/KeychainSecretStore.swift
 
 # // FORK: observability
 run fork-observability-test Tinycast/Fork/Core/Observability/ForkEvent.swift \

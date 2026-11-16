@@ -12,13 +12,3 @@ extension AppCore {
         }
     }
 }
-
-extension InstalledCLITurnRunner {
-    /// Where the agent starts; `workspace` stays the private folder for Tinycast's own files.
-    var cwd: URL { ForkAIWorkingDirectory.current?.url ?? workspace }
-}
-
-extension CodexAppServerClient {
-    /// Read at launch and at each thread start; a change restarts the server, so the two agree.
-    var cwd: URL { ForkAIWorkingDirectory.current?.url ?? workspace }
-}

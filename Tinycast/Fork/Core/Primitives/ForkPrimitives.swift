@@ -56,7 +56,7 @@ final class ForkPrimitives {
             target.processIdentifier != NSRunningApplication.current.processIdentifier,
             requested == nil || requested == target.bundleIdentifier else { throw Failure.refused }
         guard Permissions.ensureAccessibility() else { throw Failure.refused }
-        let snapshot = ForkLyraFocusObserver.focusedElement().flatMap(ForkLyraFocusObserver.snapshot)
+        let snapshot = ForkLyraFocusObserver.focusedElement().flatMap { ForkLyraFocusObserver.snapshot($0) }
         let result = await ForkSelectionAdapters.read(from: target) { [core] app in
             if core.paletteCoordinator.isVisible { core.paletteCoordinator.hidePalette() }
             return await core.textInjector.copySelection(from: app)

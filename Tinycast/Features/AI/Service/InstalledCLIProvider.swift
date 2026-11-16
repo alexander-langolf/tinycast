@@ -50,6 +50,7 @@ final class InstalledCLITurnRunner {  // FORK: ai-working-directory
     private let model: String
     private let effort: String?
     let workspace: URL  // FORK: ai-working-directory
+    var cwd: URL { ForkAIWorkingDirectory.current?.url ?? workspace }  // FORK: ai-working-directory
     private let launch: InstalledAILaunch
     private let toolServers: AIToolServerSession?
     private let toolSession: AIToolSession?

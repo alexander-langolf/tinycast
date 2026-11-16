@@ -114,6 +114,7 @@ enum SettingsSearchCatalog {
         + navigation + notes + calendar + emoji + ai + quickActions + dictation + extensions
         + ForkSettingsSearch.automation  // FORK: automation-settings
         + ForkSettingsSearch.quickAIRoot  // FORK: quick-ai-root
+        + ForkSettingsSearch.inlineAutocomplete  // FORK: inline-autocomplete
         + ForkSettingsSearch.claudeUsage  // FORK: claude-usage
         + permissions
         + backup + about

@@ -32,6 +32,7 @@ struct ClaudeUsageModelTests {
 
     static func main() {
         decodesObservedResponse()
+        showsSpendWhenNoLimitsAreReported()
         decodesAndOrdersWindows()
         usesFallbackOnlyWhenLimitsAreAbsent()
         rejectsMalformedBodies()
@@ -72,6 +73,51 @@ struct ClaudeUsageModelTests {
             "the observed model-scoped window is identified as weekly")
         expect(ClaudeUsageFormat.label(snapshot: snapshot, display: .sessionAndWeek, locale: locale)
             == "5% · 83%", "the observed response formats values from limits rather than fallback objects")
+    }
+
+    static func showsSpendWhenNoLimitsAreReported() {
+        let body = #"""
+            {"five_hour":null,"seven_day":null,"seven_day_opus":null,
+             "extra_usage":{"is_enabled":true,"monthly_limit":null,"used_credits":5665.0,"utilization":null,
+              "currency":"USD","decimal_places":2},
+             "limits":[],
+             "spend":{"used":{"amount_minor":5665,"currency":"USD","exponent":2},"limit":null,"percent":0,
+              "severity":"normal","enabled":true,"disabled_reason":null,"cap":null,"balance":null}}
+            """#
+        let snapshot = decode(body)
+        expect(snapshot?.windows.isEmpty == true, "the observed usage-billing response has no limit windows")
+        expect(ClaudeUsageFormat.label(snapshot: snapshot, display: .sessionAndWeek, locale: locale) == "$56.65",
+            "without limit windows the combined label shows money spent")
+        expect(ClaudeUsageFormat.label(snapshot: snapshot, display: .sessionPercent, locale: locale) == "$56.65",
+            "without limit windows the session label shows money spent")
+        expect(ClaudeUsageFormat.label(snapshot: snapshot, display: .usageIcon, locale: locale).isEmpty,
+            "icon mode stays an icon when only spend is reported")
+        guard let spend = snapshot?.spend else {
+            expect(false, "the observed spend block decodes")
+            return
+        }
+        expect(ClaudeUsageFormat.spendLine(spend, locale: locale) == "Extra usage: $56.65 spent",
+            "the menu line reports spend without inventing a limit")
+        let money = #"{"amount_minor":5665,"currency":"USD","exponent":2}"#
+        let capped = decode(#"{"limits":[],"spend":{"used":\#(money),"limit":{"amount_minor":10000,"currency":"USD","exponent":2},"enabled":true}}"#)
+        expect(capped?.spend.map { ClaudeUsageFormat.spendLine($0, locale: locale) } == "Extra usage: $56.65 of $100.00",
+            "a reported spend limit appears in the menu line")
+        let disabled = decode(#"{"limits":[],"spend":{"used":\#(money),"limit":null,"enabled":false}}"#)
+        expect(disabled != nil && disabled?.spend == nil, "disabled spend is dropped without failing the snapshot")
+        expect(ClaudeUsageFormat.label(snapshot: disabled, display: .sessionAndWeek, locale: locale).isEmpty,
+            "no windows and no spend fall back to the icon")
+        for bad in [#""spend":{"used":null}"#, #""spend":{"used":{"amount_minor":-1,"currency":"USD","exponent":2}}"#,
+            #""spend":{"used":{"amount_minor":1,"currency":"USD","exponent":40}}"#, #""spend":"x""#] {
+            let parsed = decode("{\"limits\":[\(limit("session", "42"))],\(bad)}")
+            expect(parsed?.session?.percent == 42 && parsed?.spend == nil,
+                "unreadable spend is dropped while limits still decode: \(bad)")
+        }
+        let both = decode("{\"limits\":[\(limit("session", "42"))],\"spend\":{\"used\":\(money),\"enabled\":true}}")
+        expect(ClaudeUsageFormat.label(snapshot: both, display: .sessionAndWeek, locale: locale) == "42%",
+            "limit windows keep priority over spend in the label")
+        let yen = decode(#"{"limits":[],"spend":{"used":{"amount_minor":1200,"currency":"JPY","exponent":0}}}"#)
+        expect(ClaudeUsageFormat.label(snapshot: yen, display: .sessionPercent, locale: locale) == "¥1,200",
+            "the reported exponent and currency set the amount")
     }
 
     static func decodesAndOrdersWindows() {

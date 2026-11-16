@@ -1,3 +1,10 @@
+## Interaction supersession
+
+The typing-triggered Fix, Slack selection trigger, and three-mode panel portions are superseded by
+[fork-lyra-hotkey-only](../fork-lyra-hotkey-only/design.md).
+The model-server, headless API, selection ports, and workflow-marker contracts remain in force.
+The original implementation and parity tasks below describe the earlier interaction.
+
 > Codex implements groups 1–4. Claude builds, runs the harnesses and relaunches Dev. Group 5 is
 > Sasha's parity check.
 

@@ -35,13 +35,13 @@ final class ForkLyraTextSink: ForkTextSink {
         let afterSelection = currentSelection(snapshot)
         if written {
             try await Task.sleep(for: .milliseconds(80))
-            if isFocused(snapshot), currentValue(snapshot) == expected {
+            if snapshot.isFocused(), currentValue(snapshot) == expected {
                 ForkTrace.begin(.lyra, category: .lyra, step: .accessibility).end(.success, fields: .init(length: replacement.count))
                 return
             }
         }
         try Task.checkCancellation()
-        guard isFocused(snapshot), currentSelection(snapshot) == afterSelection,
+        guard snapshot.isFocused(), currentSelection(snapshot) == afterSelection,
               let observed = currentValue(snapshot), observed == snapshot.value || observed == afterWrite else {
             throw AIProviderError.unavailable(String(localized: "The focused text changed. Request a new rewrite."))
         }
@@ -62,7 +62,7 @@ final class ForkLyraTextSink: ForkTextSink {
         }
         let clipboard = NSPasteboard.general
         try Task.checkCancellation()
-        guard isFocused(snapshot), currentValue(snapshot) == observed else {
+        guard snapshot.isFocused(), currentValue(snapshot) == observed else {
             throw AIProviderError.unavailable(String(localized: "The focused text changed. Request a new rewrite."))
         }
         clipboardManager.prepareForTinycastPasteboardMutation()
@@ -87,7 +87,7 @@ final class ForkLyraTextSink: ForkTextSink {
         case .failed: throw AIProviderError.unavailable(String(localized: "The focused text changed. Request a new rewrite."))
         }
         if scriptError != nil { throw AIProviderError.unavailable(String(localized: "The focused text changed. Request a new rewrite.")) }
-        guard isFocused(snapshot), currentValue(snapshot) == expected else {
+        guard snapshot.isFocused(), currentValue(snapshot) == expected else {
             throw AIProviderError.unavailable(String(localized: "The focused text changed. Request a new rewrite."))
         }
         pasted = true
@@ -99,11 +99,6 @@ final class ForkLyraTextSink: ForkTextSink {
         return AXUIElementSetAttributeValue(element, kAXSelectedTextRangeAttribute as CFString, value) == .success
     }
 
-    private func isFocused(_ snapshot: ForkLyraTextSnapshot) -> Bool {
-        NSWorkspace.shared.frontmostApplication?.processIdentifier == snapshot.pid &&
-            ForkLyraFocusObserver.focusedElement().map { CFEqual($0, snapshot.element) } == true
-    }
-
     private func currentSelection(_ snapshot: ForkLyraTextSnapshot) -> NSRange? {
         guard let value = ForkLyraFocusObserver.attribute(snapshot.element, kAXSelectedTextRangeAttribute),
             CFGetTypeID(value) == AXValueGetTypeID() else { return nil }
@@ -113,6 +108,7 @@ final class ForkLyraTextSink: ForkTextSink {
     }
 
     private func currentValue(_ snapshot: ForkLyraTextSnapshot) -> String? {
-        ForkLyraFocusObserver.attribute(snapshot.element, kAXValueAttribute) as? String
+        guard !ForkLyraFocusObserver.isProtected(snapshot.element) else { return nil }
+        return ForkLyraFocusObserver.attribute(snapshot.element, kAXValueAttribute) as? String
     }
 }

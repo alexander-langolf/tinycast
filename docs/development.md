@@ -55,6 +55,9 @@ download on demand; none are app resources.
 
 ### The dev channel
 
+This fork overrides the upstream bundle identifiers with `com.tinycast.app` and `com.tinycast.app.dev`.
+Its settings, data, and Keychain scopes retain those identities.
+
 Debug builds are a separate channel: **`Tinycast Dev.app`**, bundle id `com.abueammar.tinycast.dev`.
 Every persisted thing is keyed by bundle id — `~/Library/Preferences/<id>.plist` (settings and hotkey
 bindings), `~/Library/Application Support/<id>/` (the onboarding marker, Notes, snippets, quicklinks,

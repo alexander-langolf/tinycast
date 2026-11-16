@@ -209,12 +209,17 @@ enum CalcEngine {
                 payload: payload)
         }
 
-        return CalcPercent.evaluate(tokens, query: query) ?? CalcRounding.evaluate(tokens, query: query)
-            ?? CalcFinance.evaluate(tokens, query: query) ?? CalcGrowth.evaluate(tokens, query: query)
-            ?? CalcSpokenMath.evaluate(tokens, query: query)
-            ?? CalcStatistics.evaluate(tokens, query: query) ?? CalcRatePhrases.evaluate(tokens, query: query)
-            ?? CalcSubstance.evaluate(tokens, query: query) ?? CalcPixelDensity.evaluate(tokens, query: query)
-            ?? CalcPitch.evaluate(tokens, query: query)
+        // FORK: compiler-budget
+        if let result = CalcPercent.evaluate(tokens, query: query) { return result }
+        if let result = CalcRounding.evaluate(tokens, query: query) { return result }
+        if let result = CalcFinance.evaluate(tokens, query: query) { return result }
+        if let result = CalcGrowth.evaluate(tokens, query: query) { return result }
+        if let result = CalcSpokenMath.evaluate(tokens, query: query) { return result }
+        if let result = CalcStatistics.evaluate(tokens, query: query) { return result }
+        if let result = CalcRatePhrases.evaluate(tokens, query: query) { return result }
+        if let result = CalcSubstance.evaluate(tokens, query: query) { return result }
+        if let result = CalcPixelDensity.evaluate(tokens, query: query) { return result }
+        return CalcPitch.evaluate(tokens, query: query)
     }
 
     private static func withoutQuestionMark(_ text: String) -> String {

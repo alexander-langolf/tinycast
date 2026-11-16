@@ -6,12 +6,12 @@ struct ForkEvent: Codable, Sendable {
     }
 
     enum Category: String, Codable, Sendable {
-        case workflows, quickActions, selection, betterTouchTool, supervision, automation, claudeAccount, lyra
+        case workflows, quickActions, selection, betterTouchTool, supervision, automation, claudeAccount, lyra, autocomplete
     }
 
     enum Operation: String, Codable, Sendable {
         case quickAction, selectedText, copySelection, bttSelection, appSupervision, health, claudeRequest
-        case automation, lyra, workflow
+        case automation, lyra, workflow, autocomplete
     }
 
     enum AutomationOperation: String, Sendable {
@@ -26,7 +26,7 @@ struct ForkEvent: Codable, Sendable {
     enum Step: String, Codable, Sendable {
         case fallback, start, end, error, accessibility, selectionRead, copySelection, copyGates, copyPoll
         case bttRead, readiness, launch, termination, gaveUp, modelRequest, requestHeaders, response
-        case trigger, firstToken, insertion, paste, dismissal, marker, offer, policyReload
+        case trigger, firstToken, insertion, paste, dismissal, marker, offer, policyReload, decision
     }
 
     enum Outcome: String, Codable, Sendable {
@@ -35,6 +35,19 @@ struct ForkEvent: Codable, Sendable {
 
     enum PolicyFailure: String, Sendable {
         case invalidJSON, unknownKey, invalidValue, unreadable, invalidPrompt, changedDuringRead
+    }
+
+    enum Reason: String, Sendable {
+        case notEnabled, stopped, busy, noPolicy, noFix, noFocusedElement, noPID, noRunningApplication
+        case ownApp, excludedApp, pidMismatch, ineligibleRole, readOnly, protected, noValue, noSelection
+        case invalidSelection, emptyField, noCaret, noAnchor, focusChanged, selectionChanged, selectedText
+        case unsupportedInput, caretNotAtEnd, lyraOwnsSurface, serviceStarting, serviceUnavailable, accessibilityUnavailable
+        case superseded, staleTarget, lowConfidence, noCandidate, invalidPrediction, offscreen
+        case inputChanged, dismissed, settingsChanged, insertionFailed, emptySelection, selectionUnavailable, shown
+    }
+
+    enum PresentationKind: String, Sendable {
+        case inlineGhost, fallbackChip
     }
 
     struct Fields: Sendable {
@@ -52,6 +65,12 @@ struct ForkEvent: Codable, Sendable {
         var policyFile: String?
         var policyFailure: PolicyFailure?
         var caretKnown: Bool?
+        var reason: Reason?
+        var role: String?
+        var pid: Int32?
+        var confidencePercent: Int?
+        var thresholdPercent: Int?
+        var presentationKind: PresentationKind?
 
         var values: [String: String] {
             var result: [String: String] = [:]
@@ -85,6 +104,19 @@ struct ForkEvent: Codable, Sendable {
             { result["policyFile"] = policyFile }
             if let policyFailure { result["policyFailure"] = policyFailure.rawValue }
             if let caretKnown { result["caretKnown"] = String(caretKnown) }
+            if let reason { result["reason"] = reason.rawValue }
+            if let role {
+                let known = [
+                    "AXTextArea", "AXTextField", "AXComboBox", "AXWebArea", "AXGroup", "AXSecureTextField",
+                    "AXApplication", "AXWindow", "AXTabGroup", "AXRadioButton", "AXScrollArea", "AXStaticText",
+                    "AXCell", "AXRow", "AXTable", "AXOutline", "AXList", "AXButton", "AXToolbar", "AXUnknown"
+                ]
+                result["role"] = known.contains(role) ? role : "other"
+            }
+            if let pid { result["pid"] = String(pid) }
+            number("confidencePercent", confidencePercent)
+            number("thresholdPercent", thresholdPercent)
+            if let presentationKind { result["presentationKind"] = presentationKind.rawValue }
             return result
         }
     }

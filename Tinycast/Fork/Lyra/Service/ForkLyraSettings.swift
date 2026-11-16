@@ -10,7 +10,6 @@ final class ForkLyraSettings {
     @ObservationIgnored var onChange: (() -> Void)?
 
     var enabled: Bool { didSet { defaults.set(enabled, forKey: "fork.lyra.enabled"); onChange?() } }
-    var fixEnabled: Bool { didSet { defaults.set(fixEnabled, forKey: "fork.lyra.fixEnabled"); onChange?() } }
     var modelPath: String { didSet { defaults.set(modelPath, forKey: "fork.lyra.modelPath"); onChange?() } }
 
     init(defaults: UserDefaults = .standard) {
@@ -22,7 +21,6 @@ final class ForkLyraSettings {
         modelPath = path
         enabled = defaults.object(forKey: "fork.lyra.enabled") as? Bool
             ?? FileManager.default.fileExists(atPath: (path as NSString).expandingTildeInPath)
-        fixEnabled = defaults.object(forKey: "fork.lyra.fixEnabled") as? Bool ?? true
     }
 
     func start() { Self.current = self }

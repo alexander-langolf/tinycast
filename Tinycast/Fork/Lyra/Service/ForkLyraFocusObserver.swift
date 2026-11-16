@@ -15,26 +15,39 @@ struct ForkLyraTextSnapshot {
     var targetRange: NSRange { selection.length > 0 ? selection : wholeRange }
     var targetText: String { (value as NSString).substring(with: targetRange) }
 
+    func isFocused() -> Bool {
+        guard let focused = ForkLyraFocusObserver.focusedTarget(),
+              focused.app.processIdentifier == pid, CFEqual(element, focused.element),
+              !ForkLyraFocusObserver.isProtected(focused.element) else { return false }
+        return true
+    }
+
     func isCurrent() -> Bool {
-        guard NSWorkspace.shared.frontmostApplication?.processIdentifier == pid,
-              let focused = ForkLyraFocusObserver.focusedElement(), CFEqual(element, focused),
-              let current = ForkLyraFocusObserver.snapshot(focused) else { return false }
+        guard isFocused(), let current = ForkLyraFocusObserver.snapshot(element) else { return false }
         return current.value == value && current.selection == selection
     }
 }
 
 @MainActor
 final class ForkLyraFocusObserver: ForkSelectionSource {
+    struct FocusedTarget {
+        let element: AXUIElement
+        let app: NSRunningApplication
+    }
+
     let kind = ForkSelection.Kind.accessibility
 
     func read(from app: NSRunningApplication) async -> ForkSelection? {
-        guard let focused = Self.focusedElement(), let snapshot = Self.snapshot(focused),
+        guard let focused = Self.focusedTarget(), focused.app.processIdentifier == app.processIdentifier,
+            let snapshot = Self.snapshot(focused.element),
             snapshot.pid == app.processIdentifier, snapshot.isCurrent() else { return nil }
         return ForkSelection(text: snapshot.targetText, source: kind)
     }
 
     enum Change { case focus, value, selection }
     var onChange: ((ForkLyraTextSnapshot?, Change) -> Void)?
+    var allowsApp: ((NSRunningApplication) -> Bool)?
+    var allowsElement: ((AXUIElement) -> Bool)?
     private var observer: AXObserver?
     private var application: AXUIElement?
     private var field: AXUIElement?
@@ -62,8 +75,9 @@ final class ForkLyraFocusObserver: ForkSelectionSource {
         guard workspaceToken != nil else { return }
         detach()
         onChange?(nil, .focus)
-        guard let front = NSWorkspace.shared.frontmostApplication,
-              front.processIdentifier != ProcessInfo.processInfo.processIdentifier,
+        guard let focused = Self.focusedTarget() else { return }
+        let front = focused.app
+        guard allowsApp?(front) != false,
               front.bundleIdentifier != "net.kovidgoyal.kitty" else { return }
         pid = front.processIdentifier
         let app = AXUIElementCreateApplication(pid)
@@ -90,17 +104,20 @@ final class ForkLyraFocusObserver: ForkSelectionSource {
         let context = Unmanaged.passUnretained(self).toOpaque()
         _ = AXObserverAddNotification(created, app, kAXFocusedUIElementChangedNotification as CFString, context)
         CFRunLoopAddSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(created), .commonModes)
-        refresh(.focus)
+        watch(focused.element, change: .focus)
     }
 
     private func refresh(_ change: Change) {
-        var focusedPID: pid_t = 0
-        guard let focused = Self.focusedElement(), AXUIElementGetPid(focused, &focusedPID) == .success,
-              focusedPID == pid else {
+        guard let target = Self.focusedTarget(), allowsApp?(target.app) != false else {
             unwatchField()
             onChange?(nil, .focus)
             return
         }
+        guard target.app.processIdentifier == pid else { activate(); return }
+        watch(target.element, change: change)
+    }
+
+    private func watch(_ focused: AXUIElement, change: Change) {
         let changed = field.map { !CFEqual($0, focused) } ?? true
         if changed {
             unwatchField()
@@ -112,7 +129,7 @@ final class ForkLyraFocusObserver: ForkSelectionSource {
                 }
             }
         }
-        onChange?(Self.snapshot(focused), changed ? .focus : change)
+        onChange?(allowsElement?(focused) == false ? nil : Self.snapshot(focused), changed ? .focus : change)
     }
 
     private func unwatchField() {
@@ -148,29 +165,61 @@ final class ForkLyraFocusObserver: ForkSelectionSource {
         return (value as! AXUIElement)
     }
 
-    static func snapshot(_ element: AXUIElement) -> ForkLyraTextSnapshot? {
+    static func focusedTarget(rejected: (ForkEvent.Reason) -> Void = { _ in }) -> FocusedTarget? {
+        guard let element = focusedElement() else { rejected(.noFocusedElement); return nil }
+        var pid: pid_t = 0
+        guard AXUIElementGetPid(element, &pid) == .success, pid > 0 else { rejected(.noPID); return nil }
+        guard pid != ProcessInfo.processInfo.processIdentifier else { rejected(.ownApp); return nil }
+        guard let app = NSRunningApplication(processIdentifier: pid), !app.isTerminated else {
+            rejected(.noRunningApplication)
+            return nil
+        }
+        guard app.processIdentifier == pid else { rejected(.pidMismatch); return nil }
+        return FocusedTarget(element: element, app: app)
+    }
+
+    static func isProtected(_ element: AXUIElement) -> Bool {
+        var current: AXUIElement? = element
+        for _ in 0..<64 {
+            guard let node = current else { return false }
+            let role = attribute(node, kAXRoleAttribute) as? String ?? ""
+            let subrole = attribute(node, kAXSubroleAttribute) as? String ?? ""
+            if role.localizedCaseInsensitiveContains("secure") || subrole.localizedCaseInsensitiveContains("secure")
+                || (attribute(node, "AXProtectedContent") as? Bool) == true { return true }
+            guard let parent = attribute(node, kAXParentAttribute),
+                  CFGetTypeID(parent) == AXUIElementGetTypeID() else { return false }
+            current = (parent as! AXUIElement)
+        }
+        return true
+    }
+
+    static func snapshot(_ element: AXUIElement, caretFallback: Bool = true,
+                         rejected: (ForkEvent.Reason) -> Void = { _ in }) -> ForkLyraTextSnapshot? {
         var process: pid_t = 0
-        guard AXUIElementGetPid(element, &process) == .success,
-              process != ProcessInfo.processInfo.processIdentifier,
-              let role = attribute(element, kAXRoleAttribute) as? String else { return nil }
-        let subrole = attribute(element, kAXSubroleAttribute) as? String ?? ""
-        guard !role.localizedCaseInsensitiveContains("secure"),
-              !subrole.localizedCaseInsensitiveContains("secure"),
-              (attribute(element, "AXProtectedContent") as? Bool) != true,
-              let text = attribute(element, kAXValueAttribute) as? String,
-              let rangeValue = attribute(element, kAXSelectedTextRangeAttribute),
-              CFGetTypeID(rangeValue) == AXValueGetTypeID() else { return nil }
+        guard AXUIElementGetPid(element, &process) == .success else { rejected(.noPID); return nil }
+        guard process != ProcessInfo.processInfo.processIdentifier else { rejected(.ownApp); return nil }
+        guard !isProtected(element) else { rejected(.protected); return nil }
+        guard let role = attribute(element, kAXRoleAttribute) as? String else {
+            rejected(.ineligibleRole)
+            return nil
+        }
+        guard let rangeValue = attribute(element, kAXSelectedTextRangeAttribute),
+              CFGetTypeID(rangeValue) == AXValueGetTypeID() else { rejected(.noSelection); return nil }
         var range = CFRange()
         guard AXValueGetValue(rangeValue as! AXValue, .cfRange, &range),
-              range.location >= 0, range.length >= 0,
-              range.location <= text.utf16.count, range.length <= text.utf16.count - range.location else { return nil }
+              range.location >= 0, range.length >= 0 else { rejected(.invalidSelection); return nil }
+        guard let text = attribute(element, kAXValueAttribute) as? String else { rejected(.noValue); return nil }
+        guard range.location <= text.utf16.count, range.length <= text.utf16.count - range.location else {
+            rejected(.invalidSelection)
+            return nil
+        }
         let selection = NSRange(location: range.location, length: range.length)
-        let caret = caretBounds(element, selection: selection, count: text.utf16.count)
+        let caret = caretBounds(element, selection: selection, count: text.utf16.count, fallback: caretFallback)
         return ForkLyraTextSnapshot(element: element, pid: process, value: text, selection: selection, role: role,
                             anchor: caret.rect, caretKnown: caret.known)
     }
 
-    private static func caretBounds(_ element: AXUIElement, selection: NSRange, count: Int) -> (rect: CGRect, known: Bool) {
+    private static func caretBounds(_ element: AXUIElement, selection: NSRange, count: Int, fallback: Bool) -> (rect: CGRect, known: Bool) {
         let caret = min(NSMaxRange(selection), count)
         var candidates = [CFRange(location: caret, length: 0)]
         if caret < count { candidates.append(CFRange(location: caret, length: 1)) }
@@ -191,6 +240,7 @@ final class ForkLyraFocusObserver: ForkSelectionSource {
             }
         }
         if let rect = textMarkerCaret(element) { return (rect, true) }
+        guard fallback else { return (.zero, false) }
         var point = CGPoint.zero
         var size = CGSize.zero
         if let p = attribute(element, kAXPositionAttribute), CFGetTypeID(p) == AXValueGetTypeID(),

@@ -54,7 +54,8 @@ enum AppPaths {
     }
 
     private static func configFolderName(bundleID: String) -> String {
-        let stable = "com.abueammar.tinycast"
+        let stable = bundleID.hasPrefix("com.tinycast.app")  // FORK: bundle-identity
+            ? "com.tinycast.app" : "com.abueammar.tinycast"
         if bundleID == stable { return "tinycast" }
         guard bundleID.hasPrefix(stable + ".") else { return bundleID }
         return "tinycast-" + bundleID.dropFirst(stable.count + 1)

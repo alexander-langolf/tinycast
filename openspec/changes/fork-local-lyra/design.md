@@ -1,3 +1,10 @@
+## Interaction supersession
+
+The typing-triggered Fix, Slack selection trigger, and three-mode panel portions are superseded by
+[fork-lyra-hotkey-only](../fork-lyra-hotkey-only/design.md).
+The model-server, headless API, selection ports, and workflow-marker contracts remain in force.
+The original implementation and parity tasks below describe the earlier interaction.
+
 ## Context
 
 Local Lyra's source, in `~/github/local-lyra/app/Sources/LocalLyra/`:

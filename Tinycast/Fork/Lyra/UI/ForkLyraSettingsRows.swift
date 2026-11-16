@@ -7,10 +7,10 @@ struct ForkLyraSettingsRows: View {
         @Bindable var preferences = coordinator.preferences
         Section("Local Lyra") {
             Toggle("Enable Lyra", isOn: $preferences.enabled)
-            Toggle("Fix as you type", isOn: $preferences.fixEnabled)
             TextField("Model path", text: $preferences.modelPath)
-            LabeledContent { Text(verbatim: "⌥⌘R · ⌘⌘") } label: { Text("Rewrite panel") }
-            Text("Fix: Tab to preview, Tab to apply.")
+            Text("Open Rewrite with Lyra to fix the selection or whole field.")
+                .foregroundStyle(.secondary)
+            Text("Tab or Enter applies the result.")
                 .foregroundStyle(.secondary)
             Text(status)
                 .foregroundStyle(.secondary)

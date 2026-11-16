@@ -16,6 +16,9 @@ struct ClaudeUsageMenuBarMenu: View {
                             let reset = ClaudeUsageFormat.reset(window.resetsAt, locale: locale, timeZone: timeZone)
                             Text("\(name): \(percent) · resets \(reset)")
                         }
+                        if let spend = snapshot.spend {
+                            Text(ClaudeUsageFormat.spendLine(spend, locale: locale))
+                        }
                     }
                 }
                 if let error = coordinator.lastError {

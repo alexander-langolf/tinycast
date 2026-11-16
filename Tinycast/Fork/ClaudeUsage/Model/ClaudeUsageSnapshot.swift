@@ -8,7 +8,26 @@ struct ClaudeUsageSnapshot: Decodable, Equatable, Sendable {
         let modelName: String?
     }
 
+    /// Money spent on usage credits. Accounts billed by usage report this instead of limit windows.
+    struct Spend: Equatable, Sendable {
+        let used: Money
+        let limit: Money?
+    }
+
+    struct Money: Equatable, Sendable {
+        let amountMinor: Int
+        let currency: String
+        let exponent: Int
+
+        var amount: Decimal {
+            var power = Decimal(1)
+            for _ in 0..<exponent { power *= 10 }
+            return Decimal(amountMinor) / power
+        }
+    }
+
     let windows: [Window]
+    let spend: Spend?
 
     var session: Window? { windows.first { $0.kind == "session" } }
     var weekly: Window? { windows.first { $0.kind == "weekly_all" } }
@@ -17,10 +36,14 @@ struct ClaudeUsageSnapshot: Decodable, Equatable, Sendable {
         case limits
         case fiveHour = "five_hour"
         case sevenDay = "seven_day"
+        case spend
     }
 
     init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
+        // Spend is supplementary: an unreadable or disabled block is dropped rather than failing the snapshot.
+        let spendBlock = (try? container.decodeIfPresent(SpendBlock.self, forKey: .spend)) ?? nil
+        spend = spendBlock.flatMap { $0.enabled == false ? nil : Spend(used: $0.used, limit: $0.limit) }
         let decoded: [Window]
         if container.contains(.limits) {
             decoded = try container.decode([Limit].self, forKey: .limits).map(\.window)
@@ -111,6 +134,23 @@ struct ClaudeUsageSnapshot: Decodable, Equatable, Sendable {
         }
     }
 
+    private struct SpendBlock: Decodable {
+        let used: Money
+        let limit: Money?
+        let enabled: Bool?
+
+        private enum CodingKeys: String, CodingKey {
+            case used, limit, enabled
+        }
+
+        init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            used = try container.decode(Money.self, forKey: .used)
+            limit = (try? container.decodeIfPresent(Money.self, forKey: .limit)) ?? nil
+            enabled = try container.decodeIfPresent(Bool.self, forKey: .enabled)
+        }
+    }
+
     private struct LegacyLimit: Decodable {
         let utilization: Double
         let resetsAt: Date
@@ -126,6 +166,24 @@ struct ClaudeUsageSnapshot: Decodable, Equatable, Sendable {
             try ClaudeUsageSnapshot.validate(utilization, decoder: decoder)
             resetsAt = try ClaudeUsageSnapshot.resetDate(
                 container.decode(String.self, forKey: .resetsAt), decoder: decoder)
+        }
+    }
+}
+
+extension ClaudeUsageSnapshot.Money: Decodable {
+    private enum CodingKeys: String, CodingKey {
+        case amountMinor = "amount_minor"
+        case currency, exponent
+    }
+
+    init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        amountMinor = try container.decode(Int.self, forKey: .amountMinor)
+        currency = try container.decode(String.self, forKey: .currency)
+        exponent = try container.decode(Int.self, forKey: .exponent)
+        guard amountMinor >= 0, (0...6).contains(exponent), currency.count == 3 else {
+            throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath,
+                debugDescription: "Invalid usage spend amount"))
         }
     }
 }

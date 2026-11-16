@@ -26,9 +26,9 @@ final class ForkLyraService {
     func invalidate() { generation += 1 }
 
     func rewrite(mode: ForkLyraMode, target: ForkLyraArguments.Target, apply: Bool) async throws -> Result {
-        guard NSWorkspace.shared.frontmostApplication?.bundleIdentifier != ForkKittySelectionSource.bundleID,
-            let focused = ForkLyraFocusObserver.focusedElement(),
-            let snapshot = ForkLyraFocusObserver.snapshot(focused) else { throw failure() }
+        guard let focused = ForkLyraFocusObserver.focusedTarget(),
+            focused.app.bundleIdentifier != ForkKittySelectionSource.bundleID,
+            let snapshot = ForkLyraFocusObserver.snapshot(focused.element) else { throw failure() }
         return try await rewrite(mode: mode, snapshot: snapshot, target: target, apply: apply)
     }
 

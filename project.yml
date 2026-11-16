@@ -59,6 +59,7 @@ targets:
           - Migrations/Handoff
           - Resources/EmojiKeywords
           - Resources/MonacoEditor
+          - Fork/Autocomplete/AutocompleteService # // FORK: inline-autocomplete
       # A folder reference keeps the packs in their own directory, which `EmojiIndex` lists.
       - path: Tinycast/Resources/EmojiKeywords
         type: folder

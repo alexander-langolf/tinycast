@@ -203,8 +203,7 @@ final class LauncherCoordinator {
         case .searchGoogle:
             core.chromeSearchCoordinator.show()  // FORK: chrome-search
         case .lyraRewrite:  // FORK: local-lyra
-            guard core.forkLyra.preferences.enabled else { return }  // FORK: local-lyra
-            if paletteCoordinator.isVisible { paletteCoordinator.hidePalette() }  // FORK: local-lyra
+            if core.forkLyra.preferences.enabled, paletteCoordinator.isVisible { paletteCoordinator.hidePalette() }  // FORK: local-lyra
             core.forkLyra.openPanel()  // FORK: local-lyra
         case .openInBrowser, .runShellCommand:
             break  // Query-driven: each runs where the typed text is, never through this funnel.

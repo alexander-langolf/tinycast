@@ -1,7 +1,7 @@
 import AppKit
 
 @MainActor
-private final class ForkLyraPassivePanel: NSPanel {
+final class ForkLyraPassivePanel: NSPanel {
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
 }
@@ -12,12 +12,14 @@ final class ForkLyraSuggestionController {
     private(set) var kind: Kind = .hidden { didSet { if kind != oldValue { onKindChange?(kind) } } }
     var onKindChange: ((Kind) -> Void)?
     var onDismiss: (() -> Void)?
+    var onModeStep: ((Int) -> Void)?
     private(set) var copyOnly = false
     private let pasteboard: NSPasteboard
     private var mouseAnchor: CGPoint?
     private var panel: NSPanel?
     private var card: NSStackView?
     private var bodyLabel: NSTextField?
+    private var modeLabel: NSTextField?
     private var bodyHeight: NSLayoutConstraint?
     private var replacementRow: NSStackView?
     private var loadingRow: NSStackView?
@@ -148,9 +150,37 @@ final class ForkLyraSuggestionController {
         text.spacing = 4
         originalLabel.widthAnchor.constraint(equalToConstant: contentWidth).isActive = true
         replacement.widthAnchor.constraint(equalToConstant: contentWidth).isActive = true
-        makePanel(width: cardWidth, views: [text])
+        if kind == .rewrite {
+            let previous = iconButton("chevron.left", label: String(localized: "Previous mode"), action: #selector(changeMode))
+            previous.tag = -1
+            let next = iconButton("chevron.right", label: String(localized: "Next mode"), action: #selector(changeMode))
+            next.tag = 1
+            let title = label("", size: 12, weight: .semibold)
+            modeLabel = title
+            let modes = NSStackView(views: [previous, title, next])
+            modes.alignment = .centerY
+            modes.spacing = 6
+            makePanel(width: cardWidth, views: [modes, text])
+        } else {
+            makePanel(width: cardWidth, views: [text])
+        }
         updateBody(nil)
     }
+
+    func updateMode(_ mode: ForkLyraMode) {
+        let title: String
+        switch mode {
+        case .fix: title = String(localized: "Fix")
+        case .refine: title = String(localized: "Refine")
+        case .professional: title = String(localized: "Professional")
+        case .friendly: title = String(localized: "Friendly")
+        default: title = mode.rawValue
+        }
+        modeLabel?.stringValue = title
+        fitPanel()
+    }
+
+    @objc private func changeMode(_ sender: NSButton) { onModeStep?(sender.tag) }
 
     func updateRewrite(_ text: String?, isComplete: Bool = false, isError: Bool = false) {
         guard kind == .rewrite else { return }
@@ -188,6 +218,7 @@ final class ForkLyraSuggestionController {
         panel = nil
         card = nil
         bodyLabel = nil
+        modeLabel = nil
         bodyHeight = nil
         replacementRow = nil
         loadingRow = nil

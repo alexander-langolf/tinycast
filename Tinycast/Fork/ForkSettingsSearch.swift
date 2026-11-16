@@ -10,6 +10,12 @@ enum ForkSettingsSearch {
         .init(.quickAIRoot, quickAIRetentionTitle, keywords: ["retention", "handoff", "history", "prune"])
     ]
 
+    static let inlineAutocomplete: [SettingsSearchEntry] = [
+        .init(.inlineAutocomplete, "Inline autocomplete", keywords: ["ghost", "word", "tab", "apps"]),
+        .init(.inlineAutocomplete, "Minimum confidence", keywords: ["threshold", "prediction"]),
+        .init(.inlineAutocomplete, "Excluded app bundle IDs", keywords: ["exclude", "bundle", "apps"])
+    ]
+
     static let claudeUsageMenuBar = SettingsSearchEntry(
         .aiProviders, "Menu Bar", keywords: ["claude", "usage", "limits", "session", "weekly", "percent"])
     static let claudeUsage: [SettingsSearchEntry] = [claudeUsageMenuBar]
@@ -63,6 +69,7 @@ enum ForkSettingsSearch {
 }
 
 extension SettingsAnchor {
+    static let inlineAutocomplete = Self(tab: .ai, title: "Inline autocomplete")
     static let quickAIRoot = Self(tab: .ai, title: "Quick AI")
     static let appearanceColors = Self(tab: .appearance, title: "Colours")
     static let appearanceAgentCard = Self(tab: .appearance, title: "Agent Card")

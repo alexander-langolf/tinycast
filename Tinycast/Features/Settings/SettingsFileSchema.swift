@@ -97,9 +97,13 @@ enum SettingsFileSchema {
             return bind(ForkQuickAIRootSettings.current!, \.startWorkEngine)
         case .quickAIRootRetention:  // FORK: quick-ai-root
             return bind(ForkQuickAIRootSettings.current!, \.retention)
+        // FORK: inline-autocomplete
+        case .autocompleteEnabled: return bind(ForkAutocompleteSettings.current!, \.enabled)
+        case .autocompleteConfidence:
+            return bind(ForkAutocompleteSettings.current!, \.confidencePercent) { (0...100).contains($0) ? $0 : nil }
+        case .autocompleteExcludedApps: return bind(ForkAutocompleteSettings.current!, \.excludedBundleIDs)
         // FORK: local-lyra
         case .lyraEnabled: return bind(ForkLyraSettings.current!, \.enabled)
-        case .lyraFixEnabled: return bind(ForkLyraSettings.current!, \.fixEnabled)
         case .lyraModelPath: return bind(ForkLyraSettings.current!, \.modelPath)
         case .lyraPolicyDirectory:  // FORK: policy-split
             return bind(ForkPolicyStore.current!, \.directory) { AppPaths.isFolderPath($0) ? $0 : nil }

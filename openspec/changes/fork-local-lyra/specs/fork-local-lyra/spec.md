@@ -1,23 +1,16 @@
+## Interaction supersession
+
+[fork-lyra-hotkey-only](../../../fork-lyra-hotkey-only/specs/fork-lyra-hotkey-only/spec.md)
+supersedes automatic Fix and defines the explicit card interaction.
+The superseded requirements at the end are historical and non-normative.
+
 ## ADDED Requirements
-
-### Requirement: Fix runs inside Tinycast
-
-When Lyra is enabled, Tinycast SHALL offer a Fix marker after the user pauses in a text field
-holding at least 3 words and at most 1,000 characters. Tinycast SHALL apply the fix on the second
-Tab.
-
-#### Scenario: Fix in TextEdit
-- **WHEN** the user types "can u send me teh notes pls" in TextEdit and pauses
-- **THEN** a Fix marker appears, and two Tab presses replace the text with the local model's fix
-
-#### Scenario: Secure field
-- **WHEN** the focused field is a password field
-- **THEN** Tinycast sends no request
 
 ### Requirement: The panel rewrites through Tinycast connections
 
 Tinycast SHALL open the rewrite panel through the Lyra rewrite command (default Hyper+R).
-Tinycast SHALL run Refine, Professional and Friendly through the connection chosen in settings.
+Tinycast SHALL start Fix and retain Refine, Professional, and Friendly through policy routing.
+The hotkey-only change defines targeting and card controls.
 
 #### Scenario: Professional rewrite of a selection
 - **WHEN** the user selects part of a paragraph, invokes the Lyra rewrite command (default Hyper+R), chooses Professional and presses Return after the stream completes
@@ -41,7 +34,23 @@ scope.
 - **WHEN** a client with the `selection` scope calls `lyra_rewrite` with mode `friendly` and `apply` true
 - **THEN** the selection is replaced, and the call returns the rewrite
 
-### Requirement: A selection in Slack triggers Fix
+## Superseded interaction requirements
+
+### Superseded requirement: Fix runs inside Tinycast
+
+When Lyra is enabled, Tinycast SHALL offer a Fix marker after the user pauses in a text field
+holding at least 3 words and at most 1,000 characters. Tinycast SHALL apply the fix on the second
+Tab.
+
+#### Scenario: Fix in TextEdit
+- **WHEN** the user types "can u send me teh notes pls" in TextEdit and pauses
+- **THEN** a Fix marker appears, and two Tab presses replace the text with the local model's fix
+
+#### Scenario: Secure field
+- **WHEN** the focused field is a password field
+- **THEN** Tinycast sends no request
+
+### Superseded requirement: A selection in Slack triggers Fix
 
 Tinycast SHALL offer a Fix marker for a Slack selection of at least 3 words and at most 1,000
 characters, after the selection settles for 0.5 s, while Lyra is enabled. Applying the fix

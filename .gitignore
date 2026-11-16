@@ -79,3 +79,4 @@ website/.dev.vars
 
 # Local toolchains and ghostty checkout for the libghostty prototype
 .tools/
+.local/

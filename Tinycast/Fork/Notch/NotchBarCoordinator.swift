@@ -60,8 +60,7 @@ final class NotchBarCoordinator {
         let options: NSKeyValueObservingOptions = [.initial, .new]
         appearanceObservation = probe.button?.observe(\.effectiveAppearance, options: options) {
             [weak panel] button, _ in
-            let appearance = button.effectiveAppearance
-            MainActor.assumeIsolated { panel?.appearance = appearance }
+            MainActor.assumeIsolated { panel?.appearance = button.effectiveAppearance }
         }
         panel.orderFrontRegardless()
         refreshBackdrop()
